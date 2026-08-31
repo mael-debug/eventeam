@@ -21,6 +21,7 @@ const STATUS_VARIANT: Record<string, "forfait" | "temps" | "statut"> = {
   parsing: "statut",
   computing: "statut",
 };
+const FILE_STATUS_LABEL: Record<string, string> = { pending: "en attente", parsed: "traité", error: "erreur" };
 
 export default async function ImportsPage({
   params,
@@ -51,7 +52,7 @@ export default async function ImportsPage({
   const { data: imports } = accountIds.length
     ? await supabase
         .from("imports")
-        .select("id, account_id, status, window_start, window_end, created_at, exported_at, error_message, files_expected, files_parsed")
+        .select("id, account_id, status, window_start, window_end, created_at, exported_at, error_message")
         .in("account_id", accountIds)
         .order("created_at", { ascending: false })
     : { data: [] };
@@ -93,6 +94,8 @@ export default async function ImportsPage({
                   {accountImports.map((imp) => {
                     const impFiles = (files ?? []).filter((f) => f.import_id === imp.id && f.category !== "media");
                     const errored = impFiles.filter((f) => f.status === "error");
+                    const pending = impFiles.filter((f) => f.status === "pending");
+                    const inProgress = imp.status === "parsing" || imp.status === "computing" || imp.status === "uploaded";
                     return (
                       <div key={imp.id} style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 10 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
@@ -100,12 +103,24 @@ export default async function ImportsPage({
                             {imp.window_start && imp.window_end
                               ? `${shortDate(imp.window_start)} → ${shortDate(imp.window_end)}`
                               : shortDate(imp.created_at)}
-                            {imp.files_expected != null && ` · ${imp.files_parsed}/${imp.files_expected} fichiers`}
+                            {impFiles.length > 0 && ` · ${impFiles.length - pending.length}/${impFiles.length} fichiers traités`}
                           </span>
                           <Badge variant={STATUS_VARIANT[imp.status] ?? "statut"}>{STATUS_LABEL[imp.status] ?? imp.status}</Badge>
                         </div>
                         {imp.status === "failed" && imp.error_message && (
                           <div style={{ fontSize: 12, color: "#7A2E22", marginTop: 4 }}>{imp.error_message}</div>
+                        )}
+                        {inProgress && impFiles.length > 0 && (
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+                            {impFiles.map((f) => (
+                              <div key={f.source_path} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.source_path}</span>
+                                <span style={{ flex: "0 0 auto", color: f.status === "error" ? "#7A2E22" : f.status === "parsed" ? "var(--bleu)" : "var(--text-muted)" }}>
+                                  {FILE_STATUS_LABEL[f.status] ?? f.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         )}
                         {errored.length > 0 && (
                           <div style={{ fontSize: 12, color: "#7A2E22", marginTop: 4, display: "flex", flexDirection: "column", gap: 2 }}>
