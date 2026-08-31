@@ -1,7 +1,7 @@
-import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { resolveBrandContext } from "@/lib/context/brand-context";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Header } from "@/components/shell/header";
+import { toggleViewRoleAction } from "./actions";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
@@ -15,41 +15,13 @@ export default async function BrandLayout({
   params: Promise<{ org: string; brand: string }>;
 }) {
   const { org: orgSlug, brand: brandSlug } = await params;
-  const supabase = await createClient();
+  const { supabase, org, brand, user, accounts, role, viewRole, canToggleView } = await resolveBrandContext(
+    orgSlug,
+    brandSlug,
+  );
 
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("id, name, slug")
-    .eq("slug", orgSlug)
-    .single();
-  if (!org) notFound();
-
-  const { data: brand } = await supabase
-    .from("brands")
-    .select("id, name, slug")
-    .eq("org_id", org.id)
-    .eq("slug", brandSlug)
-    .single();
-  if (!brand) notFound();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [{ data: brands }, { data: accounts }, { data: orgMembership }, { data: brandMembership }] =
-    await Promise.all([
-      supabase.from("brands").select("slug, name").eq("org_id", org.id).order("name"),
-      supabase.from("instagram_accounts").select("id").eq("brand_id", brand.id),
-      supabase.from("organization_members").select("role").eq("org_id", org.id).eq("user_id", user!.id).maybeSingle(),
-      supabase
-        .from("brand_members")
-        .select("role")
-        .eq("brand_id", brand.id)
-        .eq("user_id", user!.id)
-        .maybeSingle(),
-    ]);
-
-  const accountIds = (accounts ?? []).map((a) => a.id);
+  const { data: brands } = await supabase.from("brands").select("slug, name").eq("org_id", org.id).order("name");
+  const accountIds = accounts.map((a) => a.id);
 
   const { data: lastImport } = accountIds.length
     ? await supabase
@@ -71,7 +43,6 @@ export default async function BrandLayout({
       ? `${new Date(lastImport.completed_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} · ${windowLabel.toLowerCase()}`
       : null;
 
-  const role = orgMembership?.role ?? brandMembership?.role ?? null;
   const userInitials = (user?.email ?? "?")
     .split(/[@.]/)[0]
     .slice(0, 2)
@@ -100,6 +71,9 @@ export default async function BrandLayout({
           compareLabel={null}
           role={role}
           userInitials={userInitials}
+          viewRole={viewRole}
+          canToggleView={canToggleView}
+          toggleViewRoleAction={toggleViewRoleAction.bind(null, org.slug, brand.slug)}
         />
         <main style={{ flex: 1, overflowY: "auto", padding: "32px" }}>{children}</main>
       </div>

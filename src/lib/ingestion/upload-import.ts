@@ -124,3 +124,31 @@ export async function uploadImport(
 
   return { importId, functionResult };
 }
+
+export interface ImportOutcome {
+  status: string;
+  errorMessage: string | null;
+  files: { path: string; category: string; status: string; errorMessage: string | null; rowsIngested: number | null }[];
+}
+
+// Lu après le retour de la Function : process-import ne fait jamais échouer
+// l'ensemble d'un import pour l'erreur d'un seul fichier (withFileTracking,
+// §7.2 étape 3) — le succès/échec par fichier ne peut donc se lire qu'ici,
+// dans import_files, jamais dans le seul statut de l'import.
+export async function fetchImportOutcome(supabase: SupabaseClient<Database>, importId: string): Promise<ImportOutcome> {
+  const [{ data: importRow }, { data: fileRows }] = await Promise.all([
+    supabase.from("imports").select("status, error_message").eq("id", importId).single(),
+    supabase.from("import_files").select("source_path, category, status, error_message, rows_ingested").eq("import_id", importId),
+  ]);
+  return {
+    status: importRow?.status ?? "failed",
+    errorMessage: importRow?.error_message ?? null,
+    files: (fileRows ?? []).map((f) => ({
+      path: f.source_path,
+      category: f.category,
+      status: f.status,
+      errorMessage: f.error_message,
+      rowsIngested: f.rows_ingested,
+    })),
+  };
+}

@@ -416,7 +416,12 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   // quoi ses propres observations seraient ignorées.
   await admin
     .from("imports")
-    .update({ status: "completed", completed_at: new Date().toISOString(), files_parsed: filesParsed })
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      files_parsed: filesParsed,
+      parser_version: PARSER_VERSION,
+    })
     .eq("id", importId);
 
   const { error: recomputeError } = await admin.rpc("recompute_account", { p_account_id: accountId });

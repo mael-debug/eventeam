@@ -1,19 +1,25 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, Badge } from "@/components/ds";
 import { ImportUploader } from "./import-uploader";
+import { CADENCE_WEEKS, CADENCE_LABEL } from "@/lib/cadence";
+import { shortDate } from "@/lib/format";
 
-const CADENCE_WEEKS: Record<string, number> = { weekly: 1, monthly: 4, quarterly: 13 };
-const CADENCE_LABEL: Record<string, string> = { weekly: "hebdomadaire", monthly: "mensuelle", quarterly: "trimestrielle" };
-
-const STATUS_VARIANT: Record<string, "outline" | "success" | "warning"> = {
-  completed: "success",
-  failed: "warning",
-  uploading: "outline",
-  uploaded: "outline",
-  parsing: "outline",
-  computing: "outline",
+const STATUS_LABEL: Record<string, string> = {
+  completed: "réussi",
+  failed: "échoué",
+  uploading: "en cours",
+  uploaded: "en cours",
+  parsing: "en cours",
+  computing: "en cours",
+};
+const STATUS_VARIANT: Record<string, "forfait" | "temps" | "statut"> = {
+  completed: "forfait",
+  failed: "temps",
+  uploading: "statut",
+  uploaded: "statut",
+  parsing: "statut",
+  computing: "statut",
 };
 
 export default async function ImportsPage({
@@ -45,48 +51,75 @@ export default async function ImportsPage({
   const { data: imports } = accountIds.length
     ? await supabase
         .from("imports")
-        .select("id, account_id, status, window_start, window_end, created_at, exported_at")
+        .select("id, account_id, status, window_start, window_end, created_at, exported_at, error_message, files_expected, files_parsed")
         .in("account_id", accountIds)
         .order("created_at", { ascending: false })
     : { data: [] };
 
+  const importIds = (imports ?? []).map((i) => i.id);
+  const { data: files } = importIds.length
+    ? await supabase.from("import_files").select("import_id, source_path, category, status, error_message").in("import_id", importIds)
+    : { data: [] };
+
   return (
-    <main className="flex flex-col gap-6">
+    <main style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
+        <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-0.01em" }}>Imports</h1>
+      </div>
+
       {(accounts ?? []).map((account) => {
         const cadenceWeeks = CADENCE_WEEKS[account.import_cadence] ?? null;
         const accountImports = (imports ?? []).filter((i) => i.account_id === account.id);
 
         return (
-          <div key={account.id} className="flex flex-col gap-3">
+          <div key={account.id} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {cadenceWeeks && cadenceWeeks > 1 && (
-              <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                Vos exports pour @{account.handle} sont espacés de {cadenceWeeks} semaines
-                (cadence {CADENCE_LABEL[account.import_cadence]}). La date de désabonnement est
-                donc connue à {cadenceWeeks} semaines près. En passant à un export hebdomadaire,
-                elle serait connue à la semaine.
-              </p>
+              <div style={{ background: "var(--pastel-jaune)", borderRadius: 12, padding: "10px 14px", fontSize: 14, color: "var(--encre)" }}>
+                Vos exports pour @{account.handle} sont espacés de {cadenceWeeks} semaines (cadence{" "}
+                {CADENCE_LABEL[account.import_cadence]}). La date de désabonnement est donc connue à {cadenceWeeks} semaines près.
+                En passant à un export hebdomadaire, elle serait connue à la semaine.
+              </div>
             )}
 
             <ImportUploader accountId={account.id} accountHandle={account.handle} />
 
             {accountImports.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Historique des imports — @{account.handle}</CardTitle>
-                  <CardDescription>Fenêtre temporelle de chaque export.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2">
-                  {accountImports.map((imp) => (
-                    <div key={imp.id} className="flex items-center justify-between text-sm">
-                      <span className="text-neutral-600">
-                        {imp.window_start && imp.window_end
-                          ? `${new Date(imp.window_start).toLocaleDateString("fr-FR")} → ${new Date(imp.window_end).toLocaleDateString("fr-FR")}`
-                          : new Date(imp.created_at).toLocaleDateString("fr-FR")}
-                      </span>
-                      <Badge variant={STATUS_VARIANT[imp.status] ?? "outline"}>{imp.status}</Badge>
-                    </div>
-                  ))}
-                </CardContent>
+              <Card variant="claire" interactive={false}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>Historique des imports — @{account.handle}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Fenêtre temporelle et détail par fichier de chaque export.</div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {accountImports.map((imp) => {
+                    const impFiles = (files ?? []).filter((f) => f.import_id === imp.id && f.category !== "media");
+                    const errored = impFiles.filter((f) => f.status === "error");
+                    return (
+                      <div key={imp.id} style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
+                          <span style={{ color: "var(--text-muted)" }}>
+                            {imp.window_start && imp.window_end
+                              ? `${shortDate(imp.window_start)} → ${shortDate(imp.window_end)}`
+                              : shortDate(imp.created_at)}
+                            {imp.files_expected != null && ` · ${imp.files_parsed}/${imp.files_expected} fichiers`}
+                          </span>
+                          <Badge variant={STATUS_VARIANT[imp.status] ?? "statut"}>{STATUS_LABEL[imp.status] ?? imp.status}</Badge>
+                        </div>
+                        {imp.status === "failed" && imp.error_message && (
+                          <div style={{ fontSize: 12, color: "#7A2E22", marginTop: 4 }}>{imp.error_message}</div>
+                        )}
+                        {errored.length > 0 && (
+                          <div style={{ fontSize: 12, color: "#7A2E22", marginTop: 4, display: "flex", flexDirection: "column", gap: 2 }}>
+                            {errored.map((f) => (
+                              <span key={f.source_path}>
+                                {f.source_path} — {f.error_message ?? "erreur"}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </Card>
             )}
           </div>
@@ -94,7 +127,7 @@ export default async function ImportsPage({
       })}
 
       {(!accounts || accounts.length === 0) && (
-        <p className="text-sm text-neutral-500">
+        <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
           Aucun compte Instagram rattaché. Ajoutez-en un depuis la vue d&apos;ensemble.
         </p>
       )}

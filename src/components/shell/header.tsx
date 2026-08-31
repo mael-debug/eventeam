@@ -17,6 +17,9 @@ export function Header({
   compareLabel,
   role,
   userInitials,
+  viewRole,
+  canToggleView,
+  toggleViewRoleAction,
 }: {
   orgSlug: string;
   brands: { slug: string; name: string }[];
@@ -25,6 +28,9 @@ export function Header({
   compareLabel: string | null;
   role: string | null;
   userInitials: string;
+  viewRole?: "agence" | "marque";
+  canToggleView?: boolean;
+  toggleViewRoleAction?: (formData: FormData) => void | Promise<void>;
 }) {
   const router = useRouter();
 
@@ -85,6 +91,29 @@ export function Header({
       )}
 
       <div style={{ marginLeft: "auto", flex: "0 0 auto", display: "flex", alignItems: "center", gap: 12 }}>
+        {canToggleView && toggleViewRoleAction && (
+          <form action={toggleViewRoleAction}>
+            <button
+              type="submit"
+              name="mode"
+              value={viewRole === "marque" ? "agence" : "marque"}
+              title="Prévisualiser la vue client, sans changer vos droits réels"
+              style={{
+                cursor: "pointer",
+                border: "1px solid var(--bordure)",
+                background: viewRole === "marque" ? "var(--pastel-jaune)" : "var(--carte-claire)",
+                borderRadius: 999,
+                padding: "7px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--encre)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {viewRole === "marque" ? "Marque · lecture seule" : "Agence · accès complet"}
+            </button>
+          </form>
+        )}
         {role && (
           <span
             style={{
