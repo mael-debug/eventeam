@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env*.example
+# NEXT_PUBLIC_* only — anon key + URL, already public once shipped to any
+# browser bundle; Vercel needs this file present at build time since no env
+# var management tool is available from this session.
+!.env.production
 
 # vercel
 .vercel
