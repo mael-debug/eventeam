@@ -1,26 +1,166 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Bienfait — Design tokens (Community Intelligence)
+   Portés depuis public/design_handoff_community_intelligence/_ds/…/tokens/.
+   Ne pas introduire d'autres valeurs de couleur, police ou rayon.
+   ========================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Verts — seuls verts autorisés, aucun autre jamais */
+  --vert-logo: #23cd8e;
+  --vert-pastel: #e6f7ef;
+
+  /* Bleu profond */
+  --bleu: #05339c;
+  --bleu-clair: #0a44be;
+  --bleu-bg: #eaf0fb;
+
+  /* Fondations & encre */
+  --fond: #e9e6df;
+  --surface-creme: #faf8f3;
+  --panneau: #f4f1ec;
+  --carte-claire: #ffffff;
+  --creme-fonce: #ecebe8;
+  --encre: #1c1a16;
+  --encre-froide: #1e2a3a;
+
+  /* Pastels secondaires */
+  --pastel-jaune: #f4dc94;
+  --pastel-violet: #d9ccf2;
+
+  /* Lignes */
+  --bordure: #d3cec5;
+  --bordure-carte: #e7e3db;
+  --bordure-douce: #e4e0d8;
+
+  /* Alias sémantiques */
+  --surface-page: var(--fond);
+  --surface-section: var(--surface-creme);
+  --surface-panneau: var(--panneau);
+  --surface-card: var(--carte-claire);
+  --surface-inverse: var(--encre);
+
+  --text-body: var(--encre);
+  --text-muted: #5b564c;
+  --text-on-inverse: var(--surface-creme);
+  --text-on-primaire: var(--encre);
+  --text-on-bleu: #ffffff;
+
+  --accent-primaire: var(--vert-logo);
+  --accent-fort: var(--bleu);
+  --accent-bleu: var(--bleu);
+  --focus-ring: var(--bleu);
+
+  /* Gris de série neutre (cohortes antérieures à une rupture, départs) */
+  --gris-serie: #a8a196;
+
+  /* Typographie */
+  --font-corps: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-titres: var(--font-corps);
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+
+  --fs-display: 4rem;
+  --fs-h1: 2.75rem;
+  --fs-h2: 2rem;
+  --fs-h3: 1.5rem;
+  --fs-lead: 1.25rem;
+  --fs-body: 1rem;
+  --fs-small: 0.875rem;
+  --fs-eyebrow: 0.8rem;
+
+  --lh-titres: 1.1;
+  --lh-corps: 1.6;
+
+  --ls-eyebrow: 0.08em;
+  --ls-titres: -0.01em;
+
+  /* Espacement (base 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Rayons */
+  --rayon-carte: 18px;
+  --rayon-champ: 12px;
+  --rayon-bouton: 999px;
+  --rayon-chip: 999px;
+
+  /* Élévation */
+  --ombre-carte: 0 1px 2px rgba(30, 42, 58, 0.05);
+  --ombre-carte-hover: 0 10px 28px rgba(30, 42, 58, 0.12);
+  --ombre-flottante: 0 18px 44px rgba(30, 42, 58, 0.16);
+
+  /* Inclinaison — motif signature */
+  --tilt-sm: -3deg;
+  --tilt-md: 7deg;
+  --tilt-lg: -12deg;
+
+  --max-contenu: 1160px;
+
+  /* Compat shadcn (composants existants du Lot 1) */
+  --background: var(--fond);
+  --foreground: var(--encre);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-corps);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--font-corps);
+  font-size: var(--fs-body);
+  line-height: var(--lh-corps);
+  text-wrap: pretty;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-corps);
+  font-weight: var(--fw-extrabold);
+  line-height: var(--lh-titres);
+  letter-spacing: var(--ls-titres);
+}
+
+.eyebrow {
+  font-family: var(--font-corps);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--accent-fort);
+}
+
+a {
+  color: var(--accent-fort);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+a:hover {
+  color: var(--bleu-clair);
+}
+
+table {
+  border-collapse: collapse;
+}
+
+::selection {
+  background: var(--vert-pastel);
 }

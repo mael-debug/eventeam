@@ -1,15 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/badge";
+import { Sidebar } from "@/components/shell/sidebar";
+import { Header } from "@/components/shell/header";
 
-const UPCOMING_MODULES = [
-  "Audience",
-  "Croissance & Départs",
-  "Qualité d'acquisition",
-  "Contenu",
-  "Écosystème",
-];
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
 
 export default async function BrandLayout({
   children,
@@ -36,42 +32,77 @@ export default async function BrandLayout({
     .single();
   if (!brand) notFound();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: brands }, { data: accounts }, { data: orgMembership }, { data: brandMembership }] =
+    await Promise.all([
+      supabase.from("brands").select("slug, name").eq("org_id", org.id).order("name"),
+      supabase.from("instagram_accounts").select("id").eq("brand_id", brand.id),
+      supabase.from("organization_members").select("role").eq("org_id", org.id).eq("user_id", user!.id).maybeSingle(),
+      supabase
+        .from("brand_members")
+        .select("role")
+        .eq("brand_id", brand.id)
+        .eq("user_id", user!.id)
+        .maybeSingle(),
+    ]);
+
+  const accountIds = (accounts ?? []).map((a) => a.id);
+
+  const { data: lastImport } = accountIds.length
+    ? await supabase
+        .from("imports")
+        .select("window_start, window_end, completed_at")
+        .in("account_id", accountIds)
+        .eq("status", "completed")
+        .order("completed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+
+  const windowLabel =
+    lastImport?.window_start && lastImport?.window_end
+      ? `Abonnés ${formatDate(lastImport.window_start)} → ${formatDate(lastImport.window_end)}`
+      : null;
+  const lastImportLabel =
+    lastImport?.completed_at && windowLabel
+      ? `${new Date(lastImport.completed_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} · ${windowLabel.toLowerCase()}`
+      : null;
+
+  const role = orgMembership?.role ?? brandMembership?.role ?? null;
+  const userInitials = (user?.email ?? "?")
+    .split(/[@.]/)[0]
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
-      <header className="flex flex-col gap-1">
-        <Link href={`/${org.slug}`} className="text-xs text-neutral-500 hover:underline">
-          ← {org.name}
-        </Link>
-        <h1 className="text-xl font-semibold">{brand.name}</h1>
-      </header>
-
-      <nav className="flex flex-wrap gap-2 border-b border-neutral-200 pb-3 text-sm">
-        <Link
-          href={`/${org.slug}/${brand.slug}`}
-          className="rounded-md px-3 py-1.5 text-neutral-600 hover:bg-neutral-100"
-        >
-          Vue d&apos;ensemble
-        </Link>
-        <Link
-          href={`/${org.slug}/${brand.slug}/imports`}
-          className="rounded-md px-3 py-1.5 text-neutral-600 hover:bg-neutral-100"
-        >
-          Imports
-        </Link>
-        {UPCOMING_MODULES.map((m) => (
-          <span
-            key={m}
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-neutral-400"
-          >
-            {m}
-            <Badge variant="outline" className="text-[10px]">
-              Lot 4
-            </Badge>
-          </span>
-        ))}
-      </nav>
-
-      {children}
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        overflow: "hidden",
+        fontFamily: "var(--font-corps)",
+        color: "var(--encre)",
+        background: "var(--fond)",
+        fontSize: 15,
+        lineHeight: 1.5,
+      }}
+    >
+      <Sidebar orgSlug={org.slug} brandSlug={brand.slug} orgName={org.name} lastImportLabel={lastImportLabel} />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <Header
+          orgSlug={org.slug}
+          brands={brands ?? []}
+          currentBrandSlug={brand.slug}
+          windowLabel={windowLabel}
+          compareLabel={null}
+          role={role}
+          userInitials={userInitials}
+        />
+        <main style={{ flex: 1, overflowY: "auto", padding: "32px" }}>{children}</main>
+      </div>
     </div>
   );
 }
