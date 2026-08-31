@@ -131,6 +131,13 @@ export type Database = {
             referencedColumns: ["import_id"]
           },
           {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
+          {
             foreignKeyName: "acquisition_spikes_linked_content_id_fkey"
             columns: ["linked_content_id"]
             isOneToOne: false
@@ -222,6 +229,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "audience_activity_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       audience_age: {
@@ -310,6 +324,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "audience_age_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       audience_geo: {
@@ -396,6 +417,13 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "audience_geo_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -502,6 +530,13 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: true
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "audience_insights_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: true
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -750,6 +785,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "cohort_survival_measured_import_id_fkey"
+            columns: ["measured_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       cohorts: {
@@ -836,6 +878,13 @@ export type Database = {
             columns: ["origin_import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "cohorts_origin_import_id_fkey"
+            columns: ["origin_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -936,6 +985,13 @@ export type Database = {
             columns: ["first_import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "content_first_import_id_fkey"
+            columns: ["first_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -1052,6 +1108,13 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "content_attribution_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -1230,6 +1293,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "content_metrics_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       cross_analyses: {
@@ -1339,6 +1409,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "cross_analyses_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       ecosystem_profiles: {
@@ -1445,6 +1522,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "ecosystem_profiles_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       ecosystem_summary: {
@@ -1536,6 +1620,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "ecosystem_summary_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: true
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       follower_observations: {
@@ -1619,6 +1710,13 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "follower_observations_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -1746,6 +1844,13 @@ export type Database = {
             referencedColumns: ["import_id"]
           },
           {
+            foreignKeyName: "follower_states_first_import_id_fkey"
+            columns: ["first_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
+          {
             foreignKeyName: "follower_states_last_present_import_id_fkey"
             columns: ["last_present_import_id"]
             isOneToOne: false
@@ -1799,6 +1904,13 @@ export type Database = {
             columns: ["last_present_import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "follower_states_last_present_import_id_fkey"
+            columns: ["last_present_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -1884,6 +1996,13 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "following_observations_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -2018,6 +2137,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "hazard_curve_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       import_files: {
@@ -2112,6 +2238,13 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "import_files_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -2212,6 +2345,13 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "import_schema_fingerprint_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -2370,6 +2510,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       instagram_accounts: {
@@ -2521,6 +2668,13 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "interaction_insights_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
         ]
@@ -2765,6 +2919,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "reach_insights_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: true
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
       reconciliation: {
@@ -2865,6 +3026,13 @@ export type Database = {
             referencedRelation: "v_overview"
             referencedColumns: ["import_id"]
           },
+          {
+            foreignKeyName: "reconciliation_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: true
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
         ]
       }
     }
@@ -2952,6 +3120,13 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
             referencedColumns: ["import_id"]
           },
           {
@@ -3123,6 +3298,23 @@ export type Database = {
           },
         ]
       }
+      v_recent_arrival_risk: {
+        Row: {
+          account_id: string | null
+          import_id: string | null
+          n: number | null
+          risk_tier: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follower_states_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_recent_departures: {
         Row: {
           account_id: string | null
@@ -3158,6 +3350,94 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "instagram_accounts"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_segments: {
+        Row: {
+          account_id: string | null
+          duration_days_avg: number | null
+          import_id: string | null
+          inferred_type: string | null
+          n_spikes: number | null
+          night_share_avg: number | null
+          retention_rate_weighted: number | null
+          segment_confidence: string | null
+          signal_share_avg: number | null
+          volume_total: number | null
+          window_end: string | null
+          window_start: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_spikes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "import_comparability"
+            referencedColumns: ["latest_import_id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "import_comparability"
+            referencedColumns: ["previous_import_id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "latest_completed_import"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "previous_completed_import"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_cohort_totals"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_organic_gained"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "acquisition_spikes_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
           },
         ]
       }
