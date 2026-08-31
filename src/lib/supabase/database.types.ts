@@ -93,16 +93,19 @@ export type Database = {
           account_id: string; cohort_week: string; departed: number; exposure_days: number
           measured_at: string; measured_import_id: string; remaining: number; survival_rate: number
           horizon_days: number | null; rate_at_horizon: number | null; horizon_confidence: string | null
+          horizon_confidence_reason: string | null
         }
         Insert: {
           account_id: string; cohort_week: string; departed: number; exposure_days: number
           measured_at: string; measured_import_id: string; remaining: number; survival_rate: number
           horizon_days?: number | null; rate_at_horizon?: number | null; horizon_confidence?: string | null
+          horizon_confidence_reason?: string | null
         }
         Update: {
           account_id?: string; cohort_week?: string; departed?: number; exposure_days?: number
           measured_at?: string; measured_import_id?: string; remaining?: number; survival_rate?: number
           horizon_days?: number | null; rate_at_horizon?: number | null; horizon_confidence?: string | null
+          horizon_confidence_reason?: string | null
         }
         Relationships: [
           { foreignKeyName: "cohort_survival_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
@@ -143,6 +146,7 @@ export type Database = {
           profile_id: number; rename_candidate_of: number | null
           sig_digit_suffix: boolean; sig_long_handle: boolean; sig_many_underscores: boolean
           status: Database["public"]["Enums"]["follower_status"]; tenure_days: number | null
+          is_latest_episode: boolean
         }
         Insert: {
           account_id: string; cohort_week: string; computed_at?: string
@@ -151,6 +155,7 @@ export type Database = {
           profile_id: number; rename_candidate_of?: number | null
           sig_digit_suffix?: boolean; sig_long_handle?: boolean; sig_many_underscores?: boolean
           status: Database["public"]["Enums"]["follower_status"]; tenure_days?: number | null
+          is_latest_episode?: boolean
         }
         Update: {
           account_id?: string; cohort_week?: string; computed_at?: string
@@ -159,6 +164,7 @@ export type Database = {
           profile_id?: number; rename_candidate_of?: number | null
           sig_digit_suffix?: boolean; sig_long_handle?: boolean; sig_many_underscores?: boolean
           status?: Database["public"]["Enums"]["follower_status"]; tenure_days?: number | null
+          is_latest_episode?: boolean
         }
         Relationships: [
           { foreignKeyName: "follower_states_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
