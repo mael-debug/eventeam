@@ -3163,6 +3163,15 @@ export type Database = {
       }
     }
     Functions: {
+      audit_log_for_account: {
+        Args: { p_account: string }
+        Returns: {
+          action: string
+          created_at: string
+          target_count: number
+          user_email: string
+        }[]
+      }
       can_manage_org: { Args: { p_org: string }; Returns: boolean }
       can_view_identities: { Args: { p_account: string }; Returns: boolean }
       can_write: { Args: { p_brand: string }; Returns: boolean }
@@ -3199,6 +3208,10 @@ export type Database = {
         }[]
       }
       is_platform_admin: { Args: never; Returns: boolean }
+      log_identity_action: {
+        Args: { p_account: string; p_action: string; p_profile_ids: number[] }
+        Returns: undefined
+      }
       recompute_account: { Args: { p_account_id: string }; Returns: undefined }
       record_schema_fingerprint: {
         Args: {
