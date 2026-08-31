@@ -566,6 +566,59 @@ export type Database = {
           { foreignKeyName: "reconciliation_import_id_fkey"; columns: ["import_id"]; isOneToOne: true; referencedRelation: "imports"; referencedColumns: ["id"] },
         ]
       }
+      parser_label_map: {
+        Row: {
+          id: string; file_kind: string; field_name: string; label_pattern: string; match_type: string
+          is_required: boolean; verified: boolean; created_at: string
+        }
+        Insert: {
+          id?: string; file_kind: string; field_name: string; label_pattern: string; match_type: string
+          is_required?: boolean; verified?: boolean; created_at?: string
+        }
+        Update: {
+          id?: string; file_kind?: string; field_name?: string; label_pattern?: string; match_type?: string
+          is_required?: boolean; verified?: boolean; created_at?: string
+        }
+        Relationships: []
+      }
+      import_schema_fingerprint: {
+        Row: {
+          id: string; import_id: string; account_id: string; file_kind: string
+          observed_keys: string[]; unmapped_keys: string[]; missing_required_fields: string[]
+          coverage_rate: number | null; computed_at: string
+        }
+        Insert: {
+          id?: string; import_id: string; account_id: string; file_kind: string
+          observed_keys: string[]; unmapped_keys: string[]; missing_required_fields: string[]
+          coverage_rate?: number | null; computed_at?: string
+        }
+        Update: {
+          id?: string; import_id?: string; account_id?: string; file_kind?: string
+          observed_keys?: string[]; unmapped_keys?: string[]; missing_required_fields?: string[]
+          coverage_rate?: number | null; computed_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "import_schema_fingerprint_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+          { foreignKeyName: "import_schema_fingerprint_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+        ]
+      }
+      canary_accounts: {
+        Row: {
+          account_id: string; label: string; expected_values: Json
+          last_checked_at: string | null; last_check_passed: boolean | null; last_check_diffs: Json | null
+        }
+        Insert: {
+          account_id: string; label: string; expected_values: Json
+          last_checked_at?: string | null; last_check_passed?: boolean | null; last_check_diffs?: Json | null
+        }
+        Update: {
+          account_id?: string; label?: string; expected_values?: Json
+          last_checked_at?: string | null; last_check_passed?: boolean | null; last_check_diffs?: Json | null
+        }
+        Relationships: [
+          { foreignKeyName: "canary_accounts_account_id_fkey"; columns: ["account_id"]; isOneToOne: true; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+        ]
+      }
     }
     Views: {
       acquisition_spikes_with_budget: {
@@ -586,6 +639,11 @@ export type Database = {
       can_manage_org: { Args: { p_org: string }; Returns: boolean }
       can_write: { Args: { p_brand: string }; Returns: boolean }
       can_write_account: { Args: { p_account: string }; Returns: boolean }
+      record_schema_fingerprint: {
+        Args: { p_import_id: string; p_account_id: string; p_file_kind: string; p_observed_keys: string[] }
+        Returns: undefined
+      }
+      check_canary_account: { Args: { p_account_id: string }; Returns: Json }
       cohort_rate_at_horizon: {
         Args: { p_account: string; p_cohort_week: string; p_horizon_days: number }
         Returns: number

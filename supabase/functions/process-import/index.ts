@@ -9,8 +9,10 @@ import {
   parseAudienceInsights,
   parseReachInsights,
   parseInteractionInsights,
+  firstStringMap,
 } from "../_shared/parse-insights.ts";
-import { parsePostsFile } from "../_shared/parse-posts.ts";
+import { parsePostsFile, collectPostKeys } from "../_shared/parse-posts.ts";
+import { normalizedKeysOf } from "../_shared/parsing.ts";
 
 const PARSER_VERSION = "2026-lot3.1";
 
@@ -182,7 +184,17 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const audienceFile = insightFile("audience_insights.json");
   if (audienceFile) {
     await withFileTracking(admin, audienceFile, async () => {
-      const parsed = parseAudienceInsights(await downloadJson(admin, audienceFile.storage_path), exportedAt, fallbackPeriod);
+      const audienceJson = await downloadJson(admin, audienceFile.storage_path);
+      const parsed = parseAudienceInsights(audienceJson, exportedAt, fallbackPeriod);
+      // §14 (proposé) : empreinte de schéma, pour détecter un libellé Meta
+      // qui aurait changé avant que la métrique correspondante ne
+      // disparaisse silencieusement (findByPrefix/findExact renvoient null).
+      await admin.rpc("record_schema_fingerprint", {
+        p_import_id: importId,
+        p_account_id: accountId,
+        p_file_kind: "audience_insights",
+        p_observed_keys: normalizedKeysOf(firstStringMap(audienceJson)),
+      });
       const { error } = await admin.from("audience_insights").upsert({
         import_id: importId,
         account_id: accountId,
@@ -295,7 +307,14 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const postsFile = insightFile("posts.json");
   if (postsFile) {
     await withFileTracking(admin, postsFile, async () => {
-      const parsed = parsePostsFile(await downloadJson(admin, postsFile.storage_path));
+      const postsJson = await downloadJson(admin, postsFile.storage_path);
+      const parsed = parsePostsFile(postsJson);
+      await admin.rpc("record_schema_fingerprint", {
+        p_import_id: importId,
+        p_account_id: accountId,
+        p_file_kind: "posts",
+        p_observed_keys: collectPostKeys(postsJson),
+      });
       let inserted = 0;
       for (const p of parsed) {
         // Un post réapparaît dans chaque export ultérieur (posts.json liste

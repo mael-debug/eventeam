@@ -65,6 +65,13 @@ export function findBySuffix(map: StringMap | null | undefined, suffixes: string
   return null;
 }
 
+/** §14 (proposé) — clés normalisées d'un StringMap, pour comparaison contre
+ * public.parser_label_map (empreinte de schéma / détection de dérive). */
+export function normalizedKeysOf(map: StringMap | null | undefined): string[] {
+  if (!map) return [];
+  return Object.keys(map).map(normalizeKey);
+}
+
 /** "102,497" -> 102497. Tolère les séparateurs de milliers et un signe. */
 export function parseFormattedInt(raw: string | null | undefined): number | null {
   if (!raw) return null;

@@ -36,7 +36,7 @@ const WEEKDAYS: { name: string; iso: number }[] = [
   { name: "dimanche", iso: 7 },
 ];
 
-function firstStringMap(json: unknown): StringMap | null {
+export function firstStringMap(json: unknown): StringMap | null {
   if (!json || typeof json !== "object") return null;
   const values = Object.values(json as Record<string, unknown>);
   const arr = values.find((v) => Array.isArray(v)) as unknown[] | undefined;

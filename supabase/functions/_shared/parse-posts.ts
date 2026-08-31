@@ -36,7 +36,7 @@
 // jour (le PRD v1.0 §6.8 prévoit 'reel'/'story'/'live'/'carousel' aussi).
 
 import { fixMojibake } from "./mojibake.ts";
-import { findExact, parseFormattedInt, type StringMap } from "./parsing.ts";
+import { findExact, normalizeKey, parseFormattedInt, type StringMap } from "./parsing.ts";
 
 interface RawMediaEntry {
   uri?: string;
@@ -77,6 +77,19 @@ function cleanStringMap(raw: StringMap | undefined): StringMap {
     cleaned[fixMojibake(k)] = { ...v, value: v.value ? fixMojibake(v.value) : v.value };
   }
   return cleaned;
+}
+
+/** §14 (proposé) — union des clés normalisées vues sur l'ensemble des
+ * publications du fichier, pour l'empreinte de schéma (public.parser_label_map). */
+export function collectPostKeys(json: unknown): string[] {
+  if (!json || typeof json !== "object") return [];
+  const posts = (json as Record<string, unknown>)["organic_insights_posts"];
+  if (!Array.isArray(posts)) return [];
+  const keys = new Set<string>();
+  for (const raw of posts as RawPost[]) {
+    for (const k of Object.keys(raw.string_map_data ?? {})) keys.add(normalizeKey(fixMojibake(k)));
+  }
+  return [...keys];
 }
 
 export function parsePostsFile(json: unknown): ParsedPost[] {
