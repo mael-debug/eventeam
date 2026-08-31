@@ -3043,6 +3043,39 @@ export type Database = {
           },
         ]
       }
+      v_growth_by_cohort: {
+        Row: {
+          account_id: string | null
+          arrivals: number | null
+          cohort_week: string | null
+          departed: number | null
+          is_spike_period: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohorts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_likely_renames: {
+        Row: {
+          account_id: string | null
+          likely_rename_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follower_states_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_organic_gained: {
         Row: {
           account_id: string | null
@@ -3090,9 +3123,48 @@ export type Database = {
           },
         ]
       }
+      v_recent_departures: {
+        Row: {
+          account_id: string | null
+          cohort_week: string | null
+          departure_window_end: string | null
+          departure_window_start: string | null
+          followed_at: string | null
+          profile_id: number | null
+          tenure_days: number | null
+        }
+        Insert: {
+          account_id?: string | null
+          cohort_week?: string | null
+          departure_window_end?: string | null
+          departure_window_start?: string | null
+          followed_at?: string | null
+          profile_id?: number | null
+          tenure_days?: number | null
+        }
+        Update: {
+          account_id?: string | null
+          cohort_week?: string | null
+          departure_window_end?: string | null
+          departure_window_start?: string | null
+          followed_at?: string | null
+          profile_id?: number | null
+          tenure_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follower_states_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_manage_org: { Args: { p_org: string }; Returns: boolean }
+      can_view_identities: { Args: { p_account: string }; Returns: boolean }
       can_write: { Args: { p_brand: string }; Returns: boolean }
       can_write_account: { Args: { p_account: string }; Returns: boolean }
       check_canary_account: { Args: { p_account_id: string }; Returns: Json }

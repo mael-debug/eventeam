@@ -28,6 +28,8 @@ export async function resolveBrandContext(orgSlug: string, brandSlug: string) {
 
   const role = orgMembership?.role ?? brandMembership?.role ?? null;
   const viewRole: ViewRole = await getViewRole(role);
+  const isAgencyRole = role === "platform_admin" || role === "agency_admin" || role === "agency_member";
+  const isSimulatingMarque = canToggleView(role) && viewRole === "marque";
 
   return {
     supabase,
@@ -39,5 +41,10 @@ export async function resolveBrandContext(orgSlug: string, brandSlug: string) {
     viewRole,
     canToggleView: canToggleView(role),
     canWriteView: viewRole === "agence",
+    // Droit réel (indépendant de la simulation agence/marque, cf. reveal_usernames
+    // + can_view_identities, 0025) : un brand_viewer autorisé explicitement doit
+    // pouvoir révéler des identités même si viewRole vaut "marque" par défaut pour
+    // son rôle — seule une simulation agence→marque doit masquer le bouton.
+    canViewIdentities: (isAgencyRole || !!brandMembership?.can_view_identities) && !isSimulatingMarque,
   };
 }
