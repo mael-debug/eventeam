@@ -92,14 +92,17 @@ export type Database = {
         Row: {
           account_id: string; cohort_week: string; departed: number; exposure_days: number
           measured_at: string; measured_import_id: string; remaining: number; survival_rate: number
+          horizon_days: number | null; rate_at_horizon: number | null; horizon_confidence: string | null
         }
         Insert: {
           account_id: string; cohort_week: string; departed: number; exposure_days: number
           measured_at: string; measured_import_id: string; remaining: number; survival_rate: number
+          horizon_days?: number | null; rate_at_horizon?: number | null; horizon_confidence?: string | null
         }
         Update: {
           account_id?: string; cohort_week?: string; departed?: number; exposure_days?: number
           measured_at?: string; measured_import_id?: string; remaining?: number; survival_rate?: number
+          horizon_days?: number | null; rate_at_horizon?: number | null; horizon_confidence?: string | null
         }
         Relationships: [
           { foreignKeyName: "cohort_survival_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
@@ -311,6 +314,238 @@ export type Database = {
           { foreignKeyName: "reach_insights_import_id_fkey"; columns: ["import_id"]; isOneToOne: true; referencedRelation: "imports"; referencedColumns: ["id"] },
         ]
       }
+      content: {
+        Row: {
+          id: string; account_id: string; media_key: string; permalink: string | null
+          media_type: string; published_at: string; caption: string | null; thumb_path: string | null
+          first_import_id: string
+        }
+        Insert: {
+          id?: string; account_id: string; media_key: string; permalink?: string | null
+          media_type: string; published_at: string; caption?: string | null; thumb_path?: string | null
+          first_import_id: string
+        }
+        Update: {
+          id?: string; account_id?: string; media_key?: string; permalink?: string | null
+          media_type?: string; published_at?: string; caption?: string | null; thumb_path?: string | null
+          first_import_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "content_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "content_first_import_id_fkey"; columns: ["first_import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      content_metrics: {
+        Row: {
+          content_id: string; import_id: string; account_id: string; reach: number | null
+          impressions: number | null; likes: number | null; comments: number | null; shares: number | null
+          saves: number | null; profile_visits: number | null; follows_gained: number | null
+          external_taps: number | null; follow_conversion_rate: number | null; engagement_rate: number | null
+        }
+        Insert: {
+          content_id: string; import_id: string; account_id: string; reach?: number | null
+          impressions?: number | null; likes?: number | null; comments?: number | null; shares?: number | null
+          saves?: number | null; profile_visits?: number | null; follows_gained?: number | null
+          external_taps?: number | null; follow_conversion_rate?: number | null; engagement_rate?: number | null
+        }
+        Update: {
+          content_id?: string; import_id?: string; account_id?: string; reach?: number | null
+          impressions?: number | null; likes?: number | null; comments?: number | null; shares?: number | null
+          saves?: number | null; profile_visits?: number | null; follows_gained?: number | null
+          external_taps?: number | null; follow_conversion_rate?: number | null; engagement_rate?: number | null
+        }
+        Relationships: [
+          { foreignKeyName: "content_metrics_content_id_fkey"; columns: ["content_id"]; isOneToOne: false; referencedRelation: "content"; referencedColumns: ["id"] },
+          { foreignKeyName: "content_metrics_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      content_classification: {
+        Row: {
+          content_id: string; account_id: string; territory: string | null; tags: string[] | null
+          has_person: boolean | null; setting: string | null; model: string; model_version: string
+          confidence: number | null; classified_at: string
+        }
+        Insert: {
+          content_id: string; account_id: string; territory?: string | null; tags?: string[] | null
+          has_person?: boolean | null; setting?: string | null; model: string; model_version: string
+          confidence?: number | null; classified_at?: string
+        }
+        Update: {
+          content_id?: string; account_id?: string; territory?: string | null; tags?: string[] | null
+          has_person?: boolean | null; setting?: string | null; model?: string; model_version?: string
+          confidence?: number | null; classified_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "content_classification_content_id_fkey"; columns: ["content_id"]; isOneToOne: true; referencedRelation: "content"; referencedColumns: ["id"] },
+        ]
+      }
+      ecosystem_profiles: {
+        Row: {
+          account_id: string; profile_id: number; is_creator: boolean; is_brand: boolean
+          is_verified: boolean; is_follower: boolean; is_mutual: boolean; audience_bucket: number | null
+          follow_started_at: string | null; has_replied: boolean | null; last_import_id: string
+        }
+        Insert: {
+          account_id: string; profile_id: number; is_creator?: boolean; is_brand?: boolean
+          is_verified?: boolean; is_follower?: boolean; is_mutual?: boolean; audience_bucket?: number | null
+          follow_started_at?: string | null; has_replied?: boolean | null; last_import_id: string
+        }
+        Update: {
+          account_id?: string; profile_id?: number; is_creator?: boolean; is_brand?: boolean
+          is_verified?: boolean; is_follower?: boolean; is_mutual?: boolean; audience_bucket?: number | null
+          follow_started_at?: string | null; has_replied?: boolean | null; last_import_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "ecosystem_profiles_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "ecosystem_profiles_last_import_id_fkey"; columns: ["last_import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      ecosystem_summary: {
+        Row: {
+          import_id: string; account_id: string; conversations_total: number; professional_count: number
+          private_count: number; unanswered_pro_count: number
+        }
+        Insert: {
+          import_id: string; account_id: string; conversations_total: number; professional_count: number
+          private_count: number; unanswered_pro_count: number
+        }
+        Update: {
+          import_id?: string; account_id?: string; conversations_total?: number; professional_count?: number
+          private_count?: number; unanswered_pro_count?: number
+        }
+        Relationships: [
+          { foreignKeyName: "ecosystem_summary_import_id_fkey"; columns: ["import_id"]; isOneToOne: true; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      cross_analyses: {
+        Row: {
+          id: string; account_id: string; import_id: string; code: string; dimension: string
+          payload: Json; sample_size: number; window_start: string | null; window_end: string | null
+          confidence: string; confidence_reason: string | null; computed_at: string
+        }
+        Insert: {
+          id?: string; account_id: string; import_id: string; code: string; dimension?: string
+          payload: Json; sample_size: number; window_start?: string | null; window_end?: string | null
+          confidence: string; confidence_reason?: string | null; computed_at?: string
+        }
+        Update: {
+          id?: string; account_id?: string; import_id?: string; code?: string; dimension?: string
+          payload?: Json; sample_size?: number; window_start?: string | null; window_end?: string | null
+          confidence?: string; confidence_reason?: string | null; computed_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "cross_analyses_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "cross_analyses_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      content_attribution: {
+        Row: {
+          content_id: string; account_id: string; import_id: string; window_hours: number
+          arrivals_in_window: number; baseline_expected: number; excess_arrivals: number
+          meta_follows_gained: number | null; divergence_ratio: number | null; retained_at_horizon: number | null
+          retention_rate: number | null; confidence: string
+        }
+        Insert: {
+          content_id: string; account_id: string; import_id: string; window_hours?: number
+          arrivals_in_window: number; baseline_expected: number; excess_arrivals: number
+          meta_follows_gained?: number | null; divergence_ratio?: number | null; retained_at_horizon?: number | null
+          retention_rate?: number | null; confidence: string
+        }
+        Update: {
+          content_id?: string; account_id?: string; import_id?: string; window_hours?: number
+          arrivals_in_window?: number; baseline_expected?: number; excess_arrivals?: number
+          meta_follows_gained?: number | null; divergence_ratio?: number | null; retained_at_horizon?: number | null
+          retention_rate?: number | null; confidence?: string
+        }
+        Relationships: [
+          { foreignKeyName: "content_attribution_content_id_fkey"; columns: ["content_id"]; isOneToOne: false; referencedRelation: "content"; referencedColumns: ["id"] },
+          { foreignKeyName: "content_attribution_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      hazard_curve: {
+        Row: {
+          account_id: string; import_id: string; cohort_week: string; age_bucket: number
+          at_risk: number; departed: number; hazard_rate: number
+        }
+        Insert: {
+          account_id: string; import_id: string; cohort_week?: string; age_bucket: number
+          at_risk: number; departed: number; hazard_rate: number
+        }
+        Update: {
+          account_id?: string; import_id?: string; cohort_week?: string; age_bucket?: number
+          at_risk?: number; departed?: number; hazard_rate?: number
+        }
+        Relationships: [
+          { foreignKeyName: "hazard_curve_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "hazard_curve_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      acquisition_spikes: {
+        Row: {
+          id: string; account_id: string; import_id: string; spike_start: string; spike_end: string
+          volume: number; baseline_daily: number; multiple: number; shape: string
+          night_share: number | null; signal_share: number | null; retention_rate: number | null
+          inferred_type: string; inference_confidence: string; linked_content_id: string | null
+          budget_eur: number | null; cout_brut_eur: number | null; cout_retenu_eur: number | null
+        }
+        Insert: {
+          id?: string; account_id: string; import_id: string; spike_start: string; spike_end: string
+          volume: number; baseline_daily: number; multiple: number; shape: string
+          night_share?: number | null; signal_share?: number | null; retention_rate?: number | null
+          inferred_type: string; inference_confidence: string; linked_content_id?: string | null
+          budget_eur?: number | null
+        }
+        Update: {
+          id?: string; account_id?: string; import_id?: string; spike_start?: string; spike_end?: string
+          volume?: number; baseline_daily?: number; multiple?: number; shape?: string
+          night_share?: number | null; signal_share?: number | null; retention_rate?: number | null
+          inferred_type?: string; inference_confidence?: string; linked_content_id?: string | null
+          budget_eur?: number | null
+        }
+        Relationships: [
+          { foreignKeyName: "acquisition_spikes_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "acquisition_spikes_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+          { foreignKeyName: "acquisition_spikes_linked_content_id_fkey"; columns: ["linked_content_id"]; isOneToOne: false; referencedRelation: "content"; referencedColumns: ["id"] },
+        ]
+      }
+      inflow_geo_estimate: {
+        Row: {
+          account_id: string; import_id: string; country: string; estimated_pct: number
+          error_margin: number; method: string; confidence: string
+        }
+        Insert: {
+          account_id: string; import_id: string; country: string; estimated_pct: number
+          error_margin: number; method?: string; confidence: string
+        }
+        Update: {
+          account_id?: string; import_id?: string; country?: string; estimated_pct?: number
+          error_margin?: number; method?: string; confidence?: string
+        }
+        Relationships: [
+          { foreignKeyName: "inflow_geo_estimate_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "inflow_geo_estimate_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      reconciliation: {
+        Row: {
+          import_id: string; account_id: string; meta_gained: number | null; observed_arrivals: number | null
+          arrivals_coverage: number | null; meta_lost: number | null; observed_departures: number | null
+          departures_coverage: number | null; unobservable_reason: string | null
+        }
+        Insert: {
+          import_id: string; account_id: string; meta_gained?: number | null; observed_arrivals?: number | null
+          arrivals_coverage?: number | null; meta_lost?: number | null; observed_departures?: number | null
+          departures_coverage?: number | null; unobservable_reason?: string | null
+        }
+        Update: {
+          import_id?: string; account_id?: string; meta_gained?: number | null; observed_arrivals?: number | null
+          arrivals_coverage?: number | null; meta_lost?: number | null; observed_departures?: number | null
+          departures_coverage?: number | null; unobservable_reason?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "reconciliation_import_id_fkey"; columns: ["import_id"]; isOneToOne: true; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -319,6 +554,10 @@ export type Database = {
       can_manage_org: { Args: { p_org: string }; Returns: boolean }
       can_write: { Args: { p_brand: string }; Returns: boolean }
       can_write_account: { Args: { p_account: string }; Returns: boolean }
+      cohort_rate_at_horizon: {
+        Args: { p_account: string; p_cohort_week: string; p_horizon_days: number }
+        Returns: number
+      }
       create_organization: {
         Args: { p_name: string; p_slug: string }
         Returns: { created_at: string; id: string; name: string; slug: string }
