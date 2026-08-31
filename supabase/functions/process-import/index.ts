@@ -259,7 +259,14 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const reachFile = insightFile("profiles_reached.json");
   if (reachFile) {
     await withFileTracking(admin, reachFile, async () => {
-      const parsed = parseReachInsights(await downloadJson(admin, reachFile.storage_path), exportedAt, fallbackPeriod);
+      const reachJson = await downloadJson(admin, reachFile.storage_path);
+      const parsed = parseReachInsights(reachJson, exportedAt, fallbackPeriod);
+      await admin.rpc("record_schema_fingerprint", {
+        p_import_id: importId,
+        p_account_id: accountId,
+        p_file_kind: "reach_insights",
+        p_observed_keys: normalizedKeysOf(firstStringMap(reachJson)),
+      });
       const { error } = await admin.from("reach_insights").upsert({
         import_id: importId,
         account_id: accountId,
@@ -267,6 +274,8 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
         period_end: toDateOnly(parsed.periodEnd),
         accounts_reached: parsed.accountsReached,
         reach_delta_pct: parsed.reachDeltaPct,
+        follower_reach_pct: parsed.followerReachPct,
+        non_follower_reach_pct: parsed.nonFollowerReachPct,
         impressions: parsed.impressions,
         impressions_delta_pct: parsed.impressionsDeltaPct,
         profile_visits: parsed.profileVisits,
@@ -283,23 +292,35 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const interactionsFile = insightFile("content_interactions.json");
   if (interactionsFile) {
     await withFileTracking(admin, interactionsFile, async () => {
-      const parsed = parseInteractionInsights(await downloadJson(admin, interactionsFile.storage_path));
+      const interactionsJson = await downloadJson(admin, interactionsFile.storage_path);
+      const parsed = parseInteractionInsights(interactionsJson);
+      await admin.rpc("record_schema_fingerprint", {
+        p_import_id: importId,
+        p_account_id: accountId,
+        p_file_kind: "content_interactions",
+        p_observed_keys: normalizedKeysOf(firstStringMap(interactionsJson)),
+      });
       const { error } = await admin.from("interaction_insights").upsert(
-        {
+        parsed.map((f) => ({
           import_id: importId,
           account_id: accountId,
-          format: "all",
-          interactions: parsed.interactions,
-          delta_pct: parsed.deltaPct,
-          likes: parsed.likes,
-          comments: parsed.comments,
-          shares: parsed.shares,
-          saves: parsed.saves,
-        },
+          format: f.format,
+          interactions: f.interactions,
+          delta_pct: f.deltaPct,
+          likes: f.likes,
+          comments: f.comments,
+          shares: f.shares,
+          saves: f.saves,
+          replies: f.replies,
+          accounts_interacted: f.accountsInteracted,
+          accounts_interacted_delta_pct: f.accountsInteractedDeltaPct,
+          accounts_interacted_follower_pct: f.accountsInteractedFollowerPct,
+          accounts_interacted_non_follower_pct: f.accountsInteractedNonFollowerPct,
+        })),
         { onConflict: "import_id,format" },
       );
       if (error) throw new Error(error.message);
-      return 1;
+      return parsed.length;
     });
     filesParsed++;
   }

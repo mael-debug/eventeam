@@ -19,6 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseFollowersFile } from "../../../functions/_shared/parse-followers.ts";
+import { parseReachInsights, parseInteractionInsights } from "../../../functions/_shared/parse-insights.ts";
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 let failures = 0;
@@ -156,6 +157,63 @@ const totalDep = sortedWeeks.reduce((s, wk) => s + cohortMap.get(wk).filter(isCu
 check("profils dans le recouvrement (mesurable)", totalEff, 6948);
 check("partis", totalDep, 1138);
 check("taux de départ brut", Math.round((totalDep / totalEff) * 1000) / 10, 16.4);
+
+// profiles_reached.json / content_interactions.json — pièges 7 à 12
+// (nombre sans séparateur de milliers, delta sans suffixe « vs … »,
+// « Followers » à deux sens selon le fichier, littéral « delta » non
+// substitué, métriques à 0 légitimes, pluriel variable).
+const reachJson = JSON.parse(fs.readFileSync(path.join(DIR, "import_2026-08-27/profiles_reached.json"), "utf-8"));
+const interactionsJson = JSON.parse(fs.readFileSync(path.join(DIR, "import_2026-08-27/content_interactions.json"), "utf-8"));
+
+const exportedAt = new Date("2026-08-27T00:00:00Z");
+const fallbackPeriod = { start: new Date("2026-05-27T00:00:00Z"), end: new Date("2026-08-27T00:00:00Z") };
+const reach = parseReachInsights(reachJson, exportedAt, fallbackPeriod);
+
+check("reach — comptes touchés (sans séparateur)", reach.accountsReached, 3359140);
+check("reach — delta comptes touchés", reach.reachDeltaPct, 59.4);
+check("reach — followers (part de portée, pas effectif)", reach.followerReachPct, 1);
+check("reach — non-followers", reach.nonFollowerReachPct, 99);
+check("reach — impressions (avec séparateur)", reach.impressions, 15570962);
+check("reach — delta impressions (sans « vs … »)", reach.impressionsDeltaPct, 93.4);
+check("reach — visites du profil", reach.profileVisits, 103643);
+check("reach — delta visites du profil", reach.profileVisitsDeltaPct, -6.3);
+check("reach — appuis sur liens externes", reach.externalTaps, 3427);
+check("reach — delta appuis sur liens externes", reach.externalTapsDeltaPct, -20.7);
+
+const interactions = parseInteractionInsights(interactionsJson);
+const byFormat = Object.fromEntries(interactions.map((f) => [f.format, f]));
+
+check("interactions[all] — total", byFormat.all.interactions, 122212);
+check("interactions[all] — delta", byFormat.all.deltaPct, 31);
+check("interactions[all] — comptes ayant interagi", byFormat.all.accountsInteracted, 87045);
+check("interactions[all] — delta comptes ayant interagi", byFormat.all.accountsInteractedDeltaPct, 38.8);
+check("interactions[all] — part followers", byFormat.all.accountsInteractedFollowerPct, 5.6);
+check("interactions[all] — part non-followers", byFormat.all.accountsInteractedNonFollowerPct, 94.4);
+
+check("interactions[posts] — total", byFormat.posts.interactions, 26024);
+check("interactions[posts] — delta", byFormat.posts.deltaPct, -40.4);
+check("interactions[posts] — likes", byFormat.posts.likes, 22373);
+check("interactions[posts] — commentaires", byFormat.posts.comments, 834);
+check("interactions[posts] — partages (« de »)", byFormat.posts.shares, 958);
+check("interactions[posts] — enregistrements", byFormat.posts.saves, 643);
+
+check("interactions[stories] — total", byFormat.stories.interactions, 2041);
+check("interactions[stories] — delta", byFormat.stories.deltaPct, 3.7);
+check("interactions[stories] — réponses", byFormat.stories.replies, 85);
+check("interactions[stories] — partages", byFormat.stories.shares, 173);
+
+check("interactions[videos] — total (légitimement 0)", byFormat.videos.interactions, 0);
+check("interactions[videos] — delta (légitimement 0)", byFormat.videos.deltaPct, 0);
+
+check("interactions[reels] — total", byFormat.reels.interactions, 81079);
+check("interactions[reels] — delta", byFormat.reels.deltaPct, 160);
+check("interactions[reels] — likes", byFormat.reels.likes, 72361);
+check("interactions[reels] — commentaires", byFormat.reels.comments, 322);
+check("interactions[reels] — partages (« des »)", byFormat.reels.shares, 2572);
+check("interactions[reels] — enregistrements", byFormat.reels.saves, 3176);
+
+check("interactions[lives] — total (légitimement 0)", byFormat.lives.interactions, 0);
+check("interactions[lives] — delta (légitimement 0)", byFormat.lives.deltaPct, 0);
 
 console.log(failures === 0 ? "\nTOUT PASSE" : `\n${failures} ÉCHEC(S)`);
 process.exit(failures === 0 ? 0 : 1);

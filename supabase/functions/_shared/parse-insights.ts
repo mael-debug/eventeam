@@ -3,21 +3,19 @@
 // d'un élément portant string_map_data.
 //
 // STATUT DE CONFIANCE :
-// - parseAudienceInsights : clés exactes confirmées contre un export réel
-//   (voir le bloc de commentaires au-dessus de la fonction).
-// - parseReachInsights / parseInteractionInsights : profiles_reached.json et
-//   content_interactions.json n'ont pas pu être vérifiés dans cette session
-//   (fichiers non fournis). Recherche par préfixe normalisé, en français et
-//   en anglais, avec repli gracieux (valeur nulle plutôt qu'échec) si non
-//   trouvé — conformément à §7.2 étape 3, une étiquette non reconnue ne doit
-//   jamais interrompre l'import. À vérifier dès que ces fichiers seront
-//   fournis.
+// - parseAudienceInsights, parseReachInsights, parseInteractionInsights :
+//   clés exactes confirmées contre un export réel (voir les blocs de
+//   commentaires au-dessus de chaque fonction). Repli gracieux (valeur
+//   nulle plutôt qu'échec) conservé pour toute clé non reconnue —
+//   conformément à §7.2 étape 3, une étiquette non reconnue ne doit jamais
+//   interrompre l'import.
 
 import { fixMojibake } from "./mojibake.ts";
 import {
   findByPrefix,
   findBySuffix,
   findExact,
+  normalizeKey,
   parseEnglishDateRange,
   parseFormattedInt,
   parseLabeledPercentList,
@@ -151,12 +149,39 @@ export function parseAudienceInsights(
   };
 }
 
+/**
+ * Clés exactes confirmées contre un export réel (Eden Park), racine
+ * `organic_insights_reach`, string_map_data :
+ *   'Période'                              -> "May 29 - Aug 26"
+ *   'Comptes touchés'                      -> "3359140"        (SANS séparateur de milliers,
+ *                                              contrairement à 'Impressions' du même fichier — piège)
+ *   'Nombre de comptes touchés'            -> "+59.4% vs Feb 28 - May 28"
+ *   'Followers'                            -> "1%"             (part de PORTÉE ici — sans rapport
+ *                                              avec 'Followers' = 102 497 dans audience_insights.json,
+ *                                              piège le plus dangereux : ne jamais partager une
+ *                                              correspondance de libellés entre fichiers)
+ *   'Non-followers'                        -> "99%"
+ *   'Impressions'                          -> "15,570,962"     (AVEC séparateur)
+ *   'Nombre d'impressions'                 -> "+93.4%"         (SANS le suffixe « vs ... », contrairement
+ *                                              aux autres champs de variation — parsePercent ne dépend
+ *                                              pas de ce suffixe, aucun changement nécessaire pour ce piège)
+ *   'Visites du profil'                    -> "103,643"
+ *   'Nombre de visites sur le profil'      -> "-6.3%"
+ *   'Appuis sur les liens externes'        -> "3,427"
+ *   'Nombre d'appuis sur des liens externes' -> "-20.7%"
+ * Note : chaque compteur et sa variation sont deux clés DISTINCTES (piège
+ * de l'implémentation précédente, jamais vérifiée contre un export réel :
+ * le delta était calculé à partir de la clé du compteur, qui ne contient
+ * jamais de %, donnant toujours null).
+ */
 export interface ParsedReachInsights {
   periodStart: Date;
   periodEnd: Date;
   usedFallbackPeriod: boolean;
   accountsReached: number | null;
   reachDeltaPct: number | null;
+  followerReachPct: number | null;
+  nonFollowerReachPct: number | null;
   impressions: number | null;
   impressionsDeltaPct: number | null;
   profileVisits: number | null;
@@ -173,45 +198,119 @@ export function parseReachInsights(
   const map = firstStringMap(json);
   const { start, end, usedFallback } = periodOrFallback(map, exportedAt, fallbackPeriod);
 
-  const reachRaw = findByPrefix(map, ["accounts reached", "comptes touches", "portee"]);
-  const impressionsRaw = findByPrefix(map, ["impressions"]);
-  const visitsRaw = findByPrefix(map, ["profile visits", "visites du profil"]);
-  const tapsRaw = findByPrefix(map, ["external link taps", "clics sur le lien externe", "clics externes"]);
-
   return {
     periodStart: start,
     periodEnd: end,
     usedFallbackPeriod: usedFallback,
-    accountsReached: parseFormattedInt(reachRaw),
-    reachDeltaPct: parsePercent(reachRaw),
-    impressions: parseFormattedInt(impressionsRaw),
-    impressionsDeltaPct: parsePercent(impressionsRaw),
-    profileVisits: parseFormattedInt(visitsRaw),
-    profileVisitsDeltaPct: parsePercent(visitsRaw),
-    externalTaps: parseFormattedInt(tapsRaw),
-    externalTapsDeltaPct: parsePercent(tapsRaw),
+    accountsReached: parseFormattedInt(findExact(map, ["comptes touches"])),
+    reachDeltaPct: parsePercent(findByPrefix(map, ["nombre de comptes touches"])),
+    followerReachPct: parsePercent(findExact(map, ["followers"])),
+    nonFollowerReachPct: parsePercent(findExact(map, ["non-followers"])),
+    impressions: parseFormattedInt(findExact(map, ["impressions"])),
+    impressionsDeltaPct: parsePercent(findByPrefix(map, ["nombre dimpressions"])),
+    profileVisits: parseFormattedInt(findExact(map, ["visites du profil"])),
+    profileVisitsDeltaPct: parsePercent(findByPrefix(map, ["nombre de visites sur le profil"])),
+    externalTaps: parseFormattedInt(findExact(map, ["appuis sur les liens externes"])),
+    externalTapsDeltaPct: parsePercent(findByPrefix(map, ["nombre dappuis"])),
   };
 }
 
-export interface ParsedInteractionInsights {
+/**
+ * Clés exactes confirmées contre un export réel, racine
+ * `organic_insights_interactions`, string_map_data. Un bloc par format,
+ * chacun avec ses propres libellés (le pluriel varie : « Partages de
+ * publications » mais « Partages des reels » — jamais de préfixe/suffixe
+ * commun fiable entre formats, d'où une clé exacte par format plutôt qu'un
+ * motif générique) :
+ *   all     : 'Interactions avec le contenu' / 'Nombre d'interactions avec le contenu'
+ *             + 'Comptes ayant interagi' / 'Nombre de comptes ayant interagi'
+ *             + 'Comptes ayant interagi par type de followers' -> "Followers: 5.6%, Non-followers: 94.4%"
+ *   posts   : 'Interactions avec les publications' / '... Nombre ...'
+ *             'Mentions J'aime des publications', 'Commentaires sur les publications',
+ *             'Partages de publications', 'Enregistrements de publications'
+ *   stories : 'Interactions avec la story' / '... Nombre ...'
+ *             'Réponses aux stories' (-> replies), 'Partages de stories'
+ *   videos  : 'Interactions avec les vidéos' / '... Nombre ...' — aucune ventilation
+ *             (pas dans l'énumération littérale du PRD, ajoutée au format check)
+ *   reels   : 'Interactions avec les reels' / '... Nombre ...'
+ *             'Mentions J'aime sur les reels', 'Commentaires sur les reels',
+ *             'Partages des reels', 'Enregistrements de reels'
+ *   lives   : 'Interactions avec les vidéos en direct' / '... Nombre ...' — aucune ventilation
+ * Piège : un libellé cassé côté Meta (bug d'i18n, littéral `delta` non
+ * substitué : « Vous avez interagi avec delta % de comptes en plus... »)
+ * est ignoré explicitement — aucun champ ne le référence, et il n'existe
+ * dans aucune des listes de correspondance ci-dessous.
+ * Piège : les vidéos/lives peuvent valoir 0 (compte réel, pas une absence) —
+ * parseFormattedInt("0") renvoie bien 0, jamais null.
+ */
+export interface ParsedInteractionFormat {
+  format: "all" | "posts" | "stories" | "videos" | "reels" | "lives";
   interactions: number | null;
   deltaPct: number | null;
   likes: number | null;
   comments: number | null;
   shares: number | null;
   saves: number | null;
+  replies: number | null;
+  accountsInteracted: number | null;
+  accountsInteractedDeltaPct: number | null;
+  accountsInteractedFollowerPct: number | null;
+  accountsInteractedNonFollowerPct: number | null;
 }
 
-export function parseInteractionInsights(json: unknown): ParsedInteractionInsights {
+export function parseInteractionInsights(json: unknown): ParsedInteractionFormat[] {
   const map = firstStringMap(json);
-  const interactionsRaw = findByPrefix(map, ["interactions"]);
+  if (!map) return [];
 
-  return {
-    interactions: parseFormattedInt(interactionsRaw),
-    deltaPct: parsePercent(interactionsRaw),
-    likes: parseFormattedInt(findByPrefix(map, ["likes", "mentions j'aime", "jaime"])),
-    comments: parseFormattedInt(findByPrefix(map, ["comments", "commentaires"])),
-    shares: parseFormattedInt(findByPrefix(map, ["shares", "partages"])),
-    saves: parseFormattedInt(findByPrefix(map, ["saves", "enregistrements"])),
-  };
+  const accountsInteractedRaw = findExact(map, ["comptes ayant interagi par type de followers"]);
+  const accountsInteractedSplit = accountsInteractedRaw ? parseLabeledPercentList(accountsInteractedRaw) : [];
+  const accountsInteractedFollowerPct =
+    accountsInteractedSplit.find((e) => normalizeKey(e.name) === "followers")?.pct ?? null;
+  const accountsInteractedNonFollowerPct =
+    accountsInteractedSplit.find((e) => normalizeKey(e.name) === "non-followers")?.pct ?? null;
+
+  function block(
+    format: ParsedInteractionFormat["format"],
+    interactionsKey: string,
+    deltaKey: string,
+    fields: { likes?: string; comments?: string; shares?: string; saves?: string; replies?: string } = {},
+  ): ParsedInteractionFormat {
+    return {
+      format,
+      interactions: parseFormattedInt(findExact(map, [interactionsKey])),
+      deltaPct: parsePercent(findExact(map, [deltaKey])),
+      likes: fields.likes ? parseFormattedInt(findExact(map, [fields.likes])) : null,
+      comments: fields.comments ? parseFormattedInt(findExact(map, [fields.comments])) : null,
+      shares: fields.shares ? parseFormattedInt(findExact(map, [fields.shares])) : null,
+      saves: fields.saves ? parseFormattedInt(findExact(map, [fields.saves])) : null,
+      replies: fields.replies ? parseFormattedInt(findExact(map, [fields.replies])) : null,
+      accountsInteracted: format === "all" ? parseFormattedInt(findExact(map, ["comptes ayant interagi"])) : null,
+      accountsInteractedDeltaPct:
+        format === "all" ? parsePercent(findExact(map, ["nombre de comptes ayant interagi"])) : null,
+      accountsInteractedFollowerPct: format === "all" ? accountsInteractedFollowerPct : null,
+      accountsInteractedNonFollowerPct: format === "all" ? accountsInteractedNonFollowerPct : null,
+    };
+  }
+
+  return [
+    block("all", "interactions avec le contenu", "nombre dinteractions avec le contenu"),
+    block("posts", "interactions avec les publications", "nombre dinteractions avec les publications", {
+      likes: "mentions jaime des publications",
+      comments: "commentaires sur les publications",
+      shares: "partages de publications",
+      saves: "enregistrements de publications",
+    }),
+    block("stories", "interactions avec la story", "nombre dinteractions avec la story", {
+      replies: "reponses aux stories",
+      shares: "partages de stories",
+    }),
+    block("videos", "interactions avec les videos", "nombre dinteractions avec les videos"),
+    block("reels", "interactions avec les reels", "nombre dinteractions avec les reels", {
+      likes: "mentions jaime sur les reels",
+      comments: "commentaires sur les reels",
+      shares: "partages des reels",
+      saves: "enregistrements de reels",
+    }),
+    block("lives", "interactions avec les videos en direct", "nombre dinteractions avec les videos en direct"),
+  ];
 }

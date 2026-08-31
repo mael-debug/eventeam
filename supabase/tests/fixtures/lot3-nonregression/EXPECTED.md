@@ -63,3 +63,58 @@ Période `May 29 - Aug 26` — noter qu'elle diffère de la fenêtre des abonné
 4. Deux définitions de période dans un même export — ne doivent pas être fusionnées.
 5. Clés en mojibake, espace insécable, apostrophe typographique, faute « des de ».
 6. Cohorte tronquée en fin de fenêtre — produite mais marquée insuffisante.
+
+## profiles_reached.json — racine `organic_insights_reach`
+
+| Clé (mojibake brut) | Valeur |
+|---|---|
+| `PÃ©riode` | May 29 - Aug 26 |
+| `Comptes touchÃ©s` | 3359140  ← sans séparateur, contrairement aux autres |
+| `Nombre de comptes touchÃ©s` | +59.4% vs Feb 28 - May 28 |
+| `Followers` | 1% |
+| `Non-followers` | 99% |
+| `DiffÃ©rence de nombre de non-followers` | phrase en anglais |
+| `Impressions` | 15,570,962 |
+| `Nombre dâ€™impressions` | +93.4%  ← sans « vs … » |
+| `Visites du profil` | 103,643 |
+| `Nombre de visites sur le profil` | -6.3% |
+| `Appuis sur les liens externes` | 3,427 |
+| `Nombre dâ€™appuis sur des liens externes` | -20.7% |
+
+## content_interactions.json — racine `organic_insights_interactions`
+
+| Clé | Valeur |
+|---|---|
+| `Interactions avec le contenu` | 122,212 |
+| `Interactions avec les publications` | 26,024 (−40,4 %) |
+| `Mentions Jâ€™aime des publications` | 22,373 |
+| `Commentaires sur les publications` | 834 |
+| `Partages de publications` | 958 |
+| `Enregistrements de publications` | 643 |
+| `Interactions avec la story` | 2,041 (+3,7 %) |
+| `RÃ©ponses aux stories` | 85 |
+| `Partages de stories` | 173 |
+| `Interactions avec les reels` | 81,079 (+160 %) |
+| `Mentions Jâ€™aime sur les reels` | 72,361 |
+| `Commentaires sur les reels` | 322 |
+| `Partages des reels` | 2,572 |
+| `Enregistrements de reels` | 3,176 |
+| `Comptes ayant interagi` | 87,045 (+38,8 %) |
+| `Comptes ayant interagi par type de followers` | Followers: 5.6%, Non-followers: 94.4% |
+
+## Pièges supplémentaires sur ces deux fichiers
+
+7. `Comptes touchÃ©s` vaut `3359140` **sans séparateur de milliers**, alors que
+   `Impressions` vaut `15,570,962` **avec**. Le parseur numérique doit tolérer les deux.
+8. `Nombre dâ€™impressions` vaut `+93.4%` **sans** le suffixe « vs … », alors que la
+   plupart des autres champs de variation le portent. Le parseur de période comparée
+   doit accepter son absence.
+9. `Followers` existe dans **deux fichiers avec deux sens différents** :
+   102 497 (effectif) dans `audience_insights.json`, 1 % (part de portée) dans
+   `profiles_reached.json`. La correspondance de libellés doit être scopée par fichier,
+   jamais globale.
+10. Le libellé `Vous avez interagi avec deltaÂ % de comptes en plus …` contient le
+    littéral `delta` non substitué et une espace insécable. Bug d'internationalisation
+    côté Meta, à ignorer.
+11. Trois métriques valent `0` (vidéos, vidéos en direct). Ne pas confondre avec absent.
+12. Le pluriel varie : `Partages de publications` mais `Partages des reels`.

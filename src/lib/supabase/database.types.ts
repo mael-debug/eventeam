@@ -260,17 +260,23 @@ export type Database = {
       }
       interaction_insights: {
         Row: {
-          account_id: string; comments: number | null; delta_pct: number | null; format: string
+          account_id: string; accounts_interacted: number | null; accounts_interacted_delta_pct: number | null
+          accounts_interacted_follower_pct: number | null; accounts_interacted_non_follower_pct: number | null
+          comments: number | null; delta_pct: number | null; format: string
           import_id: string; interactions: number | null; likes: number | null
           replies: number | null; saves: number | null; shares: number | null
         }
         Insert: {
-          account_id: string; comments?: number | null; delta_pct?: number | null; format: string
+          account_id: string; accounts_interacted?: number | null; accounts_interacted_delta_pct?: number | null
+          accounts_interacted_follower_pct?: number | null; accounts_interacted_non_follower_pct?: number | null
+          comments?: number | null; delta_pct?: number | null; format: string
           import_id: string; interactions?: number | null; likes?: number | null
           replies?: number | null; saves?: number | null; shares?: number | null
         }
         Update: {
-          account_id?: string; comments?: number | null; delta_pct?: number | null; format?: string
+          account_id?: string; accounts_interacted?: number | null; accounts_interacted_delta_pct?: number | null
+          accounts_interacted_follower_pct?: number | null; accounts_interacted_non_follower_pct?: number | null
+          comments?: number | null; delta_pct?: number | null; format?: string
           import_id?: string; interactions?: number | null; likes?: number | null
           replies?: number | null; saves?: number | null; shares?: number | null
         }
