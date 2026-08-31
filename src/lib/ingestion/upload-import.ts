@@ -7,11 +7,13 @@ import type { ScanResult } from "./scan-zip";
 import { makeThumbnail } from "./thumbnail";
 
 export interface UploadProgress {
-  phase: "creating" | "uploading" | "invoking" | "done" | "error";
+  phase: "creating" | "uploading" | "retrying" | "invoking" | "done" | "error";
   uploaded: number;
   total: number;
   message?: string;
 }
+
+const MAX_RETRY_PASSES = 3;
 
 export interface UploadImportResult {
   importId: string;
@@ -59,12 +61,15 @@ export async function uploadImport(
   // restent visibles dans l'historique au lieu de disparaître sans trace
   // (l'insert groupé perdait tout le lot si la boucle n'allait pas à son
   // terme, laissant un import 'uploading' sans aucun fichier enregistré).
+  // upsert sur (import_id, source_path) — clé unique de la table — pour que
+  // la passe de nouvelle tentative puisse réécrire la même ligne au lieu
+  // d'en créer une seconde.
   async function recordFile(row: Database["public"]["Tables"]["import_files"]["Insert"]) {
-    const { error } = await supabase.from("import_files").insert(row);
+    const { error } = await supabase.from("import_files").upsert(row, { onConflict: "import_id,source_path" });
     if (error) throw new Error(`Enregistrement de ${row.source_path} : ${error.message}`);
   }
 
-  for (const f of scan.jsonFiles) {
+  async function uploadJsonFile(f: ScanResult["jsonFiles"][number]): Promise<boolean> {
     const objectPath = `${accountId}/${importId}/${sanitizeSegment(f.path)}`;
     const blob = new Blob([JSON.stringify(f.json)], { type: "application/json" });
     const { error } = await supabase.storage.from("raw-exports").upload(objectPath, blob, {
@@ -80,11 +85,10 @@ export async function uploadImport(
       status: error ? "error" : "uploaded",
       error_message: error?.message ?? null,
     });
-    uploaded++;
-    onProgress?.({ phase: "uploading", uploaded, total: totalFiles, message: f.path });
+    return !error;
   }
 
-  for (const m of scan.mediaFiles) {
+  async function uploadMediaFile(m: ScanResult["mediaFiles"][number]): Promise<boolean> {
     let thumbPath: string | null = null;
     let errorMessage: string | null = null;
     try {
@@ -108,8 +112,47 @@ export async function uploadImport(
       status: thumbPath ? "uploaded" : "error",
       error_message: errorMessage,
     });
+    return thumbPath !== null;
+  }
+
+  let failedJson = new Map(scan.jsonFiles.map((f) => [f.path, f]));
+  let failedMedia = new Map(scan.mediaFiles.map((m) => [m.path, m]));
+
+  for (const [path, f] of failedJson) {
+    const ok = await uploadJsonFile(f);
     uploaded++;
-    onProgress?.({ phase: "uploading", uploaded, total: totalFiles, message: m.path });
+    onProgress?.({ phase: "uploading", uploaded, total: totalFiles, message: path });
+    if (ok) failedJson.delete(path);
+  }
+
+  for (const [path, m] of failedMedia) {
+    const ok = await uploadMediaFile(m);
+    uploaded++;
+    onProgress?.({ phase: "uploading", uploaded, total: totalFiles, message: path });
+    if (ok) failedMedia.delete(path);
+  }
+
+  // Nouvelles tentatives bornées avant de considérer l'import terminé — un
+  // échec transitoire (comme la politique RLS manquante trouvée cette
+  // session) ne doit pas se figer en échec définitif si le fichier peut
+  // réussir dès le passage suivant.
+  for (let pass = 1; pass <= MAX_RETRY_PASSES && (failedJson.size > 0 || failedMedia.size > 0); pass++) {
+    const remaining = failedJson.size + failedMedia.size;
+    onProgress?.({ phase: "retrying", uploaded: totalFiles - remaining, total: totalFiles, message: `passe ${pass}/${MAX_RETRY_PASSES} — ${remaining} fichier(s)` });
+
+    const retryJson = failedJson;
+    failedJson = new Map();
+    for (const [path, f] of retryJson) {
+      const ok = await uploadJsonFile(f);
+      if (!ok) failedJson.set(path, f);
+    }
+
+    const retryMedia = failedMedia;
+    failedMedia = new Map();
+    for (const [path, m] of retryMedia) {
+      const ok = await uploadMediaFile(m);
+      if (!ok) failedMedia.set(path, m);
+    }
   }
 
   const { error: statusError } = await supabase

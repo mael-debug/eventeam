@@ -167,14 +167,19 @@ export function ImportUploader({ accountId, accountHandle }: { accountId: string
             <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
               {uploadProgress.phase === "invoking"
                 ? "Traitement en cours (analyse des fichiers, recalcul du moteur)…"
-                : `Envoi… ${uploadProgress.uploaded}/${uploadProgress.total}${uploadProgress.message ? ` · ${uploadProgress.message}` : ""}`}
+                : uploadProgress.phase === "retrying"
+                  ? `Nouvelle tentative sur les fichiers en échec — ${uploadProgress.message ?? ""}`
+                  : `Envoi… ${uploadProgress.uploaded}/${uploadProgress.total}${uploadProgress.message ? ` · ${uploadProgress.message}` : ""}`}
             </p>
             <div style={{ height: 6, borderRadius: 999, background: "var(--creme-fonce)", overflow: "hidden" }}>
               <div
                 style={{
                   height: "100%",
                   background: "var(--bleu)",
-                  width: uploadProgress.phase === "invoking" ? "100%" : `${Math.round((uploadProgress.uploaded / Math.max(1, uploadProgress.total)) * 100)}%`,
+                  width:
+                    uploadProgress.phase === "invoking"
+                      ? "100%"
+                      : `${Math.round((uploadProgress.uploaded / Math.max(1, uploadProgress.total)) * 100)}%`,
                   transition: "width .2s ease",
                 }}
               />
