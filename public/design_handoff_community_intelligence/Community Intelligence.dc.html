@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bienfait-design-system-july-2026-6e2c75f0-5258-48d2-a4ff-b3148744bf54/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/bienfait-design-system-july-2026-6e2c75f0-5258-48d2-a4ff-b3148744bf54/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bienfait-design-system-july-2026-6e2c75f0-5258-48d2-a4ff-b3148744bf54/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bienfait-design-system-july-2026-6e2c75f0-5258-48d2-a4ff-b3148744bf54/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/bienfait-design-system-july-2026-6e2c75f0-5258-48d2-a4ff-b3148744bf54/tokens/base.css">
+<link rel="stylesheet" href="_ds/bienfait-design-system-july-2026-6e2c75f0-5258-48d2-a4ff-b3148744bf54/styles.css">
+<script src="_ds/bienfait-design-system-july-2026-6e2c75f0-5258-48d2-a4ff-b3148744bf54/_ds_bundle.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; background: var(--fond); }
+  a { color: var(--bleu); text-decoration: none; }
+  a:hover { color: var(--bleu-clair); text-decoration: underline; }
+  table { border-collapse: collapse; }
+  input, select, button { font-family: inherit; }
+  ::selection { background: var(--vert-pastel); }
+</style>
+</helmet>
+
+<div style="display: flex; height: 100vh; overflow: hidden; font-family: var(--font-corps); color: var(--encre); background: var(--fond); font-size: 15px; line-height: 1.5;">
+
+  <nav style="width: 232px; flex: 0 0 232px; background: var(--encre); color: var(--surface-creme); display: flex; flex-direction: column; padding: 22px 0; overflow-y: auto;">
+    <div style="padding: 0 20px 22px; display: flex; flex-direction: column; gap: 8px;">
+      <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Logo" color="creme" size="{{ logoSize }}" hint-size="auto,22px"></x-import>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div style="font-weight: 700; font-size: 14px; letter-spacing: -0.01em;">Community Intelligence</div>
+        <div style="font-size: 12px; color: rgba(250,248,243,0.5);">Eventeam · analyse d'audience</div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 12px;">
+      <button onClick="{{ goOverview }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.overview }}; color: {{ navFg.overview }}; font-weight: {{ navFw.overview }};">Vue d'ensemble</button>
+      <button onClick="{{ goAudience }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.audience }}; color: {{ navFg.audience }}; font-weight: {{ navFw.audience }};">Audience</button>
+      <button onClick="{{ goCroissance }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.croissance }}; color: {{ navFg.croissance }}; font-weight: {{ navFw.croissance }};">Croissance</button>
+      <button onClick="{{ goAcq }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.acq }}; color: {{ navFg.acq }}; font-weight: {{ navFw.acq }};">Acquisition</button>
+      <button onClick="{{ goDiagnostic }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.diagnostic }}; color: {{ navFg.diagnostic }}; font-weight: {{ navFw.diagnostic }};">Diagnostic</button>
+      <button onClick="{{ goSegments }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.segments }}; color: {{ navFg.segments }}; font-weight: {{ navFw.segments }};">Segments</button>
+      <button onClick="{{ goContenu }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.contenu }}; color: {{ navFg.contenu }}; font-weight: {{ navFw.contenu }};">Contenu</button>
+      <button onClick="{{ goEcosysteme }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.ecosysteme }}; color: {{ navFg.ecosysteme }}; font-weight: {{ navFw.ecosysteme }};">Écosystème</button>
+      <button onClick="{{ goListes }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.listes }}; color: {{ navFg.listes }}; font-weight: {{ navFw.listes }};">Listes</button>
+      <button onClick="{{ goCatalogue }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.catalogue }}; color: {{ navFg.catalogue }}; font-weight: {{ navFw.catalogue }};">Catalogue</button>
+      <button onClick="{{ goImports }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.imports }}; color: {{ navFg.imports }}; font-weight: {{ navFw.imports }};">Imports</button>
+      <button onClick="{{ goJournal }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.journal }}; color: {{ navFg.journal }}; font-weight: {{ navFw.journal }};">Journal</button>
+      <button onClick="{{ goParametres }}" style="text-align: left; border: 0; cursor: pointer; padding: 9px 12px; border-radius: 999px; font-size: 14px; background: {{ navBg.parametres }}; color: {{ navFg.parametres }}; font-weight: {{ navFw.parametres }};">Paramètres</button>
+    </div>
+    <div style="margin-top: auto; padding: 18px 20px 0; border-top: 1px solid rgba(250,248,243,0.12); display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto;">
+      <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250,248,243,0.45);">Dernier import</div>
+      <div style="font-size: 13px;">27 août 2026 · abonnés 27 mai → 27 août</div>
+      <div style="display: flex; flex-direction: column; gap: 5px; padding-bottom: 4px;">
+        <button onClick="{{ goBoot }}" style="text-align: left; border: 0; background: none; cursor: pointer; padding: 0; font-size: 12px; color: rgba(250,248,243,0.55); text-decoration: underline;">État « aucun import »</button>
+        <button onClick="{{ goUnImport }}" style="text-align: left; border: 0; background: none; cursor: pointer; padding: 0; font-size: 12px; color: rgba(250,248,243,0.55); text-decoration: underline;">État « un seul import »</button>
+        <button onClick="{{ goMarques }}" style="text-align: left; border: 0; background: none; cursor: pointer; padding: 0; font-size: 12px; color: rgba(250,248,243,0.55); text-decoration: underline;">Sélection de marque</button>
+        <button onClick="{{ goLogin }}" style="text-align: left; border: 0; background: none; cursor: pointer; padding: 0; font-size: 12px; color: rgba(250,248,243,0.55); text-decoration: underline;">Écran de connexion</button>
+      </div>
+    </div>
+  </nav>
+
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+
+    <header style="flex: 0 0 auto; display: flex; align-items: center; gap: 14px; padding: 0 32px; height: 64px; background: rgba(244,241,236,0.82); backdrop-filter: blur(10px); border-bottom: 1px solid var(--bordure);">
+      <select style="border: 1px solid var(--bordure); background: var(--carte-claire); border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 600; color: var(--encre); cursor: pointer;">
+        <option>Eden Park</option>
+        <option>Bensimon</option>
+        <option>Aigle</option>
+      </select>
+      <select style="border: 1px solid var(--bordure); background: transparent; border-radius: 999px; padding: 8px 14px; font-size: 14px; color: var(--text-muted); cursor: pointer; max-width: 340px; flex: 1 1 auto; min-width: 0; text-overflow: ellipsis;">
+        <option>Abonnés 27 mai → 27 août · Insights 29 mai → 26 août</option>
+        <option>Comparé à l'import du 23 juillet (recouvrement 63 %)</option>
+      </select>
+      <div style="margin-left: auto; flex: 0 0 auto; display: flex; align-items: center; gap: 12px;">
+        <button onClick="{{ toggleRole }}" style="cursor: pointer; border: 1px solid var(--bordure); background: var(--carte-claire); border-radius: 999px; padding: 7px 14px; font-size: 12px; font-weight: 600; color: var(--encre); white-space: nowrap;">{{ roleLabel }}</button>
+        <div style="width: 32px; height: 32px; flex: 0 0 32px; border-radius: 999px; background: var(--vert-pastel); border: 1px solid var(--bordure-carte); display: grid; place-items: center; font-size: 12px; font-weight: 700;">EV</div>
+      </div>
+    </header>
+
+    <main style="flex: 1; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; gap: 28px; min-width: 0;">
+
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 28px; max-width: 1280px; min-width: 0;">
+
+          <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Vue d'ensemble</h1>
+            <span style="font-size: 13px; color: var(--text-muted);">Eden Park · abonnés 27 mai → 27 août · Insights 29 mai → 26 août · 2 imports</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px;">
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,124px">
+              <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Abonnés</div>
+                <div style="font-size: clamp(26px, 2.6vw, 34px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap;">102 497</div>
+                <div style="font-size: 13px; color: var(--text-muted);">+10,5 % · abonnés 27 mai → 27 août</div>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,124px">
+              <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Croissance nette</div>
+                <div style="font-size: clamp(26px, 2.6vw, 34px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap;">+9 795</div>
+                <div style="font-size: 13px; color: var(--text-muted);">19 055 gagnés · 9 260 perdus · Insights 29 mai → 26 août</div>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,124px">
+              <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Taux de départ mesuré</div>
+                <div style="font-size: clamp(26px, 2.6vw, 34px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap;">16,4 %</div>
+                <div style="font-size: 13px; color: var(--text-muted);">1 138 sur 6 948 comptes comparables · 27 mai → 27 août</div>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,124px">
+              <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Part organique</div>
+                <div style="font-size: clamp(26px, 2.6vw, 34px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap;">3,4 %</div>
+                <div style="font-size: 13px; color: var(--text-muted);">655 sur 19 055 · Insights 29 mai → 26 août</div>
+              </div>
+            </x-import>
+          </div>
+
+          <div style="background: var(--bleu-bg); border: 1px solid #D3DEF4; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+              <h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.01em;">Ce que les compteurs ne disent pas</h2>
+              <span style="font-size: 12px; color: var(--text-muted);">4 constats générés à partir des 2 imports disponibles</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+
+              <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" onClick="{{ goContenu }}" hint-size="100%,200px">
+                <div style="display: flex; flex-direction: column; gap: 10px; cursor: pointer; min-width: 0;">
+                  <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Badge" variant="cadrage" hint-size="auto,24px">Portée sans effet</x-import>
+                  <div style="font-size: 19px; font-weight: 700; line-height: 1.3; text-wrap: pretty;">La portée augmente de 93 % mais les visites de profil reculent de 6,3 % et les clics externes de 20,7 %.</div>
+                  <div style="font-size: 13px; color: var(--text-muted);">15 570 962 impressions, 3 359 140 comptes touchés dont 99 % de non-abonnés.</div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--bleu); margin-top: 2px;">Ouvrir Contenu →</div>
+                </div>
+              </x-import>
+
+              <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" onClick="{{ goAcq }}" hint-size="100%,200px">
+                <div style="display: flex; flex-direction: column; gap: 10px; cursor: pointer; min-width: 0;">
+                  <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Badge" variant="cadrage" hint-size="auto,24px">Rupture de cohorte</x-import>
+                  <div style="font-size: 19px; font-weight: 700; line-height: 1.3; text-wrap: pretty;">Les abonnés recrutés depuis le 15 juin partent cinq fois plus que les précédents.</div>
+                  <div style="font-size: 13px; color: var(--text-muted);">2,3 % de départs pour la cohorte du 8 juin, 21,3 % pour celle du 22 juin.</div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--bleu); margin-top: 2px;">Ouvrir Acquisition →</div>
+                </div>
+              </x-import>
+
+              <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" onClick="{{ goAcq }}" hint-size="100%,200px">
+                <div style="display: flex; flex-direction: column; gap: 10px; cursor: pointer; min-width: 0;">
+                  <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Badge" variant="cadrage" hint-size="auto,24px">Origine de l'acquisition</x-import>
+                  <div style="font-size: 19px; font-weight: 700; line-height: 1.3; text-wrap: pretty;">Le contenu organique n'explique que 3,4 % des abonnés gagnés.</div>
+                  <div style="font-size: 13px; color: var(--text-muted);">18 400 abonnés sur 19 055 proviennent d'une source non attribuée par Instagram.</div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--bleu); margin-top: 2px;">Ouvrir Acquisition →</div>
+                </div>
+              </x-import>
+
+              <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" onClick="{{ goAudience }}" hint-size="100%,200px">
+                <div style="display: flex; flex-direction: column; gap: 10px; cursor: pointer; min-width: 0;">
+                  <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Badge" variant="cadrage" hint-size="auto,24px">Objectif géographique</x-import>
+                  <div style="font-size: 19px; font-weight: 700; line-height: 1.3; text-wrap: pretty;">La part France recule de 43 % à 41,1 %, l'objectif est 51 %.</div>
+                  <div style="font-size: 13px; color: var(--text-muted);">Algérie 13,9 %, Inde 7 %, Égypte 4,3 %, Royaume-Uni 2,2 %.</div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--bleu); margin-top: 2px;">Ouvrir Audience →</div>
+                </div>
+              </x-import>
+
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start;">
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,200px">
+              <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+                <div style="font-size: 15px; font-weight: 700;">Ce que nous mesurons, et sur quoi</div>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--text-muted); line-height: 1.55;">
+                  <div>Le taux de départ porte sur les 6 948 comptes présents dans deux imports consécutifs, pas sur les 102 497 abonnés. Les 9 260 pertes affichées par Instagram ne sont pas nominatives.</div>
+                  <div>Vos exports sont espacés de 5 semaines. Une date de désabonnement est donc connue à 5 semaines près, jamais au jour.</div>
+                </div>
+                <button onClick="{{ goImports }}" style="align-self: flex-start; cursor: pointer; background: none; border: 0; padding: 0; font-size: 14px; font-weight: 600; color: var(--bleu); text-decoration: underline;">Régler la cadence d'import</button>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="encre" interactive="{{ no }}" hint-size="100%,200px">
+              <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+                <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250,248,243,0.5);">Non calculable aujourd'hui</div>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.5;">
+                  <div>Date exacte de désabonnement — Meta n'expose aucun événement de désabonnement.</div>
+                  <div>Coût par abonné réel par campagne — nécessite l'accès au Gestionnaire de publicités.</div>
+                </div>
+                <button onClick="{{ goCatalogue }}" style="align-self: flex-start; cursor: pointer; background: none; border: 0; padding: 0; font-size: 14px; font-weight: 600; color: var(--vert-logo); text-decoration: underline;">Voir les 42 fonctionnalités et leur statut</button>
+              </div>
+            </x-import>
+          </div>
+
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isAcq }}">
+        <div style="display: flex; flex-direction: column; gap: 24px; max-width: 1280px; min-width: 0;">
+
+          <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Qualité d'acquisition</h1>
+            <span style="font-size: 13px; color: var(--text-muted);">Survie des abonnés par semaine d'arrivée · 6 948 comptes comparables · 27 mai → 27 août</span>
+          </div>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,320px">
+            <div style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Coût réel par pic d'acquisition</h2>
+                <span style="font-size: 12px; color: var(--text-muted);">Horizon retenu : {{ horizonLabel }}</span>
+              </div>
+              <div style="background: var(--panneau); border-radius: 12px; padding: 12px 16px; font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Les 19 055 abonnés gagnés annoncés par les Insights et les 6 948 comptes suivis par les cohortes ne décrivent pas la même population. Le budget se saisit donc pic par pic, et chaque pic porte son propre volume et sa propre rétention. Les périodes de campagne sont inférées des pics d'acquisition, non confirmées.</div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; align-items: stretch;">
+                <div style="border: 1px solid var(--bordure-carte); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 4px; justify-content: center;">
+                  <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Budget saisi</div>
+                  <div style="font-size: clamp(22px, 2.4vw, 30px); font-weight: 700; line-height: 1; white-space: nowrap;">{{ budTotLabel }}</div>
+                  <div style="font-size: 13px; color: var(--text-muted);">{{ volTotLabel }} abonnés recrutés sur les pics renseignés</div>
+                </div>
+                <div style="border: 1px solid var(--bordure-carte); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 4px; justify-content: center;">
+                  <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Coût par abonné brut</div>
+                  <div style="font-size: clamp(24px, 3vw, 38px); font-weight: 700; letter-spacing: -0.02em; color: var(--text-muted); line-height: 1; white-space: nowrap;">{{ coutBrutTot }}</div>
+                  <div style="font-size: 13px; color: var(--text-muted);">Le chiffre habituellement présenté.</div>
+                </div>
+                <div style="background: var(--encre); color: var(--surface-creme); border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 6px; justify-content: center; min-width: 0;">
+                  <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250,248,243,0.55);">Coût par abonné conservé à {{ horizonLabel }}</div>
+                  <div style="font-size: clamp(34px, 5.2vw, 64px); font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--vert-logo); white-space: nowrap;">{{ coutReelTot }}</div>
+                  <div style="font-size: 14px; color: rgba(250,248,243,0.8);">Soit {{ ecartTot }} le coût affiché. {{ consTotLabel }} abonnés encore présents.</div>
+                </div>
+              </div>
+              <div style="overflow-x: auto; min-width: 0;">
+                <table style="width: 100%; min-width: 900px; font-size: 14px;">
+                  <thead>
+                    <tr style="text-align: left; color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+                      <th style="padding: 0 8px 10px 0; font-weight: 600;">Pic</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Volume</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Multiple</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Part nocturne</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Rétention</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Conservés</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600;">Budget</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Coût brut</th>
+                      <th style="padding: 0 0 10px; font-weight: 600; text-align: right;">Coût conservé</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ peaks }}" as="p" hint-placeholder-count="5">
+                      <tr style="border-top: 1px solid var(--bordure-carte);">
+                        <td style="padding: 12px 8px 12px 0;">
+                          <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-weight: 600;">{{ p.k }}</span>
+                            <span style="align-self: flex-start; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 700; background: {{ p.natureBg }};">{{ p.nature }}</span>
+                            <span style="font-size: 12px; color: var(--text-muted);">{{ p.forme }}</span>
+                          </div>
+                        </td>
+                        <td style="padding: 12px 8px; text-align: right; font-variant-numeric: tabular-nums;">{{ p.vol }}</td>
+                        <td style="padding: 12px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ p.mult }}</td>
+                        <td style="padding: 12px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ p.nuit }}</td>
+                        <td style="padding: 12px 8px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600;">{{ p.ret }}</td>
+                        <td style="padding: 12px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ p.cons }}</td>
+                        <td style="padding: 12px 8px;">
+                          <sc-if value="{{ agence }}" hint-placeholder-val="{{ true }}">
+                            <div style="display: flex; align-items: center; gap: 6px; border: 1px solid var(--bordure); background: var(--surface-creme); border-radius: 10px; padding: 6px 10px; width: 116px;">
+                              <input value="{{ p.budget }}" onChange="{{ p.onBudget }}" placeholder="—" inputmode="numeric" style="border: 0; background: transparent; outline: none; width: 100%; min-width: 0; font-size: 14px; font-weight: 700; color: var(--encre);">
+                              <span style="font-size: 13px; font-weight: 700; color: var(--text-muted);">€</span>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{ lecture }}">
+                            <span style="font-size: 13px; color: var(--text-muted);">saisie réservée à l'agence</span>
+                          </sc-if>
+                        </td>
+                        <td style="padding: 12px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ p.brut }}</td>
+                        <td style="padding: 12px 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700;">{{ p.reel }}</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </x-import>
+
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start;">
+
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,520px">
+              <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Survie par cohorte d'arrivée</h2>
+                  <span style="font-size: 13px; color: var(--text-muted);">Taux brut observé, et taux ramené à un horizon commun pour que les cohortes soient comparables.</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--bordure); border-radius: 12px; padding: 12px 16px; background: var(--surface-creme);">
+                  <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 13px;">
+                    <span style="font-weight: 600;">Horizon commun</span>
+                    <span style="font-weight: 700; font-variant-numeric: tabular-nums;">{{ horizonLabel }}</span>
+                  </div>
+                  <input type="range" min="30" max="90" step="1" value="{{ horizon }}" onChange="{{ onHorizon }}" style="width: 100%; accent-color: #05339C;">
+                  <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Tous les taux sont ramenés à cette ancienneté. Les cohortes exposées moins longtemps passent en statut insuffisant, avec la raison, et restent affichées.</div>
+                </div>
+                <div style="overflow-x: auto; min-width: 0;">
+                <table style="width: 100%; min-width: 540px; font-size: 14px;">
+                  <thead>
+                    <tr style="text-align: left; color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+                      <th style="padding: 0 0 10px; font-weight: 600;">Semaine</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Effectif</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Partis</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Taux brut</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600;">Taux à l'horizon</th>
+                      <th style="padding: 0 0 10px; font-weight: 600; text-align: right;">Exposition</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+                      <tr style="border-top: 1px solid var(--bordure-carte); background: {{ r.rowBg }};">
+                        <td style="padding: 11px 0; font-weight: 600; color: {{ r.fg }};">
+                          {{ r.key }}
+                          <sc-if value="{{ r.insuff }}">
+                            <div style="font-size: 11px; font-weight: 500; color: var(--text-muted); line-height: 1.4;">Insuffisant — {{ r.raison }}</div>
+                          </sc-if>
+                        </td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums; color: {{ r.fg }};">{{ r.n }}</td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums; color: {{ r.fg }};">{{ r.lost }}</td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ r.brut }}</td>
+                        <td style="padding: 11px 8px;">
+                          <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="flex: 1; height: 6px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: {{ r.barW }}; height: 100%; background: {{ r.barBg }};"></div></div>
+                            <span style="width: 52px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: {{ r.fg }};">{{ r.tronque }}</span>
+                          </div>
+                        </td>
+                        <td style="padding: 11px 0; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ r.exp }}</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+                </div>
+                <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Le taux à l'horizon est le taux brut ramené à la part des départs déjà survenus à cette ancienneté, mesurée sur la distribution des 1 138 départs par âge d'abonnement. Aucune valeur n'est extrapolée au-delà de la dernière observation.</div>
+              </div>
+            </x-import>
+
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,520px">
+              <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Courbe de survie</h2>
+                  <span style="font-size: 13px; color: var(--text-muted);">En abscisse, les jours écoulés depuis l'arrivée — pas la date. Les courbes s'arrêtent là où l'observation s'arrête.</span>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                  <sc-for list="{{ chips }}" as="c" hint-placeholder-count="8">
+                    <button onClick="{{ c.toggle }}" style="cursor: pointer; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; border: 1px solid {{ c.border }}; background: {{ c.bg }}; color: {{ c.fg }};">{{ c.label }}</button>
+                  </sc-for>
+                </div>
+                <svg viewBox="0 0 640 330" style="width: 100%; height: auto;">
+                  <sc-for list="{{ grid }}" as="g" hint-placeholder-count="5">
+                    <g>
+                      <line x1="52" x2="628" y1="{{ g.y }}" y2="{{ g.y }}" stroke="#E7E3DB" stroke-width="1"></line>
+                      <text x="44" y="{{ g.ty }}" text-anchor="end" font-size="11" fill="#5B564C">{{ g.label }}</text>
+                    </g>
+                  </sc-for>
+                  <sc-for list="{{ xticks }}" as="t" hint-placeholder-count="7">
+                    <text x="{{ t.x }}" y="322" text-anchor="middle" font-size="11" fill="#5B564C">{{ t.label }}</text>
+                  </sc-for>
+                  <line x1="{{ hx }}" x2="{{ hx }}" y1="24" y2="300" stroke="#1C1A16" stroke-width="1" stroke-dasharray="4 4"></line>
+                  <sc-for list="{{ lines }}" as="l" hint-placeholder-count="8">
+                    <g>
+                      <polyline points="{{ l.solid }}" fill="none" stroke="{{ l.color }}" stroke-width="{{ l.w }}"></polyline>
+                      <circle cx="{{ l.cx }}" cy="{{ l.cy }}" r="3.5" fill="{{ l.color }}"></circle>
+                      <text x="{{ l.lx }}" y="{{ l.ly }}" font-size="11" font-weight="700" fill="{{ l.color }}">{{ l.label }}</text>
+                    </g>
+                  </sc-for>
+                </svg>
+                <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Chaque courbe s'arrête à sa dernière observation réelle : aucune projection au-delà. La forme entre l'arrivée et cette dernière observation suit la distribution des départs par âge mesurée sur les 1 138 départs. Le trait vertical marque l'horizon commun retenu.</div>
+              </div>
+            </x-import>
+
+          </div>
+          <div style="background: var(--encre); color: var(--surface-creme); border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 14px; line-height: 1.55; text-wrap: pretty;">Meta annonce 9 260 désabonnements. Nous en identifions 1 138 nommément, soit 12,3 %. L'écart tient à la fenêtre glissante de l'export : les abonnés arrivés avant le 27 mai n'y figurent pas.</div>
+            <div style="font-size: 14px; color: rgba(250,248,243,0.75); line-height: 1.55; text-wrap: pretty;">Un export sur toute la période porterait cette couverture à près de 100 %.</div>
+          </div>
+
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isBoot }}">
+        <div style="max-width: 760px; margin: 40px auto; display: flex; flex-direction: column; gap: 22px; min-width: 0;">
+          <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Eden Park · aucun import</div>
+          <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.01em; text-wrap: pretty;">Rien à analyser pour l'instant</h1>
+          <p style="margin: 0; font-size: 16px; color: var(--text-muted); line-height: 1.6; text-wrap: pretty;">L'application travaille exclusivement sur les exports officiels Instagram. Le premier export établit l'état de départ ; c'est la comparaison avec le deuxième qui produit la liste des désabonnés et les cohortes.</p>
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,260px">
+            <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+              <div style="font-size: 15px; font-weight: 700;">Générer un export Instagram</div>
+              <div style="display: flex; flex-direction: column; gap: 14px; font-size: 14px; line-height: 1.55;">
+                <div style="display: flex; gap: 12px;"><span style="flex: 0 0 22px; height: 22px; border-radius: 999px; background: var(--vert-pastel); display: grid; place-items: center; font-size: 12px; font-weight: 700;">1</span><span>Compte professionnel Instagram, menu Paramètres, puis Centre de comptes.</span></div>
+                <div style="display: flex; gap: 12px;"><span style="flex: 0 0 22px; height: 22px; border-radius: 999px; background: var(--vert-pastel); display: grid; place-items: center; font-size: 12px; font-weight: 700;">2</span><span>Vos informations et autorisations, puis Télécharger vos informations.</span></div>
+                <div style="display: flex; gap: 12px;"><span style="flex: 0 0 22px; height: 22px; border-radius: 999px; background: var(--vert-pastel); display: grid; place-items: center; font-size: 12px; font-weight: 700;">3</span><span>Format JSON, période « toutes les données », qualité maximale. Meta envoie l'archive par e-mail sous 24 à 48 heures.</span></div>
+                <div style="display: flex; gap: 12px;"><span style="flex: 0 0 22px; height: 22px; border-radius: 999px; background: var(--vert-pastel); display: grid; place-items: center; font-size: 12px; font-weight: 700;">4</span><span>Déposez l'archive telle quelle. Les fichiers hors périmètre — contenu des conversations privées, répertoire téléphonique, données de connexion — sont écartés avant traitement et jamais lus. Les JSON ingérés sont conservés 24 mois, pour pouvoir retraiter les anciens imports quand le parseur évolue.</span></div>
+              </div>
+            </div>
+          </x-import>
+          <div style="border: 1px dashed var(--bordure); border-radius: 18px; padding: 40px; text-align: center; background: var(--panneau); display: flex; flex-direction: column; gap: 10px; align-items: center;">
+            <div style="font-size: 16px; font-weight: 700;">Déposer l'archive .zip</div>
+            <div style="font-size: 13px; color: var(--text-muted);">Les JSON bruts sont conservés 24 mois.</div>
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="primaire" size="md" hint-size="auto,40px">Choisir un fichier</x-import>
+          </div>
+          <div style="font-size: 13px; color: var(--text-muted); line-height: 1.55; text-wrap: pretty;">Avec un seul import, les modules Croissance, Acquisition et Listes resteront inactifs : sans deuxième photographie de l'audience, aucun départ ne peut être établi.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCroissance }}">
+        <div style="display: flex; flex-direction: column; gap: 24px; max-width: 1280px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Croissance et départs</h1>
+            <span style="font-size: 13px; color: var(--text-muted);">Arrivées et départs des cohortes suivies · abonnés 27 mai → 27 août</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: start;">
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,320px">
+              <div style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Arrivées et départs par cohorte</h2>
+                  <span style="font-size: 13px; color: var(--text-muted);">Deux échelles distinctes : à l'échelle des arrivées, les départs seraient invisibles. Ces volumes sont ceux des 6 948 comptes comparables, pas ceux du compte entier.</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);"><span>Arrivées</span><span>max 1 779</span></div>
+                  <div style="display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; align-items: end; min-width: 0;">
+                    <sc-for list="{{ bars }}" as="b" hint-placeholder-count="8">
+                      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center; background: {{ b.peakBg }}; border-radius: 10px; padding: 6px 4px; min-width: 0;">
+                        <span style="font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums;">{{ b.n }}</span>
+                        <div style="width: 100%; max-width: 34px; border-radius: 5px 5px 0 0; background: var(--bleu); height: {{ b.hIn }};"></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);"><span>Départs constatés à ce jour</span><span>max 345</span></div>
+                  <div style="display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; align-items: end; min-width: 0;">
+                    <sc-for list="{{ bars }}" as="b" hint-placeholder-count="8">
+                      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center; background: {{ b.peakBg }}; border-radius: 10px; padding: 6px 4px; min-width: 0;">
+                        <span style="font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums;">{{ b.lost }}</span>
+                        <div style="width: 100%; max-width: 34px; border-radius: 5px 5px 0 0; background: #A8A196; height: {{ b.hOut2 }};"></div>
+                        <span style="font-size: 11px; color: var(--text-muted); text-align: center;">{{ b.label }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted);">Les semaines surlignées sont les pics d'acquisition, inférés du volume d'arrivées.</div>
+              </div>
+            </x-import>
+
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,320px">
+              <div style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Taux de départ mesuré</div>
+                  <div style="font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1;">16,4 %</div>
+                  <div style="font-size: 13px; color: var(--text-muted);">1 138 comptes sur 6 948 suivis</div>
+                </div>
+                <div style="border-top: 1px solid var(--bordure-carte); padding-top: 16px; display: flex; flex-direction: column; gap: 6px;">
+                  <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Renommages présumés</div>
+                  <div style="font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--text-muted);">non distingués</div>
+                  <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Un compte qui change de pseudonyme disparaît de l'export et ressemble à un départ. Tant qu'un troisième import ne confirme pas la persistance de l'identifiant interne, une part inconnue des 1 138 départs sont des renommages.</div>
+                </div>
+              </div>
+            </x-import>
+          </div>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,360px">
+            <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Derniers départs</h2>
+                  <span style="font-size: 13px; color: var(--text-muted);">8 lignes affichées sur 1 138. Aucune date exacte : l'écart entre deux imports est de 5 semaines.</span>
+                </div>
+                <sc-if value="{{ agence }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ toggleReveal }}" style="cursor: pointer; border: 1px solid var(--bordure); background: transparent; border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--encre);">{{ revealLabel }}</button>
+                </sc-if>
+                <sc-if value="{{ lecture }}">
+                  <span style="font-size: 13px; color: var(--text-muted);">Accès aux identités non autorisé pour ce rôle.</span>
+                </sc-if>
+              </div>
+              <sc-if value="{{ reveal }}">
+                <div style="background: var(--pastel-jaune); border-radius: 12px; padding: 12px 16px; font-size: 13px; line-height: 1.5; text-wrap: pretty;">Données personnelles affichées. L'usage se limite à l'analyse interne, la consultation est journalisée, et la republication de ces identifiants est interdite.</div>
+              </sc-if>
+              <div style="overflow-x: auto; min-width: 0;">
+                <table style="width: 100%; min-width: 620px; font-size: 14px;">
+                  <thead>
+                    <tr style="text-align: left; color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+                      <th style="padding: 0 0 10px; font-weight: 600;">Compte</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Abonné depuis</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Cohorte</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Parti</th>
+                      <th style="padding: 0 0 10px; font-weight: 600; text-align: right;">Ancienneté</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ departs }}" as="d" hint-placeholder-count="8">
+                      <tr style="border-top: 1px solid var(--bordure-carte);">
+                        <td style="padding: 11px 0; font-weight: 600;">{{ d.id }}</td>
+                        <td style="padding: 11px 0; color: var(--text-muted);">{{ d.sub }}</td>
+                        <td style="padding: 11px 0; color: var(--text-muted);">{{ d.coh }}</td>
+                        <td style="padding: 11px 0;">{{ d.inter }}</td>
+                        <td style="padding: 11px 0; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ d.anc }}</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </x-import>
+          <div style="background: var(--encre); color: var(--surface-creme); border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 14px; line-height: 1.55; text-wrap: pretty;">Meta annonce 9 260 désabonnements. Nous en identifions 1 138 nommément, soit 12,3 %. L'écart tient à la fenêtre glissante de l'export : les abonnés arrivés avant le 27 mai n'y figurent pas.</div>
+            <div style="font-size: 14px; color: rgba(250,248,243,0.75); line-height: 1.55; text-wrap: pretty;">Un export sur toute la période porterait cette couverture à près de 100 %.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isAudience }}">
+        <div style="display: flex; flex-direction: column; gap: 24px; max-width: 1280px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+              <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Audience</h1>
+              <span style="font-size: 13px; color: var(--text-muted);">102 497 abonnés · dernier import du 27 août</span>
+            </div>
+            <button onClick="{{ toggleOverlap }}" style="cursor: pointer; border: 1px solid var(--bordure); background: transparent; border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--encre);">{{ overlapLabel }}</button>
+          </div>
+
+          <sc-if value="{{ overlap }}">
+            <div style="background: var(--pastel-jaune); border-radius: 18px; padding: 16px 20px; font-size: 14px; line-height: 1.5; text-wrap: pretty;">Les deux périodes comparées se recouvrent à 62 %. Les évolutions ne sont pas interprétables : une même partie de l'audience est comptée dans les deux fenêtres. Les flèches d'évolution sont retirées jusqu'à ce que deux fenêtres disjointes soient disponibles.</div>
+          </sc-if>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,240px">
+            <div style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Part France face à l'objectif</h2>
+                <span style="font-size: 13px; color: var(--text-muted);">Objectif fixé à 51 %. La marque s'en éloigne.</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Import précédent</div>
+                  <div style="font-size: 30px; font-weight: 700;">43 %</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Aujourd'hui</div>
+                  <div style="font-size: 30px; font-weight: 800;">41,1 %</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Objectif</div>
+                  <div style="font-size: 30px; font-weight: 700; color: var(--bleu);">51 %</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Écart</div>
+                  <div style="font-size: 30px; font-weight: 700;">9,9 pts</div>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="font-weight: 600;">Part en stock, mesurée</span><span style="font-variant-numeric: tabular-nums;">41,1 %</span></div>
+                  <div style="position: relative; height: 12px; background: var(--creme-fonce); border-radius: 999px;">
+                    <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 41.1%; background: var(--bleu); border-radius: 999px;"></div>
+                    <div style="position: absolute; left: 51%; top: -6px; bottom: -6px; width: 2px; background: var(--encre);"></div>
+                  </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="font-weight: 600;">Part du flux entrant, estimée</span><span style="font-variant-numeric: tabular-nums;">31 % ± 7 pts</span></div>
+                  <div style="position: relative; height: 12px; background: var(--creme-fonce); border-radius: 999px;">
+                    <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 31%; border-radius: 999px; border: 1px dashed var(--bleu); background: repeating-linear-gradient(135deg, rgba(5,51,156,0.28) 0 5px, rgba(5,51,156,0.08) 5px 10px);"></div>
+                    <div style="position: absolute; left: 24%; width: 14%; top: -4px; bottom: -4px; border-left: 1px solid var(--bleu); border-right: 1px solid var(--bleu);"></div>
+                    <div style="position: absolute; left: 51%; top: -6px; bottom: -6px; width: 2px; background: var(--encre);"></div>
+                  </div>
+                </div>
+                <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">La seconde série est une inférence par différence de stocks entre les deux imports, hachurée pour cette raison, avec sa marge d'erreur. Elle dit ce que le stock ne dit pas : le flux entrant est très en dessous de la cible, c'est lui qu'il faut corriger.</div>
+              </div>
+            </div>
+          </x-import>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start;">
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,300px">
+              <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+                <h2 style="margin: 0; font-size: 17px; font-weight: 800;">Pays et villes</h2>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+                  <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 120px;">France</span><div style="flex: 1; height: 8px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 82%; height: 100%; background: var(--bleu);"></div></div><span style="width: 52px; text-align: right; font-variant-numeric: tabular-nums;">41,1 %</span></div>
+                  <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 120px;">Algérie</span><div style="flex: 1; height: 8px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 28%; height: 100%; background: #A8A196;"></div></div><span style="width: 52px; text-align: right; font-variant-numeric: tabular-nums;">13,9 %</span></div>
+                  <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 120px;">Inde</span><div style="flex: 1; height: 8px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 14%; height: 100%; background: #A8A196;"></div></div><span style="width: 52px; text-align: right; font-variant-numeric: tabular-nums;">7 %</span></div>
+                  <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 120px;">Égypte</span><div style="flex: 1; height: 8px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 9%; height: 100%; background: #A8A196;"></div></div><span style="width: 52px; text-align: right; font-variant-numeric: tabular-nums;">4,3 %</span></div>
+                  <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 120px;">Royaume-Uni</span><div style="flex: 1; height: 8px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 5%; height: 100%; background: #A8A196;"></div></div><span style="width: 52px; text-align: right; font-variant-numeric: tabular-nums;">2,2 %</span></div>
+                </div>
+                <div style="border-top: 1px solid var(--bordure-carte); padding-top: 12px; display: flex; gap: 20px; font-size: 13px; color: var(--text-muted); flex-wrap: wrap;">
+                  <span>Alger 2,8 %</span><span>Paris 1,8 %</span><span>Le Caire 1,2 %</span>
+                </div>
+              </div>
+            </x-import>
+
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,300px">
+              <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+                <h2 style="margin: 0; font-size: 17px; font-weight: 800;">Âge et genre</h2>
+                <div style="display: flex; gap: 24px; align-items: baseline;">
+                  <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 30px; font-weight: 800;">73,5 %</span><span style="font-size: 13px; color: var(--text-muted);">d'hommes</span></div>
+                  <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 30px; font-weight: 700; color: var(--text-muted);">26,4 %</span><span style="font-size: 13px; color: var(--text-muted);">de femmes</span></div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+                  <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 70px;">25 – 34</span><div style="flex: 1; height: 8px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 100%; height: 100%; background: var(--bleu);"></div></div><span style="width: 52px; text-align: right; font-variant-numeric: tabular-nums;">32,1 %</span></div>
+                  <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 70px;">35 – 44</span><div style="flex: 1; height: 8px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 79%; height: 100%; background: var(--bleu);"></div></div><span style="width: 52px; text-align: right; font-variant-numeric: tabular-nums;">25,3 %</span></div>
+                </div>
+                <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Cœur d'audience 25 – 44 ans. Les autres tranches ne sont pas détaillées par l'export.</div>
+              </div>
+            </x-import>
+          </div>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,140px">
+            <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h2 style="margin: 0; font-size: 17px; font-weight: 800;">Activité par jour de semaine</h2>
+                <span style="font-size: 13px; color: var(--text-muted);">Comptes actifs · Insights 29 mai → 26 août. L'écart entre le jour le plus faible et le plus fort est de 0,6 K, soit moins de 1 %.</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;"><span style="font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted);">63,3 K</span><div style="width: 100%; height: 88px; border-radius: 8px 8px 0 0; background: var(--bleu);"></div><span style="font-size: 12px; color: var(--text-muted);">lundi</span></div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;"><span style="font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted);">63,2 K</span><div style="width: 100%; height: 84px; border-radius: 8px 8px 0 0; background: var(--bleu);"></div><span style="font-size: 12px; color: var(--text-muted);">mardi</span></div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;"><span style="font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted);">63,2 K</span><div style="width: 100%; height: 84px; border-radius: 8px 8px 0 0; background: var(--bleu);"></div><span style="font-size: 12px; color: var(--text-muted);">mercredi</span></div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;"><span style="font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted);">62,9 K</span><div style="width: 100%; height: 76px; border-radius: 8px 8px 0 0; background: var(--bleu);"></div><span style="font-size: 12px; color: var(--text-muted);">jeudi</span></div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;"><span style="font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted);">63,2 K</span><div style="width: 100%; height: 84px; border-radius: 8px 8px 0 0; background: var(--bleu);"></div><span style="font-size: 12px; color: var(--text-muted);">vendredi</span></div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;"><span style="font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted);">63,5 K</span><div style="width: 100%; height: 96px; border-radius: 8px 8px 0 0; background: var(--bleu);"></div><span style="font-size: 12px; color: var(--text-muted);">samedi</span></div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;"><span style="font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted);">63,5 K</span><div style="width: 100%; height: 96px; border-radius: 8px 8px 0 0; background: var(--bleu);"></div><span style="font-size: 12px; color: var(--text-muted);">dimanche</span></div>
+              </div>
+            </div>
+          </x-import>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isContenu }}">
+        <div style="display: flex; flex-direction: column; gap: 24px; max-width: 1280px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Contenu</h1>
+            <span style="font-size: 13px; color: var(--text-muted);">Tri par taux de conversion en abonnés, décroissant · Insights 29 mai → 26 août</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            <sc-for list="{{ posts }}" as="p" hint-placeholder-count="3">
+              <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,340px">
+                <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+                  <div style="height: 150px; border-radius: 12px; background: var(--creme-fonce); display: grid; place-items: center; font-size: 12px; color: var(--text-muted);">Vignette de la publication</div>
+                  <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted);">
+                    <span style="font-weight: 600; color: var(--encre);">{{ p.d }}</span><span>·</span><span>{{ p.f }}</span>
+                  </div>
+                  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                      <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Conversion</span>
+                      <span style="font-size: clamp(24px, 2.6vw, 34px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; color: {{ p.tauxColor }};">{{ p.taux }}</span>
+                    </div>
+                    <div style="text-align: right; font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+                      <div>{{ p.porteeF }} de portée</div>
+                      <div>{{ p.gagnesF }} abonnés gagnés</div>
+                    </div>
+                  </div>
+                  <div style="border-top: 1px solid var(--bordure-carte); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                    <div style="display: flex; justify-content: space-between; gap: 10px;" title="Arrivées observées dans les 48 heures suivant la publication, au-delà de la ligne de base. Une corrélation temporelle n'est pas une attribution : rien dans l'export ne relie un abonné à une publication."><span style="color: var(--text-muted); text-decoration: underline dotted; text-underline-offset: 3px;">Arrivées dans les 48 h</span><span style="font-weight: 700;">{{ p.a48 }}</span></div>
+                    <div style="display: flex; justify-content: space-between; gap: 10px;"><span style="color: var(--text-muted);">Rétention de ces arrivées</span><span style="font-weight: 700;">{{ p.r48 }}</span></div>
+                    <div style="display: flex; justify-content: space-between; gap: 10px;"><span style="color: var(--text-muted);">Écart avec Meta</span><span>{{ p.ec }}</span></div>
+                  </div>
+                  <sc-if value="{{ p.alerte }}">
+                    <div style="background: var(--pastel-jaune); border-radius: 12px; padding: 10px 14px; font-size: 13px; line-height: 1.45; text-wrap: pretty;">Vue quinze fois plus que la publication du 15 juin, pour sept fois moins d'abonnés. Le taux de conversion est cent dix fois inférieur.</div>
+                  </sc-if>
+                </div>
+              </x-import>
+            </sc-for>
+          </div>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,380px">
+            <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Rétention par territoire éditorial</h2>
+                <span style="font-size: 13px; color: var(--text-muted);">Trié par rendement rétentif. Les arrivées sont attribuées par corrélation temporelle à 48 h, pas par attribution directe.</span>
+              </div>
+              <div style="overflow-x: auto; min-width: 0;">
+                <table style="width: 100%; min-width: 660px; font-size: 14px;">
+                  <thead>
+                    <tr style="text-align: left; color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+                      <th style="padding: 0 8px 10px 0; font-weight: 600;">Territoire</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Publications</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Portée cumulée</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Arrivées 48 h</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600;">Rétention</th>
+                      <th style="padding: 0 0 10px; font-weight: 600; text-align: right;">Confiance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ terr }}" as="t" hint-placeholder-count="6">
+                      <tr style="border-top: 1px solid var(--bordure-carte);">
+                        <td style="padding: 11px 8px 11px 0; font-weight: 600;">{{ t.t }}</td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ t.n }}</td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ t.portee }}</td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums;">{{ t.arr }}</td>
+                        <td style="padding: 11px 8px;"><div style="display: flex; align-items: center; gap: 10px;"><div style="flex: 1; height: 6px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: {{ t.barW }}; height: 100%; background: var(--bleu);"></div></div><span style="width: 42px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700;">{{ t.ret }}</span></div></td>
+                        <td style="padding: 11px 0; text-align: right;"><span style="border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 700; background: {{ t.cbg }}; color: {{ t.cfg }};">{{ t.cl }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+              <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Sur trois mois d'historique, la plupart des territoires restent en confiance indicatif : 16 publications ne suffisent pas à isoler l'effet d'un territoire. Un export sur toute la période ferait passer les trois premiers en robuste.</div>
+            </div>
+          </x-import>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="encre" interactive="{{ no }}" hint-size="100%,200px">
+            <div style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+              <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Reels contre posts</h2>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250,248,243,0.55);">Reels · interactions</span>
+                  <span style="font-size: 44px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--vert-logo);">81 079</span>
+                  <span style="font-size: 15px; color: rgba(250,248,243,0.8);">+160 % sur la période</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250,248,243,0.55);">Posts · interactions</span>
+                  <span style="font-size: 44px; font-weight: 800; letter-spacing: -0.02em; line-height: 1;">26 024</span>
+                  <span style="font-size: 15px; color: rgba(250,248,243,0.8);">−40,4 % sur la période</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250,248,243,0.55);">Portée totale</span>
+                  <span style="font-size: 44px; font-weight: 800; letter-spacing: -0.02em; line-height: 1;">+93,4 %</span>
+                  <span style="font-size: 15px; color: rgba(250,248,243,0.8);">visites de profil −6,3 %, clics externes −20,7 %</span>
+                </div>
+              </div>
+            </div>
+          </x-import>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isImports }}">
+        <div style="display: flex; flex-direction: column; gap: 24px; max-width: 1280px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Imports</h1>
+            <span style="font-size: 13px; color: var(--text-muted);">2 exports déposés · fenêtres glissantes de 3 mois</span>
+          </div>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="encre" interactive="{{ no }}" hint-size="100%,150px">
+            <div style="display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+              <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250,248,243,0.55);">Cadence</div>
+              <div style="font-size: 20px; font-weight: 700; line-height: 1.35; text-wrap: pretty;">Vos exports sont espacés de 5 semaines. La date de désabonnement est donc connue à 5 semaines près.</div>
+              <div style="font-size: 15px; color: rgba(250,248,243,0.8); text-wrap: pretty;">En passant à un export hebdomadaire, elle serait connue à la semaine.</div>
+            </div>
+          </x-import>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,280px">
+            <div style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Fenêtres couvertes</h2>
+                <span style="font-size: 13px; color: var(--text-muted);">Chaque export couvre les trois derniers mois. Deux exports consécutifs se recouvrent donc largement : c'est ce recouvrement qui permet de comparer les listes d'abonnés.</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+                <div style="position: relative; height: 40px;">
+                  <div style="position: absolute; left: 0%; width: 72%; top: 0; bottom: 0; background: var(--bleu-bg); border: 1px solid #C3D2EE; border-radius: 10px; display: flex; align-items: center; padding: 0 12px; font-size: 12px; font-weight: 600; color: var(--bleu);">Import 1 · déposé le 23 juillet · abonnés 24 avril → 23 juillet</div>
+                </div>
+                <div style="position: relative; height: 40px;">
+                  <div style="position: absolute; left: 26.4%; width: 72%; top: 0; bottom: 0; background: var(--bleu); border-radius: 10px; display: flex; align-items: center; padding: 0 12px; font-size: 12px; font-weight: 600; color: #FFFFFF;">Import 2 · déposé le 27 août · abonnés 27 mai → 27 août</div>
+                </div>
+                <div style="position: relative; height: 26px;">
+                  <div style="position: absolute; left: 28.8%; width: 69.6%; top: 0; bottom: 0; border: 1px dashed var(--bordure); border-radius: 8px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; color: var(--text-muted);">Insights de l'import 2 · 29 mai → 26 août</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); padding-top: 4px; border-top: 1px solid var(--bordure-carte);">
+                  <span>24 avril</span><span>juin</span><span>juillet</span><span>27 août</span>
+                </div>
+              </div>
+              <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Les deux imports se recouvrent sur 63 % de leur durée. Les comparaisons de période portent uniquement sur la partie disjointe, jamais sur la fenêtre entière. La fenêtre des Insights, plus courte de deux jours que celle des abonnés, est indiquée séparément : chaque chiffre porte la sienne.</div>
+            </div>
+          </x-import>
+
+          <sc-if value="{{ lecture }}">
+            <div style="background: var(--panneau); border: 1px solid var(--bordure); border-radius: 18px; padding: 16px 20px; font-size: 14px; color: var(--text-muted); line-height: 1.5;">Rôle lecture seule : le dépôt d'import est réservé à l'agence.</div>
+          </sc-if>
+          <sc-if value="{{ agence }}" hint-placeholder-val="{{ true }}">
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,420px">
+            <div style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Nouveau dépôt</h2>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                  <sc-for list="{{ etats }}" as="e" hint-placeholder-count="6">
+                    <button onClick="{{ e.on }}" style="cursor: pointer; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; border: 1px solid {{ e.bd }}; background: {{ e.bg }}; color: {{ e.fg }};">{{ e.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+
+              <sc-if value="{{ etatVide }}">
+                <div style="border: 1px dashed var(--bordure); border-radius: 18px; padding: 48px; text-align: center; background: var(--panneau); display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                  <div style="font-size: 16px; font-weight: 700;">Déposer l'archive .zip fournie par Meta</div>
+                  <div style="font-size: 13px; color: var(--text-muted);">Format JSON, période « toutes les données ».</div>
+                  <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="primaire" size="md" hint-size="auto,40px">Choisir un fichier</x-import>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ etatDecomp }}">
+                <div style="border: 1px solid var(--bordure); border-radius: 18px; padding: 32px; background: var(--panneau); display: flex; flex-direction: column; gap: 12px;">
+                  <div style="font-size: 15px; font-weight: 700;">Décompression de instagram-edenpark-2026-08-27.zip</div>
+                  <div style="height: 8px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 38%; height: 100%; background: var(--bleu);"></div></div>
+                  <div style="font-size: 13px; color: var(--text-muted);">1,4 Go · 38 % · aucune donnée n'est encore lue.</div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ etatInv }}">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                  <div style="border: 1px solid var(--bordure-carte); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="font-size: 15px; font-weight: 700;">Sera ingéré — 8 fichiers</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+                      <div style="display: flex; justify-content: space-between; gap: 10px;"><span>followers_1.json</span><span style="color: var(--text-muted);">10 000 lignes</span></div>
+                      <div style="display: flex; justify-content: space-between; gap: 10px;"><span>followers_2.json</span><span style="color: var(--text-muted);">2 431 lignes</span></div>
+                      <div style="display: flex; justify-content: space-between; gap: 10px;"><span>following.json</span><span style="color: var(--text-muted);">358 lignes</span></div>
+                      <div style="display: flex; justify-content: space-between; gap: 10px;"><span>audience_insights.json</span><span style="color: var(--text-muted);">1 bloc</span></div>
+                      <div style="display: flex; justify-content: space-between; gap: 10px;"><span>profiles_reached.json</span><span style="color: var(--text-muted);">1 bloc</span></div>
+                      <div style="display: flex; justify-content: space-between; gap: 10px;"><span>content_interactions.json</span><span style="color: var(--text-muted);">1 bloc</span></div>
+                      <div style="display: flex; justify-content: space-between; gap: 10px;"><span>posts.json</span><span style="color: var(--text-muted);">16 publications</span></div>
+                      <div style="display: flex; justify-content: space-between; gap: 10px;"><span>your_chat_information.json</span><span style="color: var(--text-muted);">1 132 conversations</span></div>
+                      <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">De your_chat_information.json, seules les métadonnées sont lues : interlocuteur, date, existence d'une réponse. Aucun contenu de message n'est ouvert. Instagram découpe la liste d'abonnés par tranches de 10 000 lignes et ne l'exporte que sur la fenêtre glissante, jamais sur l'audience entière.</div>
+                    </div>
+                  </div>
+                  <div style="border: 1px solid var(--bordure-carte); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="font-size: 15px; font-weight: 700;">Sera ignoré — 3 fichiers</div>
+                    <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+                      <div style="display: flex; flex-direction: column;"><span>messages/inbox/</span><span style="font-size: 13px; color: var(--text-muted);">Contenu des conversations privées. Seules les métadonnées, dans your_chat_information.json, sont lues.</span></div>
+                      <div style="display: flex; flex-direction: column;"><span>contacts/synced_contacts.json</span><span style="font-size: 13px; color: var(--text-muted);">Répertoire téléphonique.</span></div>
+                      <div style="display: flex; flex-direction: column;"><span>login_and_account_creation/</span><span style="font-size: 13px; color: var(--text-muted);">Données de connexion.</span></div>
+                    </div>
+                    <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Ces fichiers ne sont ni lus ni copiés. Ils sont écartés avant l'ouverture de l'archive.</div>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="primaire" size="md" hint-size="auto,40px">Lancer le traitement</x-import>
+                  <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="secondaire" size="md" hint-size="auto,40px">Annuler le dépôt</x-import>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ etatTrait }}">
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 14px;"><span style="font-weight: 600;">Lecture des abonnés</span><span style="color: var(--text-muted);">terminé · 102 497</span></div>
+                  <div style="display: flex; justify-content: space-between; font-size: 14px;"><span style="font-weight: 600;">Comparaison avec l'import du 23 juillet</span><span style="color: var(--text-muted);">en cours · 68 %</span></div>
+                  <div style="height: 8px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 68%; height: 100%; background: var(--bleu);"></div></div>
+                  <div style="display: flex; justify-content: space-between; font-size: 14px; color: var(--text-muted);"><span>Constitution des cohortes</span><span>en attente</span></div>
+                  <div style="display: flex; justify-content: space-between; font-size: 14px; color: var(--text-muted);"><span>Calcul des courbes de survie</span><span>en attente</span></div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ etatOk }}">
+                <div style="border: 1px solid #BFE7D6; background: var(--vert-pastel); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+                  <div style="font-size: 17px; font-weight: 700;">Import terminé</div>
+                  <div style="font-size: 14px; line-height: 1.55; text-wrap: pretty;">1 138 départs identifiés sur 6 948 comptes comparables, 8 cohortes hebdomadaires constituées. Fenêtre des abonnés : 27 mai → 27 août. Fenêtre des Insights : 29 mai → 26 août. Écart avec l'import précédent : 5 semaines.</div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ etatKo }}">
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                  <div style="background: var(--pastel-jaune); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="font-size: 17px; font-weight: 700;">Import partiel — 1 fichier en erreur</div>
+                    <div style="font-size: 14px; line-height: 1.55; text-wrap: pretty;">content_interactions.json est tronqué. Les abonnés et les cohortes ont été traités normalement ; les indicateurs d'interactions restent ceux de l'import du 23 juillet et sont signalés comme tels sur les écrans concernés.</div>
+                  </div>
+                  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="encre" size="md" hint-size="auto,40px">Redéposer ce fichier seul</x-import>
+                    <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="secondaire" size="md" hint-size="auto,40px">Conserver l'import partiel</x-import>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </x-import>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCatalogue }}">
+        <div style="display: flex; flex-direction: column; gap: 20px; max-width: 1280px; min-width: 0;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Catalogue et liste de courses</h1>
+              <span style="font-size: 13px; color: var(--text-muted);">42 fonctionnalités · {{ catRated }}</span>
+            </div>
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="encre" size="md" hint-size="auto,40px">Exporter le catalogue annoté</x-import>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+            <span style="border-radius: 999px; padding: 5px 12px; font-weight: 600; background: var(--vert-pastel); color: var(--bleu);">Disponible</span>
+            <span style="border-radius: 999px; padding: 5px 12px; font-weight: 600; background: var(--pastel-jaune); color: var(--encre);">Nécessite un import de plus</span>
+            <span style="border-radius: 999px; padding: 5px 12px; font-weight: 600; background: var(--bleu-bg); color: var(--bleu);">Nécessite un accès</span>
+            <span style="border-radius: 999px; padding: 5px 12px; font-weight: 600; background: var(--encre); color: #FAF8F3;">Impossible</span>
+          </div>
+
+          <sc-for list="{{ cat }}" as="g" hint-placeholder-count="9">
+            <div style="display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+              <h2 style="margin: 8px 0 0; font-size: 17px; font-weight: 800;">{{ g.m }}</h2>
+              <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                <div style="background: var(--carte-claire); border: 1px solid var(--bordure-carte); border-radius: 18px; padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: start; box-shadow: var(--ombre-carte);">
+                  <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                      <span style="font-size: 15px; font-weight: 600;">{{ it.t }}</span>
+                      <span style="border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; background: {{ it.sBg }}; color: {{ it.sFg }}; border: 1px solid {{ it.sBd }};">{{ it.sLabel }}</span>
+                    </div>
+                    <sc-if value="{{ it.hasW }}">
+                      <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">{{ it.w }}</div>
+                    </sc-if>
+                    <input value="{{ it.note }}" onChange="{{ it.onNote }}" placeholder="Commentaire du client" style="margin-top: 4px; width: 100%; max-width: 420px; border: 1px solid var(--bordure); background: var(--surface-creme); border-radius: 12px; padding: 8px 12px; font-size: 13px; color: var(--encre); outline: none;">
+                  </div>
+                  <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+                    <button onClick="{{ it.r1.on }}" style="cursor: pointer; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid {{ it.r1.bd }}; background: {{ it.r1.bg }}; color: {{ it.r1.fg }};">{{ it.r1.label }}</button>
+                    <button onClick="{{ it.r2.on }}" style="cursor: pointer; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid {{ it.r2.bd }}; background: {{ it.r2.bg }}; color: {{ it.r2.fg }};">{{ it.r2.label }}</button>
+                    <button onClick="{{ it.r3.on }}" style="cursor: pointer; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid {{ it.r3.bd }}; background: {{ it.r3.bg }}; color: {{ it.r3.fg }};">{{ it.r3.label }}</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isListes }}">
+        <div style="display: flex; flex-direction: column; gap: 20px; max-width: 1280px; min-width: 0;">
+          <div style="background: var(--encre); color: var(--surface-creme); border-radius: 18px; padding: 16px 20px; font-size: 14px; line-height: 1.5; text-wrap: pretty;">
+            Données personnelles. L'usage est limité à l'analyse interne de l'agence et de la marque. Chaque consultation et chaque export sont journalisés.
+          </div>
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Listes nominatives</h1>
+              <span style="font-size: 13px; color: var(--text-muted);">1 138 comptes partis sur la cohorte suivie de 6 948 comptes</span>
+            </div>
+            <sc-if value="{{ agence }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onClick="{{ toggleReveal }}" style="cursor: pointer; border: 1px solid var(--bordure); background: transparent; border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--encre);">{{ revealLabel }}</button>
+                <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="encre" size="md" hint-size="auto,40px">Exporter en CSV</x-import>
+              </div>
+            </sc-if>
+            <sc-if value="{{ lecture }}">
+              <span style="font-size: 13px; color: var(--text-muted); max-width: 320px; line-height: 1.5;">Rôle lecture seule : identités masquées et export désactivé tant que la marque n'y est pas autorisée dans les paramètres.</span>
+            </sc-if>
+          </div>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,420px">
+            <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+              <div style="overflow-x: auto; min-width: 0;">
+                <table style="width: 100%; min-width: 700px; font-size: 14px;">
+                  <thead>
+                    <tr style="text-align: left; color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+                      <th style="padding: 0 0 10px; font-weight: 600;">Identifiant</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Abonné depuis</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Cohorte</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Intervalle de départ</th>
+                      <th style="padding: 0 0 10px; font-weight: 600; text-align: right;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ departs }}" as="d" hint-placeholder-count="8">
+                      <tr style="border-top: 1px solid var(--bordure-carte);">
+                        <td style="padding: 11px 0; font-weight: 600;">{{ d.id }}</td>
+                        <td style="padding: 11px 0; color: var(--text-muted);">{{ d.sub }}</td>
+                        <td style="padding: 11px 0; color: var(--text-muted);">{{ d.coh }}</td>
+                        <td style="padding: 11px 0;">{{ d.inter }}</td>
+                        <td style="padding: 11px 0; text-align: right;"><button style="cursor: pointer; background: none; border: 0; padding: 0; font-size: 13px; font-weight: 600; color: var(--bleu); text-decoration: underline;">Demander l'effacement</button></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+              <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">8 lignes sur 1 138. L'intervalle de départ correspond à l'écart entre les deux imports qui encadrent la disparition du compte ; aucune date exacte n'existe.</div>
+            </div>
+          </x-import>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isEcosysteme }}">
+        <div style="display: flex; flex-direction: column; gap: 20px; max-width: 1280px; min-width: 0;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Écosystème</h1>
+              <span style="font-size: 13px; color: var(--text-muted);">Comptes professionnels suivis par Eden Park</span>
+            </div>
+            <button onClick="{{ toggleEco }}" style="cursor: pointer; border: 1px solid var(--bordure); border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600; background: {{ ecoFilterBg }}; color: {{ ecoFilterFg }};">{{ ecoFilterLabel }}</button>
+          </div>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,420px">
+            <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+              <div style="overflow-x: auto; min-width: 0;">
+                <table style="width: 100%; min-width: 640px; font-size: 14px;">
+                  <thead>
+                    <tr style="text-align: left; color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+                      <th style="padding: 0 0 10px; font-weight: 600;">Compte</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Type</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Palier d'audience</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Suit en retour</th>
+                      <th style="padding: 0 0 10px; font-weight: 600; text-align: right;">Réponse</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ eco }}" as="e" hint-placeholder-count="8">
+                      <tr style="border-top: 1px solid var(--bordure-carte);">
+                        <td style="padding: 11px 0; font-weight: 600;">{{ e.c }}</td>
+                        <td style="padding: 11px 0; color: var(--text-muted);">{{ e.t }}</td>
+                        <td style="padding: 11px 0; color: var(--text-muted);">{{ e.p }}</td>
+                        <td style="padding: 11px 0;">{{ e.r }}</td>
+                        <td style="padding: 11px 0; text-align: right; color: {{ e.repFg }};">{{ e.rep }}</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+              <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Le palier d'audience provient des métadonnées de conversation fournies par Meta. Le contenu des messages n'est jamais lu.</div>
+            </div>
+          </x-import>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isParametres }}">
+        <div style="display: flex; flex-direction: column; gap: 20px; max-width: 900px; min-width: 0;">
+          <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Paramètres</h1>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,200px">
+            <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h2 style="margin: 0; font-size: 17px; font-weight: 800;">Cadence d'import</h2>
+                <span style="font-size: 13px; color: var(--text-muted);">Détermine la précision des dates de départ.</span>
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <span style="border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600; background: var(--encre); color: #FAF8F3;">Toutes les 5 semaines</span>
+                <span style="border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600; border: 1px solid var(--bordure); color: var(--text-muted);">Toutes les 2 semaines</span>
+                <span style="border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600; border: 1px solid var(--bordure); color: var(--text-muted);">Hebdomadaire</span>
+              </div>
+              <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">Cadence actuelle : la date de désabonnement est connue à 5 semaines près. En hebdomadaire, elle serait connue à la semaine.</div>
+            </div>
+          </x-import>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,220px">
+            <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+              <h2 style="margin: 0; font-size: 17px; font-weight: 800;">Membres</h2>
+              <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+                <div style="display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--bordure-carte); padding-bottom: 10px;"><span>paul@eventeam.fr</span><span style="color: var(--text-muted);">Agence · accès complet</span></div>
+                <div style="display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--bordure-carte); padding-bottom: 10px;"><span>claire@eventeam.fr</span><span style="color: var(--text-muted);">Agence · accès complet</span></div>
+                <div style="display: flex; justify-content: space-between; gap: 12px;"><span>marketing@edenpark.com</span><span style="color: var(--text-muted);">Marque · lecture seule</span></div>
+              </div>
+            </div>
+          </x-import>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="encre" interactive="{{ no }}" hint-size="100%,180px">
+            <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+              <h2 style="margin: 0; font-size: 17px; font-weight: 800;">Accès aux identités pour le compte client</h2>
+              <div style="font-size: 14px; line-height: 1.55; color: rgba(250,248,243,0.85); text-wrap: pretty;">Désactivé. Le compte en lecture seule voit les volumes et les cohortes, jamais les identifiants des comptes partis, et ne peut pas déposer d'import.</div>
+              <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="primaire" size="sm" hint-size="auto,36px">Autoriser l'accès aux identités</x-import>
+            </div>
+          </x-import>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDiagnostic }}">
+        <div style="display: flex; flex-direction: column; gap: 24px; max-width: 1280px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Diagnostic</h1>
+            <span style="font-size: 13px; color: var(--text-muted);">Ce que la forme des départs et des pics permet d'inférer · 27 mai → 27 août</span>
+          </div>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,420px">
+            <div style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Risque par âge d'abonnement</h2>
+                <span style="font-size: 13px; color: var(--text-muted);">Répartition des 1 138 départs selon l'ancienneté au moment du départ.</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: end;">
+                <sc-for list="{{ risk }}" as="r" hint-placeholder-count="6">
+                  <div style="display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 0;">
+                    <span style="font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;">{{ r.part }}</span>
+                    <div style="width: 100%; border-radius: 8px 8px 0 0; background: {{ r.bg }}; height: {{ r.h }};"></div>
+                    <span style="font-size: 12px; color: var(--text-muted); text-align: center;">{{ r.l }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+                <div style="border: 1px solid var(--encre); background: var(--encre); color: var(--surface-creme); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+                  <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--vert-logo);">Cas correspondant aux données</span>
+                  <span style="font-size: 15px; font-weight: 700;">Risque concentré sur 0 – 14 jours</span>
+                  <span style="font-size: 14px; line-height: 1.5; color: rgba(250,248,243,0.82);">Lecture : mauvais ciblage à l'acquisition. Action : corriger le ciblage publicitaire.</span>
+                </div>
+                <div style="border: 1px solid var(--bordure-carte); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; color: var(--text-muted);">
+                  <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">Autre forme possible</span>
+                  <span style="font-size: 15px; font-weight: 700;">Risque plat</span>
+                  <span style="font-size: 14px; line-height: 1.5;">Lecture : lassitude éditoriale progressive. Action : corriger le contenu.</span>
+                </div>
+                <div style="border: 1px solid var(--bordure-carte); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; color: var(--text-muted);">
+                  <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">Autre forme possible</span>
+                  <span style="font-size: 15px; font-weight: 700;">Risque tardif, après 45 jours</span>
+                  <span style="font-size: 14px; line-height: 1.5;">Lecture : décrochage sur un événement. Action : chercher l'événement.</span>
+                </div>
+              </div>
+            </div>
+          </x-import>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,380px">
+            <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Pics d'acquisition</h2>
+                  <span style="font-size: 13px; color: var(--text-muted);">La nature de chaque pic est inférée de sa forme et de sa part nocturne. Aucune n'est confirmée tant que le compte publicitaire n'est pas connecté.</span>
+                </div>
+                <button onClick="{{ goAcq }}" style="cursor: pointer; background: none; border: 0; padding: 0; font-size: 14px; font-weight: 600; color: var(--bleu); text-decoration: underline;">Saisir les budgets dans Acquisition</button>
+              </div>
+              <div style="overflow-x: auto; min-width: 0;">
+                <table style="width: 100%; min-width: 760px; font-size: 14px;">
+                  <thead>
+                    <tr style="text-align: left; color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+                      <th style="padding: 0 8px 10px 0; font-weight: 600;">Période</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Volume</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Multiple</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600;">Forme</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Part nocturne</th>
+                      <th style="padding: 0 8px 10px; font-weight: 600; text-align: right;">Rétention</th>
+                      <th style="padding: 0 0 10px; font-weight: 600;">Nature inférée</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ peaks }}" as="p" hint-placeholder-count="5">
+                      <tr style="border-top: 1px solid var(--bordure-carte);">
+                        <td style="padding: 11px 8px 11px 0; font-weight: 600;">{{ p.k }}</td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums;">{{ p.vol }}</td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ p.mult }}</td>
+                        <td style="padding: 11px 8px; color: var(--text-muted);">{{ p.forme }}</td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums;">{{ p.nuit }}</td>
+                        <td style="padding: 11px 8px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600;">{{ p.ret }}</td>
+                        <td style="padding: 11px 0;"><span style="border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; background: {{ p.natureBg }};">{{ p.nature }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </x-import>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start;">
+            <sc-for list="{{ crois }}" as="x" hint-placeholder-count="3">
+              <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,260px">
+                <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+                  <div style="font-size: 15px; font-weight: 700;">{{ x.t }}</div>
+                  <div style="font-size: 19px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.25; text-wrap: pretty;">{{ x.r }}</div>
+                  <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5; text-wrap: pretty;">{{ x.d }}</div>
+                  <div style="border-top: 1px solid var(--bordure-carte); padding-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--text-muted);">
+                    <span>{{ x.n }}</span><span>·</span><span>{{ x.w }}</span>
+                    <span style="border-radius: 999px; padding: 3px 10px; font-weight: 700; background: {{ x.cbg }}; color: {{ x.cfg }};">confiance {{ x.cl }}</span>
+                  </div>
+                </div>
+              </x-import>
+            </sc-for>
+          </div>
+
+          <div style="background: var(--encre); color: var(--surface-creme); border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 14px; line-height: 1.55; text-wrap: pretty;">Meta annonce 9 260 désabonnements. Nous en identifions 1 138 nommément, soit 12,3 %. L'écart tient à la fenêtre glissante de l'export : les abonnés arrivés avant le 27 mai n'y figurent pas.</div>
+            <div style="font-size: 14px; color: rgba(250,248,243,0.75); line-height: 1.55; text-wrap: pretty;">Un export sur toute la période porterait cette couverture à près de 100 %.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isSegments }}">
+        <div style="display: flex; flex-direction: column; gap: 24px; max-width: 1280px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Segments</h1>
+            <span style="font-size: 13px; color: var(--text-muted);">Trois profils inférés du flux d'acquisition récent</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start;">
+            <sc-for list="{{ segments }}" as="g" hint-placeholder-count="3">
+              <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,320px">
+                <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+                  <div style="align-self: flex-start; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700; background: {{ g.accent }};">segment inféré</div>
+                  <h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.01em;">{{ g.t }}</h2>
+                  <div style="display: flex; gap: 20px;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 26px; font-weight: 800; line-height: 1;">{{ g.vol }}</span><span style="font-size: 12px; color: var(--text-muted);">nouveaux par mois</span></div>
+                    <div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 26px; font-weight: 800; line-height: 1;">{{ g.tx }}</span><span style="font-size: 12px; color: var(--text-muted);">de départs mesurés</span></div>
+                  </div>
+                  <div style="font-size: 14px; color: var(--text-muted); line-height: 1.55; text-wrap: pretty;">{{ g.p }}</div>
+                  <div style="border-top: 1px solid var(--bordure-carte); padding-top: 12px; font-size: 14px; font-weight: 600; line-height: 1.5; text-wrap: pretty;">{{ g.a }}</div>
+                </div>
+              </x-import>
+            </sc-for>
+          </div>
+
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,260px">
+            <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h2 style="margin: 0; font-size: 19px; font-weight: 800;">Score de risque des arrivées récentes</h2>
+                <span style="font-size: 13px; color: var(--text-muted);">Par tranche, jamais nominativement. 3 260 comptes arrivés sur les 30 derniers jours.</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+                <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 130px; font-weight: 600;">Risque élevé</span><div style="flex: 1; height: 10px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 38%; height: 100%; background: var(--bleu);"></div></div><span style="width: 130px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">1 240 comptes · 38 %</span></div>
+                <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 130px; font-weight: 600;">Risque moyen</span><div style="flex: 1; height: 10px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 27%; height: 100%; background: #A8A196;"></div></div><span style="width: 130px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">890 comptes · 27 %</span></div>
+                <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 130px; font-weight: 600;">Risque faible</span><div style="flex: 1; height: 10px; background: var(--creme-fonce); border-radius: 999px; overflow: hidden;"><div style="width: 35%; height: 100%; background: #A8A196;"></div></div><span style="width: 130px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted);">1 130 comptes · 35 %</span></div>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--bordure-carte); padding-top: 12px;">
+                <span>n = 3 260 comptes</span><span>·</span><span>29 juillet → 27 août</span>
+                <span style="border-radius: 999px; padding: 3px 10px; font-weight: 700; background: var(--bleu-bg); color: var(--bleu);">confiance indicatif</span>
+              </div>
+            </div>
+          </x-import>
+
+          <div style="background: var(--panneau); border: 1px solid var(--bordure); border-radius: 18px; padding: 16px 20px; font-size: 14px; color: var(--text-muted); line-height: 1.55; text-wrap: pretty;">Ces segments décrivent le flux d'acquisition récent, pas les 102 497 abonnés. L'export ne couvre que trois mois glissants.</div>
+
+          <div style="background: var(--encre); color: var(--surface-creme); border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 14px; line-height: 1.55; text-wrap: pretty;">Meta annonce 9 260 désabonnements. Nous en identifions 1 138 nommément, soit 12,3 %. L'écart tient à la fenêtre glissante de l'export : les abonnés arrivés avant le 27 mai n'y figurent pas.</div>
+            <div style="font-size: 14px; color: rgba(250,248,243,0.75); line-height: 1.55; text-wrap: pretty;">Un export sur toute la période porterait cette couverture à près de 100 %.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isJournal }}">
+        <div style="display: flex; flex-direction: column; gap: 20px; max-width: 1000px; min-width: 0;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Journal de consultation</h1>
+            <span style="font-size: 13px; color: var(--text-muted);">Chaque accès aux données personnelles est enregistré et conservé 24 mois.</span>
+          </div>
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,360px">
+            <div style="overflow-x: auto; min-width: 0;">
+              <table style="width: 100%; min-width: 620px; font-size: 14px;">
+                <thead>
+                  <tr style="text-align: left; color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+                    <th style="padding: 0 8px 10px 0; font-weight: 600;">Date</th>
+                    <th style="padding: 0 8px 10px; font-weight: 600;">Utilisateur</th>
+                    <th style="padding: 0 8px 10px; font-weight: 600;">Action</th>
+                    <th style="padding: 0 0 10px; font-weight: 600; text-align: right;">Volume</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ journal }}" as="j" hint-placeholder-count="6">
+                    <tr style="border-top: 1px solid var(--bordure-carte);">
+                      <td style="padding: 11px 8px 11px 0; font-variant-numeric: tabular-nums; color: var(--text-muted);">{{ j.d }}</td>
+                      <td style="padding: 11px 8px; font-weight: 600;">{{ j.u }}</td>
+                      <td style="padding: 11px 8px;">{{ j.a }}</td>
+                      <td style="padding: 11px 0; text-align: right; color: var(--text-muted);">{{ j.v }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </x-import>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isUnImport }}">
+        <div style="display: flex; flex-direction: column; gap: 22px; max-width: 900px; min-width: 0;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Eden Park · un seul import</span>
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em; text-wrap: pretty;">Un import déposé, le second reste nécessaire</h1>
+            <p style="margin: 0; font-size: 16px; color: var(--text-muted); line-height: 1.6; text-wrap: pretty;">Un export unique décrit l'audience à un instant donné. Aucun départ ne peut en être déduit : il faut deux photographies pour voir qui a disparu entre les deux. Le second export est donc ce qui débloque l'essentiel du produit.</p>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start;">
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" interactive="{{ no }}" hint-size="100%,220px">
+              <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+                <div style="font-size: 15px; font-weight: 700;">Actifs dès maintenant</div>
+                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: var(--text-muted);">
+                  <span>Audience — démographie, géographie, activité par jour</span>
+                  <span>Contenu — portée, interactions, conversion par publication</span>
+                  <span>Écosystème — comptes suivis et réponses obtenues</span>
+                  <span>Catalogue — arbitrage des 42 fonctionnalités</span>
+                </div>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="encre" interactive="{{ no }}" hint-size="100%,220px">
+              <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+                <div style="font-size: 15px; font-weight: 700;">Inactifs jusqu'au second import</div>
+                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: rgba(250,248,243,0.8);">
+                  <span>Croissance — aucun départ identifiable</span>
+                  <span>Acquisition — aucune cohorte comparable</span>
+                  <span>Diagnostic — aucune distribution de départs</span>
+                  <span>Segments — aucun taux de départ par profil</span>
+                  <span>Listes — aucune liste nominative de partants</span>
+                </div>
+              </div>
+            </x-import>
+          </div>
+          <div style="background: var(--panneau); border: 1px solid var(--bordure); border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 15px; font-weight: 700;">Prochain export conseillé : dans 7 jours</div>
+            <div style="font-size: 14px; color: var(--text-muted); line-height: 1.55; text-wrap: pretty;">Plus l'écart entre deux exports est court, plus la date de départ est précise. À une semaine d'écart, elle est connue à la semaine ; à cinq semaines, à cinq semaines près.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isMarques }}">
+        <div style="display: flex; flex-direction: column; gap: 20px; max-width: 1000px; min-width: 0;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em;">Marques suivies</h1>
+            <span style="font-size: 13px; color: var(--text-muted);">Eventeam · 3 marques</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" onClick="{{ goOverview }}" hint-size="100%,180px">
+              <div style="display: flex; flex-direction: column; gap: 8px; cursor: pointer; min-width: 0;">
+                <div style="font-size: 20px; font-weight: 800;">Eden Park</div>
+                <div style="font-size: 14px; color: var(--text-muted);">102 497 abonnés · 2 imports · dernier le 27 août</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--bleu);">Ouvrir →</div>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" onClick="{{ goUnImport }}" hint-size="100%,180px">
+              <div style="display: flex; flex-direction: column; gap: 8px; cursor: pointer; min-width: 0;">
+                <div style="font-size: 20px; font-weight: 800;">Bensimon</div>
+                <div style="font-size: 14px; color: var(--text-muted);">1 import · comparaisons inactives</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--bleu);">Ouvrir →</div>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Card" variant="claire" onClick="{{ goBoot }}" hint-size="100%,180px">
+              <div style="display: flex; flex-direction: column; gap: 8px; cursor: pointer; min-width: 0;">
+                <div style="font-size: 20px; font-weight: 800;">Aigle</div>
+                <div style="font-size: 14px; color: var(--text-muted);">Aucun import · amorçage à faire</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--bleu);">Ouvrir →</div>
+              </div>
+            </x-import>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLogin }}">
+        <div style="max-width: 420px; margin: 80px auto; display: flex; flex-direction: column; gap: 18px;">
+          <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Logo" color="encre" size="{{ logoSize }}" hint-size="auto,22px"></x-import>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.01em;">Community Intelligence</h1>
+            <p style="margin: 0; font-size: 15px; color: var(--text-muted); line-height: 1.6;">Saisissez votre adresse professionnelle. Vous recevrez un lien de connexion valable 15 minutes. Il n'y a pas de mot de passe.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <input placeholder="prenom@agence.fr" style="border: 1px solid var(--bordure); background: var(--carte-claire); border-radius: 12px; padding: 12px 14px; font-size: 15px; color: var(--encre); outline: none;">
+            <x-import component-from-global-scope="BienfaitDesignSystem_6e2c75.Button" variant="primaire" size="lg" hint-size="auto,48px">Recevoir le lien</x-import>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">Chaque connexion est journalisée, comme chaque consultation de données personnelles.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTodo }}">
+        <div style="max-width: 620px; margin: 60px auto; display: flex; flex-direction: column; gap: 12px; text-align: center;">
+          <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">Module</div>
+          <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.01em;">{{ todoLabel }}</h1>
+          <p style="margin: 0; font-size: 15px; color: var(--text-muted); line-height: 1.6;">Écran non encore maquetté. Vue d'ensemble et Qualité d'acquisition sont prêtes.</p>
+        </div>
+      </sc-if>
+
+    </main>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;ecranInitial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Vue d'ensemble&quot;,&quot;Qualité d'acquisition&quot;,&quot;Amorçage — aucun import&quot;],&quot;default&quot;:&quot;Vue d'ensemble&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Démo&quot;},&quot;defaultBudget&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:10000,&quot;min&quot;:0,&quot;max&quot;:200000,&quot;step&quot;:500,&quot;unit&quot;:&quot;€&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Simulateur&quot;},&quot;survie3m&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:72,&quot;min&quot;:60,&quot;max&quot;:85,&quot;step&quot;:1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Simulateur&quot;}}">
+const COHORTS = [
+  { key: "25 mai", n: 190, lost: 7, rate: 3.7, exp: 94, early: true },
+  { key: "1er juin", n: 246, lost: 10, rate: 4.1, exp: 87, early: true },
+  { key: "8 juin", n: 257, lost: 6, rate: 2.3, exp: 80, early: true },
+  { key: "15 juin", n: 1004, lost: 84, rate: 8.4, exp: 73 },
+  { key: "22 juin", n: 804, lost: 171, rate: 21.3, exp: 66 },
+  { key: "29 juin", n: 1274, lost: 217, rate: 17.0, exp: 59 },
+  { key: "6 juil.", n: 1779, lost: 345, rate: 19.4, exp: 52 },
+  { key: "13 juil.", n: 1275, lost: 284, rate: 22.3, exp: 45 }
+];
+const GAGNES = 19055;
+
+const CATALOGUE = [
+  { m: "Vue d'ensemble", items: [
+    { t: "Compteur d'abonnés et évolution sur la période", s: "dispo" },
+    { t: "Alertes automatiques sur divergence portée / conversion", s: "dispo" },
+    { t: "Objectif de part géographique et écart à la cible", s: "dispo" },
+    { t: "Rapport mensuel envoyé par e-mail", s: "import", w: "Nécessite deux imports consécutifs dans le mois." }
+  ]},
+  { m: "Audience", items: [
+    { t: "Répartition par pays et par ville", s: "dispo" },
+    { t: "Répartition par âge et par genre", s: "dispo" },
+    { t: "Trajectoire de la part France face à l'objectif", s: "dispo" },
+    { t: "Activité de l'audience par jour de semaine", s: "dispo" },
+    { t: "Activité par heure de la journée", s: "impossible", w: "L'export ne contient aucune granularité horaire." },
+    { t: "Centres d'intérêt déclarés des abonnés", s: "impossible", w: "Meta n'expose ces données sur aucun export." }
+  ]},
+  { m: "Croissance", items: [
+    { t: "Courbe des arrivées et des départs", s: "dispo" },
+    { t: "Détection des pics d'acquisition", s: "dispo" },
+    { t: "Comptes renommés distingués des départs", s: "import", w: "Nécessite un import de plus pour confirmer la persistance de l'identifiant." },
+    { t: "Date exacte de désabonnement", s: "impossible", w: "Meta n'expose aucun événement de désabonnement." },
+    { t: "Motif de désabonnement", s: "impossible", w: "Aucune donnée déclarative n'existe côté Instagram." }
+  ]},
+  { m: "Acquisition", items: [
+    { t: "Tableau de survie par cohorte hebdomadaire", s: "dispo" },
+    { t: "Courbe de survie en jours depuis l'arrivée", s: "dispo" },
+    { t: "Simulateur de coût par abonné encore présent", s: "dispo" },
+    { t: "Rattachement d'une cohorte à une campagne nommée", s: "acces", w: "Bloqueur : Gestionnaire de publicités." },
+    { t: "Coût réel par campagne et par création", s: "acces", w: "Bloqueur : Gestionnaire de publicités." },
+    { t: "Ciblage utilisé par chaque campagne", s: "acces", w: "Bloqueur : Gestionnaire de publicités." }
+  ]},
+  { m: "Contenu", items: [
+    { t: "Portée, impressions et interactions par publication", s: "dispo" },
+    { t: "Taux de conversion en abonnés par publication", s: "dispo" },
+    { t: "Comparatif Reels contre posts", s: "dispo" },
+    { t: "Détection portée forte / conversion faible", s: "dispo" },
+    { t: "Attribution d'un abonné à la publication qui l'a amené", s: "impossible", w: "L'export ne relie aucun abonné à une publication." },
+    { t: "Performance des stories au-delà de 24 heures", s: "impossible", w: "Meta ne conserve pas l'historique des stories dans l'export." }
+  ]},
+  { m: "Écosystème", items: [
+    { t: "Liste des comptes professionnels suivis", s: "dispo" },
+    { t: "Réciprocité du suivi", s: "dispo" },
+    { t: "Réponse obtenue ou non aux sollicitations", s: "dispo", w: "Lu dans les métadonnées de conversation, sans ouvrir le contenu des messages." },
+    { t: "Palier d'audience des comptes tiers", s: "dispo" },
+    { t: "Audience des comptes tiers", s: "dispo", w: "Fournie par Meta dans les métadonnées de conversation." }
+  ]},
+  { m: "Listes nominatives", items: [
+    { t: "Liste des comptes partis sur la cohorte suivie", s: "dispo" },
+    { t: "Ancienneté au moment du départ", s: "dispo" },
+    { t: "Export CSV journalisé", s: "dispo" },
+    { t: "Demande d'effacement d'un compte", s: "dispo" }
+  ]},
+  { m: "Imports", items: [
+    { t: "Frise des fenêtres d'import et de leurs recouvrements", s: "dispo" },
+    { t: "Inventaire des fichiers ignorés avec motif", s: "dispo" },
+    { t: "Alerte de cadence d'import", s: "dispo" },
+    { t: "Ingestion automatique sans dépôt manuel", s: "acces", w: "Bloqueur : accès API partenaire Meta." }
+  ]},
+  { m: "Paramètres", items: [
+    { t: "Autorisation d'accès aux identités pour le compte client", s: "dispo" },
+    { t: "Gestion des membres et des rôles", s: "dispo" }
+  ]}
+];
+
+const STATUTS = {
+  dispo: { label: "Disponible", bg: "var(--vert-pastel)", fg: "var(--bleu)", bd: "#BFE7D6" },
+  import: { label: "Nécessite un import de plus", bg: "var(--pastel-jaune)", fg: "var(--encre)", bd: "#E3C96F" },
+  acces: { label: "Nécessite un accès", bg: "var(--bleu-bg)", fg: "var(--bleu)", bd: "#C3D2EE" },
+  impossible: { label: "Impossible", bg: "var(--encre)", fg: "#FAF8F3", bd: "var(--encre)" }
+};
+
+const POSTS = [
+  { d: "15 juin", f: "Reel", portee: 14935, gagnes: 295, taux: "1,975 %", flag: false, a48: "331", r48: "78 %", ec: "+36 par rapport au chiffre Meta" },
+  { d: "20 juin", f: "Post", portee: 152644, gagnes: 31, taux: "0,020 %", flag: true, a48: "44", r48: "52 %", ec: "+13 par rapport au chiffre Meta" },
+  { d: "11 août", f: "Reel", portee: 225891, gagnes: 40, taux: "0,018 %", flag: true, a48: "58", r48: "39 %", ec: "+18 par rapport au chiffre Meta" }
+];
+
+const ECO = [
+  { c: "@atelier.nord", t: "Marque", p: "10 k – 50 k", r: true, rep: true },
+  { c: "@studio.matiere", t: "Marque", p: "50 k – 100 k", r: true, rep: false },
+  { c: "@camille.vsl", t: "Créateur", p: "100 k – 500 k", r: false, rep: false },
+  { c: "@le.vestiaire.fr", t: "Compte vérifié", p: "> 500 k", r: false, rep: false },
+  { c: "@maison.durel", t: "Marque", p: "10 k – 50 k", r: true, rep: true },
+  { c: "@thomas.rgb", t: "Créateur", p: "10 k – 50 k", r: true, rep: false },
+  { c: "@rugby.club.mag", t: "Compte vérifié", p: "100 k – 500 k", r: false, rep: false },
+  { c: "@sarah.knit", t: "Créateur", p: "< 10 k", r: true, rep: true }
+];
+
+const DEPARTS = [
+  { id: "8f21c4", h: "@lena.moreau", sub: "22 juin", coh: "22 juin", anc: "48 j" },
+  { id: "3b90ae", h: "@karim.dz.official", sub: "6 juillet", coh: "6 juillet", anc: "36 j" },
+  { id: "c7712f", h: "@studio.paulin", sub: "15 juin", coh: "15 juin", anc: "61 j" },
+  { id: "0a54d8", h: "@nadia.hb", sub: "13 juillet", coh: "13 juillet", anc: "29 j" },
+  { id: "5e3319", h: "@marc.ttl", sub: "29 juin", coh: "29 juin", anc: "44 j" },
+  { id: "9d0b62", h: "@yasmine.k", sub: "6 juillet", coh: "6 juillet", anc: "33 j" },
+  { id: "42fa7c", h: "@leo.sportwear", sub: "22 juin", coh: "22 juin", anc: "52 j" },
+  { id: "b1c806", h: "@amine.prod", sub: "13 juillet", coh: "13 juillet", anc: "26 j" }
+];
+
+const IMPORT_ETATS = ["Dépôt vide", "Décompression", "Inventaire", "Traitement", "Succès", "Échec partiel"];
+
+const RISK = [
+  { l: "0 – 14 j", d: 14, part: 41 },
+  { l: "14 – 21 j", d: 21, part: 18 },
+  { l: "21 – 30 j", d: 30, part: 15 },
+  { l: "30 – 45 j", d: 45, part: 12 },
+  { l: "45 – 60 j", d: 60, part: 8 },
+  { l: "60 – 90 j", d: 90, part: 6 }
+];
+const CUM = (() => { let a = 0; return RISK.map(r => { a += r.part; return { d: r.d, c: a / 100 }; }); })();
+const Fd = d => {
+  if (d <= 0) return 0;
+  let prev = { d: 0, c: 0 };
+  for (const p of CUM) {
+    if (d <= p.d) return prev.c + (p.c - prev.c) * (d - prev.d) / (p.d - prev.d);
+    prev = p;
+  }
+  return 1;
+};
+
+const PEAKS = [
+  { k: "15 – 21 juin", coh: "15 juin", vol: 1004, mult: "4,3×", forme: "montée en 2 j, retombée en 4 j", nuit: "22 %", nature: "probablement viral" },
+  { k: "22 – 28 juin", coh: "22 juin", vol: 804, mult: "3,5×", forme: "plateau de 5 j", nuit: "31 %", nature: "probablement payant" },
+  { k: "29 juin – 5 juil.", coh: "29 juin", vol: 1274, mult: "5,5×", forme: "plateau de 6 j", nuit: "44 %", nature: "probablement payant" },
+  { k: "6 – 12 juil.", coh: "6 juil.", vol: 1779, mult: "7,7×", forme: "plateau de 7 j", nuit: "58 %", nature: "probablement automatisé" },
+  { k: "13 – 19 juil.", coh: "13 juil.", vol: 1275, mult: "5,5×", forme: "pics nocturnes, jusqu'à 373 abonnements le 12 juillet", nuit: "61 %", nature: "probablement automatisé" }
+];
+
+const CROISEMENTS = [
+  { t: "Cadence de publication et départs", r: "Aucune corrélation détectée", d: "Les semaines à trois publications et celles à une publication présentent le même taux de départ, à 0,4 point près.", n: "n = 8 semaines", w: "27 mai → 27 août", c: "insuffisant" },
+  { t: "Portée non-abonnés et qualité entrante", r: "Corrélation négative, −0,71", d: "Les semaines où la part de non-abonnés touchés dépasse 99 % sont aussi celles dont les cohortes partent le plus.", n: "n = 8 semaines, 6 948 comptes", w: "27 mai → 27 août", c: "indicatif" },
+  { t: "Effet retour du nettoyage de following", r: "Non mesurable sur cette fenêtre", d: "358 comptes suivis dans l'export courant, aucun retrait observé entre les deux imports : il n'y a rien à corréler.", n: "n = 0 retrait", w: "24 avril → 27 août", c: "insuffisant" }
+];
+
+const SEGMENTS = [
+  { t: "Le fidèle de marque", vol: "≈ 1 100", tx: "3,3 %", p: "Arrive en journée sur fuseau européen, avant le 15 juin. Forte présence de marqueurs francophones.", a: "À fidéliser. Cible des scénarios de collection.", accent: "var(--vert-pastel)" },
+  { t: "L'abonné de campagne", vol: "≈ 4 700", tx: "17,1 %", p: "Arrive par rafales depuis mi-juin, jusqu'à 373 abonnements le 12 juillet. Aucune relation avec la marque.", a: "Le levier est en amont, dans le ciblage.", accent: "var(--bleu-bg)" },
+  { t: "Le compte lointain", vol: "≈ 1 500", tx: "20,0 %", p: "S'abonne entre 22 h et 6 h heure française.", a: "À exclure du ciblage, pas à fidéliser.", accent: "var(--pastel-jaune)" }
+];
+
+const TERRITOIRES = [
+  { t: "Rugby", n: 5, portee: "1 284 000", arr: 412, ret: "81 %", c: "indicatif" },
+  { t: "Ambassadeur", n: 3, portee: "486 000", arr: 168, ret: "76 %", c: "indicatif" },
+  { t: "Mode", n: 4, portee: "938 000", arr: 254, ret: "64 %", c: "indicatif" },
+  { t: "Produit", n: 2, portee: "212 000", arr: 61, ret: "58 %", c: "insuffisant" },
+  { t: "Événement", n: 1, portee: "148 000", arr: 34, ret: "52 %", c: "insuffisant" },
+  { t: "Promotion", n: 1, portee: "225 891", arr: 40, ret: "41 %", c: "insuffisant" }
+];
+
+const JOURNAL = [
+  { d: "27 août, 16:42", u: "paul@eventeam.fr", a: "Consultation des listes nominatives", v: "1 138 lignes affichées" },
+  { d: "27 août, 16:44", u: "paul@eventeam.fr", a: "Révélation des identifiants", v: "8 lignes" },
+  { d: "27 août, 17:02", u: "paul@eventeam.fr", a: "Export CSV", v: "1 138 lignes" },
+  { d: "27 août, 09:12", u: "claire@eventeam.fr", a: "Dépôt d'import", v: "archive 1,4 Go" },
+  { d: "26 août, 11:35", u: "marketing@edenpark.com", a: "Consultation du catalogue", v: "42 fonctionnalités" },
+  { d: "24 août, 14:20", u: "claire@eventeam.fr", a: "Demande d'effacement", v: "1 compte" }
+];
+
+const CONF = {
+  robuste: { l: "robuste", bg: "var(--vert-pastel)", fg: "var(--bleu)" },
+  indicatif: { l: "indicatif", bg: "var(--bleu-bg)", fg: "var(--bleu)" },
+  insuffisant: { l: "insuffisant", bg: "var(--pastel-jaune)", fg: "var(--encre)" }
+};
+const LABELS = {
+  overview: "Vue d'ensemble", audience: "Audience", croissance: "Croissance",
+  acq: "Acquisition", diagnostic: "Diagnostic", segments: "Segments",
+  contenu: "Contenu", ecosysteme: "Écosystème",
+  listes: "Listes", catalogue: "Catalogue", imports: "Imports",
+  journal: "Journal", parametres: "Paramètres"
+};
+const fr = n => n.toLocaleString("fr-FR");
+const eur = n => n.toFixed(2).replace(".", ",") + " €";
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      screen: props.ecranInitial === "Amorçage — aucun import" ? "boot"
+        : props.ecranInitial === "Qualité d'acquisition" ? "acq" : "overview",
+      budget: String(props.defaultBudget ?? 10000),
+      horizon: 45,
+      budgets: { "6 – 12 juil.": String(props.defaultBudget ?? 10000) },
+      role: "agence",
+      off: {},
+      reveal: false,
+      overlap: false,
+      etat: 0,
+      ecoFilter: false,
+      ratings: {},
+      openNote: null,
+      notes: {}
+    };
+  }
+  go(s) { return () => this.setState({ screen: s }); }
+  rate(k, v) { return () => this.setState(st => ({ ratings: { ...st.ratings, [k]: st.ratings[k] === v ? null : v } })); }
+  renderVals() {
+    const s = this.state.screen;
+    const H = this.state.horizon;
+    const lecture = this.state.role === "marque";
+    const pct = v => v.toFixed(1).replace(".", ",") + " %";
+    const trunc = c => c.rate * Fd(H) / Fd(c.exp);
+    const rows = COHORTS.map(c => {
+      const ok = c.exp >= H;
+      return {
+        key: c.key, n: fr(c.n), lost: fr(c.lost), exp: c.exp + " j",
+        brut: pct(c.rate),
+        tronque: ok ? pct(trunc(c)) : "—",
+        ok, insuff: !ok,
+        raison: "exposition " + c.exp + " j, inférieure à l'horizon de " + H + " j",
+        barW: ok ? Math.min(100, (trunc(c) / 25) * 100) + "%" : "0%",
+        barBg: c.early ? "#A8A196" : "var(--bleu)",
+        rowBg: ok ? "transparent" : "var(--panneau)",
+        fg: ok ? "var(--encre)" : "var(--text-muted)"
+      };
+    });
+
+    const navBg = {}, navFg = {}, navFw = {};
+    Object.keys(LABELS).forEach(k => {
+      const on = k === s;
+      navBg[k] = on ? "rgba(250,248,243,0.12)" : "transparent";
+      navFg[k] = on ? "#FAF8F3" : "rgba(250,248,243,0.62)";
+      navFw[k] = on ? "700" : "500";
+    });
+
+    const X0 = 52, X1 = 604, Y0 = 24, Y1 = 300, DMAX = 100, PMIN = 60;
+    const xOf = d => X0 + (d / DMAX) * (X1 - X0);
+    const yOf = p => Y0 + ((100 - p) / (100 - PMIN)) * (Y1 - Y0);
+    const grid = [100, 90, 80, 70, 60].map(p => ({ y: yOf(p), ty: yOf(p) + 4, label: p + " %" }));
+    const xticks = [0, 15, 30, 45, 60, 75, 90].map(d => ({ x: xOf(d), label: d === 0 ? "arrivée" : d + " j" }));
+
+    const chips = COHORTS.map(c => {
+      const on = !this.state.off[c.key];
+      return {
+        label: c.key, key: c.key,
+        bg: on ? (c.early ? "#EFEDE8" : "var(--bleu-bg)") : "transparent",
+        fg: on ? (c.early ? "#5B564C" : "var(--bleu)") : "#9A948A",
+        border: on ? (c.early ? "#D3CEC5" : "#C3D2EE") : "var(--bordure-carte)",
+        toggle: () => this.setState(st => ({ off: { ...st.off, [c.key]: !st.off[c.key] } }))
+      };
+    });
+
+    const shades = ["#0A44BE", "#05339C", "#123C8F", "#2C4F9E", "#4667B4"];
+    let si = -1;
+    const lines = COHORTS.filter(c => !this.state.off[c.key]).map(c => {
+      if (!c.early) si += 1;
+      const color = c.early ? "#A8A196" : shades[si % shades.length];
+      const stops = [0, 14, 21, 30, 45, 60, 90].filter(d => d < c.exp).concat([c.exp]);
+      const pts = stops.map(d => `${xOf(d)},${yOf(100 - c.rate * Fd(d) / Fd(c.exp))}`).join(" ");
+      const cx = xOf(c.exp), cy = yOf(100 - c.rate);
+      return {
+        label: c.key, color, w: c.early ? 1.5 : 2.4, solid: pts,
+        cx, cy, lx: Math.min(cx + 7, 596), ly: cy + (c.early ? -7 : 13)
+      };
+    });
+    const hx = xOf(H);
+
+    const peaks = PEAKS.map(p => {
+      const c = COHORTS.find(x => x.key === p.coh);
+      const ok = c.exp >= H;
+      const tx = ok ? trunc(c) : c.rate;
+      const survieP = 1 - tx / 100;
+      const raw = this.state.budgets[p.k] || "";
+      const B = parseFloat(String(raw).replace(/[^\d.]/g, "")) || 0;
+      const cons = Math.round(p.vol * survieP);
+      return {
+        k: p.k, vol: fr(p.vol), mult: p.mult, forme: p.forme, nuit: p.nuit, nature: p.nature,
+        natureBg: p.nature === "probablement payant" ? "var(--bleu-bg)" : p.nature === "probablement viral" ? "var(--vert-pastel)" : "var(--pastel-jaune)",
+        ret: pct(100 - tx) + (ok ? "" : " hors horizon"),
+        cons: fr(cons), budget: raw,
+        onBudget: e => { const v = e.target.value; this.setState(st => ({ budgets: { ...st.budgets, [p.k]: v } })); },
+        brut: B ? eur(B / p.vol) : "—",
+        reel: B ? eur(B / cons) : "—"
+      };
+    });
+    const budTot = PEAKS.reduce((a, p) => a + (parseFloat(String(this.state.budgets[p.k] || "").replace(/[^\d.]/g, "")) || 0), 0);
+    const consTot = PEAKS.reduce((a, p) => {
+      const B = parseFloat(String(this.state.budgets[p.k] || "").replace(/[^\d.]/g, "")) || 0;
+      if (!B) return a;
+      const c = COHORTS.find(x => x.key === p.coh);
+      const tx = c.exp >= H ? trunc(c) : c.rate;
+      return a + p.vol * (1 - tx / 100);
+    }, 0);
+    const volTot = PEAKS.reduce((a, p) => a + (parseFloat(String(this.state.budgets[p.k] || "").replace(/[^\d.]/g, "")) ? p.vol : 0), 0);
+
+    const risk = RISK.map(r => ({ l: r.l, part: r.part + " %", h: Math.round((r.part / 41) * 130) + "px",
+      bg: r.part >= 30 ? "var(--bleu)" : "#A8A196" }));
+    const crois = CROISEMENTS.map(x => ({ ...x, cl: CONF[x.c].l, cbg: CONF[x.c].bg, cfg: CONF[x.c].fg }));
+    const terr = TERRITOIRES.map(x => ({ ...x, cl: CONF[x.c].l, cbg: CONF[x.c].bg, cfg: CONF[x.c].fg, barW: parseInt(x.ret) + "%" }));
+
+    // Croissance — arrivées / départs par semaine de cohorte
+    const maxN = 1779;
+    const bars = COHORTS.map((c, i) => ({
+      label: c.key,
+      hIn: Math.round((c.n / maxN) * 120) + "px",
+      hOut: Math.round((c.lost / maxN) * 120) + "px",
+      n: fr(c.n), lost: fr(c.lost), hOut2: Math.round((c.lost / 345) * 110) + "px",
+      peak: c.n >= 1000,
+      peakBg: c.n >= 1000 ? "var(--bleu-bg)" : "transparent"
+    }));
+
+    // Catalogue
+    const cat = CATALOGUE.map(g => ({
+      m: g.m,
+      items: g.items.map(it => {
+        const k = it.t;
+        const st = STATUTS[it.s];
+        const r = this.state.ratings[k];
+        const mk = v => ({
+          label: v,
+          bg: r === v ? "var(--encre)" : "transparent",
+          fg: r === v ? "#FAF8F3" : "var(--text-muted)",
+          bd: r === v ? "var(--encre)" : "var(--bordure)",
+          on: this.rate(k, v)
+        });
+        return {
+          t: it.t, w: it.w || "", hasW: !!it.w,
+          sLabel: st.label, sBg: st.bg, sFg: st.fg, sBd: st.bd,
+          r1: mk("Indispensable"), r2: mk("Souhaitable"), r3: mk("Sans intérêt"),
+          note: this.state.notes[k] || "",
+          onNote: e => { const v = e.target.value; this.setState(x => ({ notes: { ...x.notes, [k]: v } })); }
+        };
+      })
+    }));
+    const rated = Object.values(this.state.ratings).filter(Boolean).length;
+
+    const eco = ECO.filter(e => !this.state.ecoFilter || !e.rep).map(e => ({
+      c: e.c, t: e.t, p: e.p,
+      r: e.r ? "Oui" : "Non",
+      rep: e.rep ? "Répondu" : "Jamais",
+      repFg: e.rep ? "var(--encre)" : "var(--text-muted)"
+    }));
+
+    const departs = DEPARTS.map(d => ({
+      id: this.state.reveal ? d.h : "compte " + d.id,
+      sub: d.sub, coh: d.coh, anc: d.anc,
+      inter: "entre le 22/07 et le 27/08"
+    }));
+
+    const etatIdx = this.state.etat;
+    const etats = IMPORT_ETATS.map((label, i) => ({
+      label,
+      bg: i === etatIdx ? "var(--encre)" : "transparent",
+      fg: i === etatIdx ? "#FAF8F3" : "var(--text-muted)",
+      bd: i === etatIdx ? "var(--encre)" : "var(--bordure)",
+      on: () => this.setState({ etat: i })
+    }));
+
+    return {
+      no: false, logoSize: 30,
+      isOverview: s === "overview", isAcq: s === "acq", isBoot: s === "boot",
+      isAudience: s === "audience", isCroissance: s === "croissance",
+      isContenu: s === "contenu", isEcosysteme: s === "ecosysteme",
+      isListes: s === "listes", isCatalogue: s === "catalogue",
+      isImports: s === "imports", isParametres: s === "parametres",
+      isTodo: !["overview", "acq", "boot", "audience", "croissance", "contenu", "ecosysteme", "listes", "catalogue", "imports", "parametres", "diagnostic", "segments", "journal", "login", "marques", "unimport"].includes(s),
+      todoLabel: LABELS[s] || "",
+      bars, cat, catRated: rated + " / 42 arbitrées", eco, departs, etats,
+      posts: POSTS.map(p => ({ ...p, porteeF: fr(p.portee), gagnesF: fr(p.gagnes),
+        alerte: p.flag, alerteBg: p.flag ? "var(--pastel-jaune)" : "transparent",
+        tauxColor: p.flag ? "var(--text-muted)" : "var(--encre)" })),
+      reveal: this.state.reveal,
+      revealLabel: this.state.reveal ? "Masquer les identifiants" : "Révéler les identifiants",
+      toggleReveal: () => this.setState(st => ({ reveal: !st.reveal })),
+      overlap: this.state.overlap,
+      overlapLabel: this.state.overlap ? "Revenir à des fenêtres comparables" : "Simuler des fenêtres recouvrantes",
+      toggleOverlap: () => this.setState(st => ({ overlap: !st.overlap })),
+      ecoFilter: this.state.ecoFilter,
+      ecoFilterLabel: this.state.ecoFilter ? "Voir tous les comptes" : "Jamais eu de réponse",
+      ecoFilterBg: this.state.ecoFilter ? "var(--encre)" : "transparent",
+      ecoFilterFg: this.state.ecoFilter ? "#FAF8F3" : "var(--text-muted)",
+      toggleEco: () => this.setState(st => ({ ecoFilter: !st.ecoFilter })),
+      etatVide: etatIdx === 0, etatDecomp: etatIdx === 1, etatInv: etatIdx === 2,
+      etatTrait: etatIdx === 3, etatOk: etatIdx === 4, etatKo: etatIdx === 5,
+      navBg, navFg, navFw,
+      goOverview: this.go("overview"), goAudience: this.go("audience"),
+      goCroissance: this.go("croissance"), goAcq: this.go("acq"),
+      goContenu: this.go("contenu"), goEcosysteme: this.go("ecosysteme"),
+      goListes: this.go("listes"), goCatalogue: this.go("catalogue"),
+      goImports: this.go("imports"), goParametres: this.go("parametres"),
+      goBoot: this.go("boot"),
+      rows, peaks, risk, crois, terr, hx,
+      horizon: H, horizonLabel: H + " jours",
+      onHorizon: e => this.setState({ horizon: parseInt(e.target.value, 10) }),
+      budTotLabel: budTot ? fr(budTot) + " €" : "aucun budget saisi",
+      volTotLabel: fr(volTot), consTotLabel: fr(Math.round(consTot)),
+      coutBrutTot: budTot && volTot ? eur(budTot / volTot) : "—",
+      coutReelTot: budTot && consTot ? eur(budTot / consTot) : "—",
+      ecartTot: budTot && consTot ? "×" + (volTot / consTot).toFixed(2).replace(".", ",") : "—",
+      lecture, agence: !lecture,
+      roleLabel: lecture ? "Marque · lecture seule" : "Agence · accès complet",
+      toggleRole: () => this.setState(st => ({ role: st.role === "agence" ? "marque" : "agence", reveal: false })),
+      journal: JOURNAL, segments: SEGMENTS,
+      isDiagnostic: s === "diagnostic", isSegments: s === "segments",
+      isJournal: s === "journal", isLogin: s === "login", isMarques: s === "marques",
+      isUnImport: s === "unimport",
+      goDiagnostic: this.go("diagnostic"), goSegments: this.go("segments"),
+      goJournal: this.go("journal"), goLogin: this.go("login"),
+      goMarques: this.go("marques"), goUnImport: this.go("unimport"),
+      grid, xticks, chips, lines
+    };
+  }
+}
+
+</script>
+</body>
+</html>

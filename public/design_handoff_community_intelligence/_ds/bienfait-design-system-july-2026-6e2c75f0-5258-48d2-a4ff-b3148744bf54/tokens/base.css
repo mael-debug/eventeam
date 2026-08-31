@@ -1,0 +1,40 @@
+/* ==========================================================================
+   Bienfait — Base / éléments globaux
+   ========================================================================== */
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--font-corps);
+  font-size: var(--fs-body);
+  line-height: var(--lh-corps);
+  text-wrap: pretty;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-corps);
+  font-weight: var(--fw-extrabold);
+  line-height: var(--lh-titres);
+  letter-spacing: var(--ls-titres);
+}
+/* Emphase — Jakarta (plus de Playfair) */
+.accent {
+  font-family: var(--font-corps);
+  font-weight: var(--fw-extrabold);
+}
+.accent-italic {
+  font-family: var(--font-corps);
+  font-weight: var(--fw-extrabold);
+}
+.eyebrow {
+  font-family: var(--font-corps);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--accent-fort);
+}
+
+a { color: var(--accent-fort); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { color: var(--bleu-clair); }

@@ -1,0 +1,52 @@
+/* ==========================================================================
+   Bienfait — Couleurs
+   Aligné sur le site de référence (« Deep Dive ») :
+   crème chaleureux · vert Bienfait · bleu profond · tuiles inclinées
+   ========================================================================== */
+:root {
+  /* --- Verts / Marque ----------------------------------------------------
+     SEULS VERTS AUTORISÉS. Aucun autre vert, jamais.                       */
+  --vert-logo:      #23CD8E;   /* vert Bienfait */
+  --vert-pastel:    #E6F7EF;   /* vert pastel — tuile / surface teintée */
+
+  /* --- Bleu profond (accent de marque du site) -------------------------- */
+  --bleu:           #05339C;
+  --bleu-clair:     #0A44BE;
+  --bleu-bg:        #EAF0FB;   /* tuile / surface teintée bleue */
+
+  /* --- Fondations & encre ----------------------------------------------- */
+  --fond:           #E9E6DF;   /* fond de page */
+  --surface-creme:  #FAF8F3;   /* section douce */
+  --panneau:        #F4F1EC;   /* panneau */
+  --carte-claire:   #FFFFFF;   /* carte */
+  --creme-fonce:    #ECEBE8;
+  --encre:          #1C1A16;   /* encre chaude — texte */
+  --encre-froide:   #1E2A3A;   /* encre bleutée — ombres / sur bleu */
+
+  /* --- Accents pastel (secondaires, atténués) --------------------------- */
+  --pastel-jaune:   #F4DC94;
+  --pastel-violet:  #D9CCF2;
+
+  /* --- Lignes ----------------------------------------------------------- */
+  --bordure:        #D3CEC5;   /* ligne franche */
+  --bordure-carte:  #E7E3DB;   /* contour de carte */
+  --bordure-douce:  #E4E0D8;
+
+  /* --- Alias sémantiques ------------------------------------------------ */
+  --surface-page:      var(--fond);
+  --surface-section:   var(--surface-creme);
+  --surface-panneau:   var(--panneau);
+  --surface-card:      var(--carte-claire);
+  --surface-inverse:   var(--encre);
+
+  --text-body:         var(--encre);
+  --text-muted:        #5B564C;
+  --text-on-inverse:   var(--surface-creme);
+  --text-on-primaire:  var(--encre);
+  --text-on-bleu:      #FFFFFF;
+
+  --accent-primaire:   var(--vert-logo);
+  --accent-fort:       var(--bleu);
+  --accent-bleu:       var(--bleu);
+  --focus-ring:        var(--bleu);
+}

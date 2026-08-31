@@ -1,0 +1,34 @@
+/* ==========================================================================
+   Bienfait — Espacement, rayons & élévation
+   ========================================================================== */
+:root {
+  /* Échelle d'espacement (base 4px) */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  24px;
+  --space-6:  32px;
+  --space-7:  48px;
+  --space-8:  64px;
+  --space-9:  96px;
+
+  /* Rayons */
+  --rayon-carte:  18px;
+  --rayon-champ:  12px;
+  --rayon-bouton: 999px; /* pilule */
+  --rayon-chip:   999px;
+
+  /* Élévation (encre bleutée, douce) */
+  --ombre-carte:       0 1px 2px rgba(30, 42, 58, 0.05);
+  --ombre-carte-hover: 0 10px 28px rgba(30, 42, 58, 0.12);
+  --ombre-flottante:   0 18px 44px rgba(30, 42, 58, 0.16);
+
+  /* Inclinaison — motif signature (tuiles/vignettes légèrement pivotées) */
+  --tilt-sm:  -3deg;  /* @kind other */
+  --tilt-md:   7deg;  /* @kind other */
+  --tilt-lg:  -12deg; /* @kind other */
+
+  /* Largeur de contenu */
+  --max-contenu: 1160px;
+}

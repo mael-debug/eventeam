@@ -1,0 +1,9 @@
+/* ==========================================================================
+   Bienfait — Design System · point d'entrée global
+   Consumers link this single file.
+   ========================================================================== */
+@import "./tokens/fonts.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+@import "./tokens/base.css";
