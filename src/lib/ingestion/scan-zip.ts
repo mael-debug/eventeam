@@ -104,12 +104,27 @@ export async function scanExportZip(
     entry.start();
   };
 
-  const reader = file.stream().getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    unzipper.push(value ?? new Uint8Array(0), done);
-    if (done) break;
+  // Lecture en petits paquets fixes (pas file.stream().getReader(), dont la
+  // taille de chunk échappe à notre contrôle) avec une pause explicite après
+  // chaque unzipper.push() : sur une archive de plusieurs milliers d'entrées
+  // (ex. 4936 ici), fflate peut décompresser et émettre onfile/ondata pour
+  // des centaines de fichiers en une seule fois si beaucoup tiennent dans un
+  // même paquet — un bloc JS synchrone assez long pour déclencher « Page ne
+  // répondant pas » côté navigateur, et empêcher scanProgress de jamais se
+  // repeindre à l'écran (aucun rendu React ne passe sans rendre la main).
+  const CHUNK_SIZE = 512 * 1024;
+  function yieldToBrowser(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 0));
   }
+
+  let offset = 0;
+  do {
+    const slice = file.slice(offset, offset + CHUNK_SIZE);
+    const chunk = new Uint8Array(await slice.arrayBuffer());
+    offset += chunk.length;
+    unzipper.push(chunk, offset >= file.size);
+    await yieldToBrowser();
+  } while (offset < file.size);
 
   return { inventory, jsonFiles, mediaFiles };
 }
