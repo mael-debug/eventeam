@@ -1,0 +1,117 @@
+// PRD v1.0 §6.8, §7.4 — posts.json : objet racine `organic_insights_posts`
+// (tableau), un élément par publication, avec `media_map_data` (une seule
+// clé, mojibake « Miniature du média ») et `string_map_data`.
+//
+// Clés exactes confirmées contre un export réel (Eden Park) :
+//   media_map_data['Miniature du média'].uri               -> "media/posts/18117474704481294.jpg"
+//   media_map_data['Miniature du média'].creation_timestamp -> unix seconds
+//   media_map_data['Miniature du média'].title              -> légende (mojibake, emoji inclus)
+//   string_map_data['Timestamp de la création'].timestamp   -> unix seconds (la clé `value` est vide,
+//                                                              c'est bien le champ `timestamp` de l'entrée qui porte la donnée)
+//   string_map_data['Visites du profil']                    -> profile_visits
+//   string_map_data['Impressions']                          -> impressions
+//   string_map_data['Followers en plus']                    -> follows_gained
+//   string_map_data['Comptes touchés']                      -> reach
+//   string_map_data['Enregistrements']                      -> saves
+//   string_map_data["J'aime"]                                -> likes
+//   string_map_data['Commentaires']                         -> comments
+//   string_map_data['Partages']                             -> shares
+//   string_map_data['External link taps']                   -> external_taps
+// media_key = l'identifiant numérique Instagram embarqué dans `uri`
+// (stable, unique par publication) — pas le nom de fichier local, qui
+// pourrait varier d'un export à l'autre.
+//
+// Piège observé sur l'export réel : au moins une publication (celle du 15
+// juin dans l'exemple du PRD §4.8, « portée élevée, conversion forte ») a
+// `media_map_data` entièrement vide — pas de uri, pas de vignette — alors
+// que ses métriques dans `string_map_data` sont complètes et réelles. La
+// perdre silencieusement biaiserait follow_conversion_rate (déjà utilisé
+// comme exemple canonique dans le PRD). Repli sur le timestamp de création
+// (présent dans les deux cas) comme media_key synthétique.
+//
+// Aucune indication de format (post/reel/story) n'est présente dans ce
+// fichier : `organic_insights_posts` ne couvre, par son propre nom, que les
+// publications statiques. media_type est donc fixé à 'post' pour tout ce
+// fichier — à corriger si un fichier séparé pour les reels est fourni un
+// jour (le PRD v1.0 §6.8 prévoit 'reel'/'story'/'live'/'carousel' aussi).
+
+import { fixMojibake } from "./mojibake.ts";
+import { findExact, parseFormattedInt, type StringMap } from "./parsing.ts";
+
+interface RawMediaEntry {
+  uri?: string;
+  creation_timestamp?: number;
+  title?: string;
+}
+interface RawPost {
+  media_map_data?: Record<string, RawMediaEntry>;
+  string_map_data?: StringMap;
+}
+
+export interface ParsedPost {
+  mediaKey: string;
+  permalink: string | null;
+  publishedAt: Date;
+  caption: string | null;
+  thumbPath: string | null;
+  reach: number | null;
+  impressions: number | null;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
+  saves: number | null;
+  profileVisits: number | null;
+  followsGained: number | null;
+  externalTaps: number | null;
+}
+
+function extractMediaKey(uri: string | undefined): string | null {
+  if (!uri) return null;
+  const match = uri.match(/(\d{6,})/);
+  return match ? match[1] : null;
+}
+
+function cleanStringMap(raw: StringMap | undefined): StringMap {
+  const cleaned: StringMap = {};
+  for (const [k, v] of Object.entries(raw ?? {})) {
+    cleaned[fixMojibake(k)] = { ...v, value: v.value ? fixMojibake(v.value) : v.value };
+  }
+  return cleaned;
+}
+
+export function parsePostsFile(json: unknown): ParsedPost[] {
+  if (!json || typeof json !== "object") return [];
+  const posts = (json as Record<string, unknown>)["organic_insights_posts"];
+  if (!Array.isArray(posts)) return [];
+
+  const out: ParsedPost[] = [];
+  for (const raw of posts as RawPost[]) {
+    const mediaEntries = Object.values(raw.media_map_data ?? {});
+    const media = mediaEntries[0];
+    const map = cleanStringMap(raw.string_map_data);
+
+    const timestampSeconds =
+      Object.entries(map).find(([k]) => k.toLowerCase().startsWith("timestamp de la cr"))?.[1]?.timestamp
+      ?? media?.creation_timestamp;
+    if (!timestampSeconds) continue;
+    const mediaKey = extractMediaKey(media?.uri) ?? `ts-${timestampSeconds}`;
+
+    out.push({
+      mediaKey,
+      permalink: media?.uri ?? null,
+      publishedAt: new Date(timestampSeconds * 1000),
+      caption: media?.title ? fixMojibake(media.title) : null,
+      thumbPath: media?.uri ?? null,
+      reach: parseFormattedInt(findExact(map, ["comptes touches"])),
+      impressions: parseFormattedInt(findExact(map, ["impressions"])),
+      likes: parseFormattedInt(findExact(map, ["j'aime", "jaime"])),
+      comments: parseFormattedInt(findExact(map, ["commentaires"])),
+      shares: parseFormattedInt(findExact(map, ["partages"])),
+      saves: parseFormattedInt(findExact(map, ["enregistrements"])),
+      profileVisits: parseFormattedInt(findExact(map, ["visites du profil"])),
+      followsGained: parseFormattedInt(findExact(map, ["followers en plus"])),
+      externalTaps: parseFormattedInt(findExact(map, ["external link taps"])),
+    });
+  }
+  return out;
+}

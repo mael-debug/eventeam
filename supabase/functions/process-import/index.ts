@@ -10,6 +10,7 @@ import {
   parseReachInsights,
   parseInteractionInsights,
 } from "../_shared/parse-insights.ts";
+import { parsePostsFile } from "../_shared/parse-posts.ts";
 
 const PARSER_VERSION = "2026-lot3.1";
 
@@ -287,6 +288,85 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       );
       if (error) throw new Error(error.message);
       return 1;
+    });
+    filesParsed++;
+  }
+
+  const postsFile = insightFile("posts.json");
+  if (postsFile) {
+    await withFileTracking(admin, postsFile, async () => {
+      const parsed = parsePostsFile(await downloadJson(admin, postsFile.storage_path));
+      let inserted = 0;
+      for (const p of parsed) {
+        // Un post réapparaît dans chaque export ultérieur (posts.json liste
+        // l'historique, pas seulement les nouveautés) : first_import_id ne
+        // doit être posé qu'à la toute première apparition, jamais réécrit
+        // par un import plus récent — d'où la lecture préalable plutôt
+        // qu'un upsert qui écraserait la colonne à chaque passage.
+        const { data: existing, error: lookupError } = await admin
+          .from("content")
+          .select("id")
+          .eq("account_id", accountId)
+          .eq("media_key", p.mediaKey)
+          .maybeSingle();
+        if (lookupError) throw new Error(`content (lecture) : ${lookupError.message}`);
+
+        let contentId: string;
+        if (existing) {
+          contentId = existing.id;
+          const { error: updateError } = await admin
+            .from("content")
+            .update({ permalink: p.permalink, caption: p.caption, thumb_path: p.thumbPath })
+            .eq("id", contentId);
+          if (updateError) throw new Error(`content (mise à jour) : ${updateError.message}`);
+        } else {
+          const { data: created, error: insertError } = await admin
+            .from("content")
+            .insert({
+              account_id: accountId,
+              media_key: p.mediaKey,
+              permalink: p.permalink,
+              media_type: "post",
+              published_at: p.publishedAt.toISOString(),
+              caption: p.caption,
+              thumb_path: p.thumbPath,
+              first_import_id: importId,
+            })
+            .select("id")
+            .single();
+          if (insertError) throw new Error(`content (création) : ${insertError.message}`);
+          contentId = created.id;
+        }
+
+        const followConversionRate = p.followsGained !== null && p.reach ? p.followsGained / p.reach : null;
+        const engagementRate =
+          p.reach && (p.likes !== null || p.comments !== null || p.shares !== null || p.saves !== null)
+            ? ((p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saves ?? 0)) / p.reach
+            : null;
+
+        const { error: metricsError } = await admin.from("content_metrics").upsert(
+          {
+            content_id: contentId,
+            import_id: importId,
+            account_id: accountId,
+            reach: p.reach,
+            impressions: p.impressions,
+            likes: p.likes,
+            comments: p.comments,
+            shares: p.shares,
+            saves: p.saves,
+            profile_visits: p.profileVisits,
+            follows_gained: p.followsGained,
+            external_taps: p.externalTaps,
+            follow_conversion_rate: followConversionRate,
+            engagement_rate: engagementRate,
+          },
+          { onConflict: "content_id,import_id" },
+        );
+        if (metricsError) throw new Error(`content_metrics : ${metricsError.message}`);
+        inserted++;
+      }
+      return inserted;
     });
     filesParsed++;
   }

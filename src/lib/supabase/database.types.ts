@@ -492,26 +492,40 @@ export type Database = {
           volume: number; baseline_daily: number; multiple: number; shape: string
           night_share: number | null; signal_share: number | null; retention_rate: number | null
           inferred_type: string; inference_confidence: string; linked_content_id: string | null
-          budget_eur: number | null; cout_brut_eur: number | null; cout_retenu_eur: number | null
         }
         Insert: {
           id?: string; account_id: string; import_id: string; spike_start: string; spike_end: string
           volume: number; baseline_daily: number; multiple: number; shape: string
           night_share?: number | null; signal_share?: number | null; retention_rate?: number | null
           inferred_type: string; inference_confidence: string; linked_content_id?: string | null
-          budget_eur?: number | null
         }
         Update: {
           id?: string; account_id?: string; import_id?: string; spike_start?: string; spike_end?: string
           volume?: number; baseline_daily?: number; multiple?: number; shape?: string
           night_share?: number | null; signal_share?: number | null; retention_rate?: number | null
           inferred_type?: string; inference_confidence?: string; linked_content_id?: string | null
-          budget_eur?: number | null
         }
         Relationships: [
           { foreignKeyName: "acquisition_spikes_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
           { foreignKeyName: "acquisition_spikes_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
           { foreignKeyName: "acquisition_spikes_linked_content_id_fkey"; columns: ["linked_content_id"]; isOneToOne: false; referencedRelation: "content"; referencedColumns: ["id"] },
+        ]
+      }
+      manual_entries: {
+        Row: {
+          id: string; account_id: string; entity_type: string; entity_key: string; field: string
+          value_numeric: number | null; value_text: string | null; updated_by: string | null; updated_at: string
+        }
+        Insert: {
+          id?: string; account_id: string; entity_type: string; entity_key: string; field: string
+          value_numeric?: number | null; value_text?: string | null; updated_by?: string | null; updated_at?: string
+        }
+        Update: {
+          id?: string; account_id?: string; entity_type?: string; entity_key?: string; field?: string
+          value_numeric?: number | null; value_text?: string | null; updated_by?: string | null; updated_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "manual_entries_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
         ]
       }
       inflow_geo_estimate: {
@@ -554,7 +568,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      acquisition_spikes_with_budget: {
+        Row: {
+          id: string; account_id: string; import_id: string; spike_start: string; spike_end: string
+          volume: number; baseline_daily: number; multiple: number; shape: string
+          night_share: number | null; signal_share: number | null; retention_rate: number | null
+          inferred_type: string; inference_confidence: string; linked_content_id: string | null
+          budget_eur: number | null; cout_brut_eur: number | null; cout_retenu_eur: number | null
+        }
+        Relationships: [
+          { foreignKeyName: "acquisition_spikes_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "acquisition_spikes_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
     }
     Functions: {
       can_manage_org: { Args: { p_org: string }; Returns: boolean }
