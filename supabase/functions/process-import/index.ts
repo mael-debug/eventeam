@@ -15,7 +15,7 @@ import { parsePostsFile, collectPostKeys } from "../_shared/parse-posts.ts";
 import { parseChatFile } from "../_shared/parse-chat.ts";
 import { normalizedKeysOf } from "../_shared/parsing.ts";
 
-const PARSER_VERSION = "2026-lot3.1";
+const PARSER_VERSION = "2026-lot5.2";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -39,6 +39,25 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+// Un .select() sans .range() s'arrête silencieusement à la limite par
+// défaut de PostgREST (souvent 1000 lignes) — un import réel dépasse
+// largement ce seuil rien qu'avec ses vignettes média (plusieurs milliers
+// de fichiers). Toute lecture de import_files pour un import entier doit
+// donc paginer explicitement plutôt que supposer qu'un seul select suffit.
+async function selectAllPages<T>(
+  run: (rangeStart: number, rangeEnd: number) => Promise<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const PAGE_SIZE = 1000;
+  const out: T[] = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await run(offset, offset + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    out.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
 function toDateOnly(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -56,6 +75,7 @@ interface ImportFileRow {
   id: string;
   source_path: string;
   category: string;
+  status: string;
   storage_path: string | null;
 }
 
@@ -98,12 +118,13 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
     .update({ status: "parsing", started_at: new Date().toISOString() })
     .eq("id", importId);
 
-  const { data: files, error: filesError } = await admin
-    .from("import_files")
-    .select("id, source_path, category, storage_path")
-    .eq("import_id", importId);
-  if (filesError) throw new Error(`Lecture import_files : ${filesError.message}`);
-  const fileRows = (files ?? []) as ImportFileRow[];
+  const fileRows = await selectAllPages<ImportFileRow>((start, end) =>
+    admin
+      .from("import_files")
+      .select("id, source_path, category, status, storage_path")
+      .eq("import_id", importId)
+      .range(start, end),
+  );
 
   let filesParsed = 0;
 
@@ -347,15 +368,15 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       // identifiant fiable partagé, le media_key numérique Instagram
       // (présent dans les deux chemins), en le recherchant dans
       // import_files où la vignette a déjà été enregistrée à l'upload.
-      const { data: mediaFiles } = await admin
-        .from("import_files")
-        .select("source_path, storage_path")
-        .eq("import_id", importId)
-        .eq("category", "media")
-        .eq("status", "uploaded");
+      //
+      // fileRows vient de selectAllPages : couvre bien les milliers de
+      // fichiers médias d'un import réel (un .select() non paginé s'arrête
+      // silencieusement à la limite par défaut de PostgREST, 1000 lignes —
+      // bug confirmé, la plupart des vignettes manquaient en pratique
+      // malgré un fichier bien présent dans le bucket).
       const thumbByMediaKey = new Map<string, string>();
-      for (const f of mediaFiles ?? []) {
-        if (!f.storage_path) continue;
+      for (const f of fileRows) {
+        if (f.category !== "media" || f.status !== "uploaded" || !f.storage_path) continue;
         const match = f.source_path.match(/(\d{6,})/);
         if (match) thumbByMediaKey.set(match[1], f.storage_path);
       }
