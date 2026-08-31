@@ -55,6 +55,23 @@ export default async function ContenuPage({
     .sort((a, b) => (b.metrics?.follow_conversion_rate ?? 0) - (a.metrics?.follow_conversion_rate ?? 0))
     .slice(0, 6);
 
+  // thumb_path est stocké préfixé du bucket ("media-thumbs/...", même
+  // convention que storage_path ailleurs) — media-thumbs est un bucket
+  // privé, l'URL signée est donc générée côté serveur, jamais une URL
+  // publique directe.
+  const thumbUrls = new Map<string, string>();
+  await Promise.all(
+    posts.map(async ({ content: c }) => {
+      if (!c.thumb_path) return;
+      const slash = c.thumb_path.indexOf("/");
+      if (slash < 0) return;
+      const bucket = c.thumb_path.slice(0, slash);
+      const objectPath = c.thumb_path.slice(slash + 1);
+      const { data } = await supabase.storage.from(bucket).createSignedUrl(objectPath, 3600);
+      if (data?.signedUrl) thumbUrls.set(c.id, data.signedUrl);
+    }),
+  );
+
   const reels = (interactions ?? []).find((i) => i.format === "reels");
   const postsAgg = (interactions ?? []).find((i) => i.format === "posts");
 
@@ -75,9 +92,18 @@ export default async function ContenuPage({
           {posts.map(({ content: c, metrics: m, attribution: a }) => (
             <Card key={c.id} variant="claire" interactive={false}>
               <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-                <div style={{ height: 150, borderRadius: 12, background: "var(--creme-fonce)", display: "grid", placeItems: "center", fontSize: 12, color: "var(--text-muted)" }}>
-                  Vignette de la publication
-                </div>
+                {thumbUrls.has(c.id) ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- URL signée temporaire (1 h), un <Image> next/image la mettrait en cache au-delà de sa validité.
+                  <img
+                    src={thumbUrls.get(c.id)}
+                    alt=""
+                    style={{ height: 150, width: "100%", borderRadius: 12, objectFit: "cover", background: "var(--creme-fonce)" }}
+                  />
+                ) : (
+                  <div style={{ height: 150, borderRadius: 12, background: "var(--creme-fonce)", display: "grid", placeItems: "center", fontSize: 12, color: "var(--text-muted)" }}>
+                    Vignette indisponible
+                  </div>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--text-muted)" }}>
                   <span style={{ fontWeight: 600, color: "var(--encre)" }}>{shortDate(c.published_at)}</span>
                   <span>·</span>

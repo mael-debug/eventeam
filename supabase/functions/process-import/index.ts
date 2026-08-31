@@ -336,8 +336,32 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
         p_file_kind: "posts",
         p_observed_keys: collectPostKeys(postsJson),
       });
+
+      // p.thumbPath (parsePostsFile) est le chemin brut tel qu'écrit dans
+      // posts.json ("media/posts/18117474704481294.jpg"), relatif à la
+      // racine de l'export — jamais le chemin réel dans le bucket
+      // media-thumbs (accountId/<chemin complet dans le zip>.jpg, cf.
+      // uploadOneMediaFile dans upload-import.ts). Les deux ne coïncident
+      // jamais littéralement : on retrouve la vraie vignette par le seul
+      // identifiant fiable partagé, le media_key numérique Instagram
+      // (présent dans les deux chemins), en le recherchant dans
+      // import_files où la vignette a déjà été enregistrée à l'upload.
+      const { data: mediaFiles } = await admin
+        .from("import_files")
+        .select("source_path, storage_path")
+        .eq("import_id", importId)
+        .eq("category", "media")
+        .eq("status", "uploaded");
+      const thumbByMediaKey = new Map<string, string>();
+      for (const f of mediaFiles ?? []) {
+        if (!f.storage_path) continue;
+        const match = f.source_path.match(/(\d{6,})/);
+        if (match) thumbByMediaKey.set(match[1], f.storage_path);
+      }
+
       let inserted = 0;
       for (const p of parsed) {
+        const realThumbPath = thumbByMediaKey.get(p.mediaKey) ?? null;
         // Un post réapparaît dans chaque export ultérieur (posts.json liste
         // l'historique, pas seulement les nouveautés) : first_import_id ne
         // doit être posé qu'à la toute première apparition, jamais réécrit
@@ -356,7 +380,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
           contentId = existing.id;
           const { error: updateError } = await admin
             .from("content")
-            .update({ permalink: p.permalink, caption: p.caption, thumb_path: p.thumbPath })
+            .update({ permalink: p.permalink, caption: p.caption, thumb_path: realThumbPath })
             .eq("id", contentId);
           if (updateError) throw new Error(`content (mise à jour) : ${updateError.message}`);
         } else {
@@ -369,7 +393,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
               media_type: "post",
               published_at: p.publishedAt.toISOString(),
               caption: p.caption,
-              thumb_path: p.thumbPath,
+              thumb_path: realThumbPath,
               first_import_id: importId,
             })
             .select("id")

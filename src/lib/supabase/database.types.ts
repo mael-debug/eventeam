@@ -3452,6 +3452,16 @@ export type Database = {
           user_email: string
         }[]
       }
+      brand_members_for_settings: {
+        Args: { p_brand_id: string }
+        Returns: {
+          can_view_identities: boolean
+          email: string
+          role: Database["public"]["Enums"]["member_role"]
+          scope: string
+          user_id: string
+        }[]
+      }
       can_manage_org: { Args: { p_org: string }; Returns: boolean }
       can_view_identities: { Args: { p_account: string }; Returns: boolean }
       can_write: { Args: { p_brand: string }; Returns: boolean }
@@ -3509,6 +3519,10 @@ export type Database = {
           profile_id: number
           username: string
         }[]
+      }
+      set_brand_identity_access: {
+        Args: { p_brand_id: string; p_enabled: boolean; p_user_id: string }
+        Returns: undefined
       }
       user_account_ids: { Args: never; Returns: string[] }
       user_brand_ids: { Args: never; Returns: string[] }

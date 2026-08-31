@@ -20,6 +20,27 @@ export async function createInstagramAccountAction(
   revalidatePath(`/${orgSlug}/${brandSlug}`);
 }
 
+export async function updateImportCadenceAction(orgSlug: string, brandSlug: string, accountId: string, formData: FormData) {
+  const cadence = String(formData.get("cadence") ?? "");
+  if (!["weekly", "monthly", "quarterly"].includes(cadence)) return;
+  const supabase = await createClient();
+  await supabase.from("instagram_accounts").update({ import_cadence: cadence }).eq("id", accountId);
+  revalidatePath(`/${orgSlug}/${brandSlug}/parametres`);
+}
+
+export async function setIdentityAccessAction(
+  orgSlug: string,
+  brandSlug: string,
+  brandId: string,
+  userId: string,
+  enabled: boolean,
+) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_brand_identity_access", { p_brand_id: brandId, p_user_id: userId, p_enabled: enabled });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/${orgSlug}/${brandSlug}/parametres`);
+}
+
 // Bascule agence/marque (cf. src/lib/view-role.ts) — n'affecte que l'affichage,
 // jamais les droits réels (RLS). Réservée aux rôles agence côté serveur :
 // resolveBrandContext() force viewRole="marque" pour un brand_viewer quel que
