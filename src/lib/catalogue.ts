@@ -75,11 +75,31 @@ const RAW: { m: string; items: { t: string; s: CatalogueStatus; w?: string }[] }
   {
     m: "Écosystème",
     items: [
-      { t: "Liste des comptes professionnels suivis", s: "dispo" },
-      { t: "Réciprocité du suivi", s: "dispo" },
-      { t: "Réponse obtenue ou non aux sollicitations", s: "dispo", w: "Lu dans les métadonnées de conversation, sans ouvrir le contenu des messages." },
-      { t: "Palier d'audience des comptes tiers", s: "dispo" },
-      { t: "Audience des comptes tiers", s: "dispo", w: "Fournie par Meta dans les métadonnées de conversation." },
+      {
+        t: "Liste des comptes professionnels suivis",
+        s: "impossible",
+        w: "Vérifié sur un export réel : le fichier de métadonnées de conversation identifie chaque discussion par un identifiant Meta interne (fbid), sans aucune correspondance avec le pseudo Instagram des comptes suivis ou abonnés — impossible de nommer les comptes concernés.",
+      },
+      {
+        t: "Réciprocité du suivi",
+        s: "impossible",
+        w: "Même limite que ci-dessus : aucune jointure possible entre une discussion et un compte suivi nommé.",
+      },
+      {
+        t: "Réponse obtenue ou non aux sollicitations",
+        s: "dispo",
+        w: "Disponible en agrégat sur l'ensemble des discussions (part ayant obtenu une réponse), lu dans les métadonnées de conversation sans ouvrir le contenu des messages — jamais par compte nommé, pour la même raison que ci-dessus.",
+      },
+      {
+        t: "Palier d'audience des comptes tiers",
+        s: "impossible",
+        w: "Vérifié sur un export réel (2967 discussions, 13 indicateurs par discussion) : aucun champ de palier d'audience n'existe dans ce fichier. Ce n'est pas un défaut de parseur, la donnée n'est simplement pas exportée par Meta.",
+      },
+      {
+        t: "Audience des comptes tiers",
+        s: "impossible",
+        w: "Même constat que le palier d'audience : aucun champ d'audience n'existe dans les métadonnées de conversation exportées par Meta.",
+      },
     ],
   },
   {

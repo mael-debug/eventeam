@@ -678,6 +678,116 @@ export type Database = {
           },
         ]
       }
+      chat_conversations: {
+        Row: {
+          account_id: string
+          fbid: string
+          got_reply: boolean
+          is_brand: boolean
+          is_creator: boolean
+          is_follower: boolean
+          is_subscriber: boolean
+          is_verified: boolean
+          last_import_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          fbid: string
+          got_reply?: boolean
+          is_brand?: boolean
+          is_creator?: boolean
+          is_follower?: boolean
+          is_subscriber?: boolean
+          is_verified?: boolean
+          last_import_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          fbid?: string
+          got_reply?: boolean
+          is_brand?: boolean
+          is_creator?: boolean
+          is_follower?: boolean
+          is_subscriber?: boolean
+          is_verified?: boolean
+          last_import_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_conversations_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "import_comparability"
+            referencedColumns: ["latest_import_id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "import_comparability"
+            referencedColumns: ["previous_import_id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "latest_completed_import"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "previous_completed_import"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_cohort_totals"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_organic_gained"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_overview"
+            referencedColumns: ["import_id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_last_import_id_fkey"
+            columns: ["last_import_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_arrival_risk"
+            referencedColumns: ["import_id"]
+          },
+        ]
+      }
       cohort_survival: {
         Row: {
           account_id: string
@@ -3211,6 +3321,27 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "imports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_ecosystem_chat_summary: {
+        Row: {
+          account_id: string | null
+          n: number | null
+          n_brand: number | null
+          n_creator: number | null
+          n_follower: number | null
+          n_got_reply: number | null
+          n_subscriber: number | null
+          n_verified: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_conversations_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "instagram_accounts"

@@ -1,5 +1,5 @@
 // PRD §7.2 — Edge Function process-import.
-// Ordre : followers -> following -> insights (content/chat : Lot 5), puis
+// Ordre : followers -> following -> insights -> posts -> chat, puis
 // recompute_account (§4.10) une fois l'import lui-même 'completed'.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -12,6 +12,7 @@ import {
   firstStringMap,
 } from "../_shared/parse-insights.ts";
 import { parsePostsFile, collectPostKeys } from "../_shared/parse-posts.ts";
+import { parseChatFile } from "../_shared/parse-chat.ts";
 import { normalizedKeysOf } from "../_shared/parsing.ts";
 
 const PARSER_VERSION = "2026-lot3.1";
@@ -431,6 +432,37 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
         inserted++;
       }
       return inserted;
+    });
+    filesParsed++;
+  }
+
+  // ---- your_chat_information.json (§7.4, Lot 5) — agrégat uniquement,
+  // cf. en-tête de _shared/parse-chat.ts : fbid n'a aucune correspondance
+  // avec un pseudo Instagram, jamais de jointure vers ecosystem_profiles.
+  const chatFile = insightFile("your_chat_information.json");
+  if (chatFile) {
+    await withFileTracking(admin, chatFile, async () => {
+      const chatJson = await downloadJson(admin, chatFile.storage_path);
+      const parsed = parseChatFile(chatJson);
+      for (const batch of chunk(parsed, 2000)) {
+        const { error } = await admin.from("chat_conversations").upsert(
+          batch.map((c) => ({
+            account_id: accountId,
+            fbid: c.fbid,
+            is_brand: c.isBrand,
+            is_creator: c.isCreator,
+            is_subscriber: c.isSubscriber,
+            is_follower: c.isFollower,
+            is_verified: c.isVerified,
+            got_reply: c.gotReply,
+            last_import_id: importId,
+            updated_at: new Date().toISOString(),
+          })),
+          { onConflict: "account_id,fbid" },
+        );
+        if (error) throw new Error(`chat_conversations : ${error.message}`);
+      }
+      return parsed.length;
     });
     filesParsed++;
   }
