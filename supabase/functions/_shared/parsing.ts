@@ -9,9 +9,10 @@ export function normalizeKey(s: string): string {
   return s
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
+    .replace(/['’]/g, "") // apostrophes typographiques ("J'aime", "l'âge") vs droites : ignorées
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " "); // \s couvre aussi l'espace insécable U+00A0
 }
 
 export interface StringMapEntry {
@@ -34,6 +35,36 @@ export function findByPrefix(map: StringMap | null | undefined, prefixes: string
   return null;
 }
 
+/** Égalité exacte (après normalisation). Nécessaire quand un libellé est un
+ * préfixe strict d'un autre — ex. 'Followers' vs 'Followers en plus' : une
+ * recherche par préfixe sur "followers" matcherait les deux. */
+export function findExact(map: StringMap | null | undefined, keys: string[]): string | null {
+  if (!map) return null;
+  const entries = Object.entries(map);
+  for (const key of keys) {
+    const normKey = normalizeKey(key);
+    const hit = entries.find(([k]) => normalizeKey(k) === normKey);
+    if (hit) return hit[1]?.value ?? null;
+  }
+  return null;
+}
+
+/** Comme `findByPrefix`, mais discrimine sur la FIN de la clé plutôt que le
+ * début. Nécessaire quand deux libellés partagent un préfixe et ne se
+ * distinguent qu'à la fin — ex. "Pourcentage du total des followers
+ * hommes" vs "Pourcentage du total des de followers femmes" (faute de
+ * frappe "des de" côté Meta, un simple préfixe matcherait les deux). */
+export function findBySuffix(map: StringMap | null | undefined, suffixes: string[]): string | null {
+  if (!map) return null;
+  const entries = Object.entries(map);
+  for (const suffix of suffixes) {
+    const normSuffix = normalizeKey(suffix);
+    const hit = entries.find(([k]) => normalizeKey(k).endsWith(normSuffix));
+    if (hit) return hit[1]?.value ?? null;
+  }
+  return null;
+}
+
 /** "102,497" -> 102497. Tolère les séparateurs de milliers et un signe. */
 export function parseFormattedInt(raw: string | null | undefined): number | null {
   if (!raw) return null;
@@ -49,6 +80,35 @@ export function parsePercent(raw: string | null | undefined): number | null {
   const match = raw.match(/(-?\d+(?:[.,]\d+)?)\s*%/);
   if (!match) return null;
   return parseFloat(match[1].replace(",", "."));
+}
+
+/** "63.3K" -> 63300, "1.2M" -> 1200000, "102,497" -> 102497. Les activités
+ * par jour de semaine sont abrégées avec un suffixe K/M ; les autres
+ * compteurs ne le sont pas mais passent par ici sans dommage. */
+export function parseMetricNumber(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const m = raw.trim().match(/^([+-]?[\d.,]+)\s*([kKmMbB])?$/);
+  if (!m) return parseFormattedInt(raw);
+  const n = parseFloat(m[1].replace(/,/g, ""));
+  if (Number.isNaN(n)) return null;
+  const mult = { k: 1_000, m: 1_000_000, b: 1_000_000_000 }[m[2]?.toLowerCase() as "k" | "m" | "b"] ?? 1;
+  return Math.round(n * mult);
+}
+
+/** "France: 41.1%, Algeria: 13.9%, ..." -> [{name:"France", pct:41.1}, ...].
+ * Format observé pour les répartitions géographiques ; utilisé aussi pour
+ * les tranches d'âge par analogie (non vérifié indépendamment). */
+export function parseLabeledPercentList(raw: string | null | undefined): { name: string; pct: number }[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((part) => {
+      const [name, pctRaw] = part.split(":");
+      if (!name || !pctRaw) return null;
+      const pct = parsePercent(pctRaw);
+      return pct === null ? null : { name: name.trim(), pct };
+    })
+    .filter((x): x is { name: string; pct: number } => x !== null);
 }
 
 const MONTHS: Record<string, number> = {

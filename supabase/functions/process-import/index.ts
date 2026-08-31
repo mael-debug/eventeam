@@ -197,6 +197,48 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
         female_pct: parsed.femalePct,
       });
       if (error) throw new Error(error.message);
+
+      if (parsed.geo.length > 0) {
+        const { error: geoError } = await admin.from("audience_geo").upsert(
+          parsed.geo.map((g) => ({
+            import_id: importId,
+            account_id: accountId,
+            kind: g.kind,
+            name: g.name,
+            pct: g.pct,
+          })),
+          { onConflict: "import_id,kind,name" },
+        );
+        if (geoError) throw new Error(`audience_geo : ${geoError.message}`);
+      }
+
+      if (parsed.age.length > 0) {
+        const { error: ageError } = await admin.from("audience_age").upsert(
+          parsed.age.map((a) => ({
+            import_id: importId,
+            account_id: accountId,
+            gender: a.gender,
+            age_bucket: a.ageBucket,
+            pct: a.pct,
+          })),
+          { onConflict: "import_id,gender,age_bucket" },
+        );
+        if (ageError) throw new Error(`audience_age : ${ageError.message}`);
+      }
+
+      if (parsed.activity.length > 0) {
+        const { error: activityError } = await admin.from("audience_activity").upsert(
+          parsed.activity.map((a) => ({
+            import_id: importId,
+            account_id: accountId,
+            weekday: a.weekday,
+            active_count: a.activeCount,
+          })),
+          { onConflict: "import_id,weekday" },
+        );
+        if (activityError) throw new Error(`audience_activity : ${activityError.message}`);
+      }
+
       return parsed.usedFallbackPeriod ? "période non trouvée : repli sur la fenêtre de l'import" : 1;
     });
     filesParsed++;
