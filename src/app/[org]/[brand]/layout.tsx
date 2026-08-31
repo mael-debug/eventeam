@@ -48,9 +48,15 @@ export default async function BrandLayout({
       <nav className="flex flex-wrap gap-2 border-b border-neutral-200 pb-3 text-sm">
         <Link
           href={`/${org.slug}/${brand.slug}`}
-          className="rounded-md bg-neutral-900 px-3 py-1.5 text-neutral-50"
+          className="rounded-md px-3 py-1.5 text-neutral-600 hover:bg-neutral-100"
         >
           Vue d&apos;ensemble
+        </Link>
+        <Link
+          href={`/${org.slug}/${brand.slug}/imports`}
+          className="rounded-md px-3 py-1.5 text-neutral-600 hover:bg-neutral-100"
+        >
+          Imports
         </Link>
         {UPCOMING_MODULES.map((m) => (
           <span
