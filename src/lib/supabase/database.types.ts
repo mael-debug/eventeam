@@ -3480,6 +3480,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_stuck_import: { Args: { p_import_id: string }; Returns: undefined }
       ingest_resolve_usernames: {
         Args: { p_usernames: string[] }
         Returns: {

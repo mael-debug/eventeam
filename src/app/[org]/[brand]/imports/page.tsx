@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, Badge } from "@/components/ds";
 import { ImportUploader } from "./import-uploader";
+import { StuckImport } from "./stuck-import";
 import { CADENCE_WEEKS, CADENCE_LABEL } from "@/lib/cadence";
 import { shortDate } from "@/lib/format";
 
@@ -52,7 +53,7 @@ export default async function ImportsPage({
   const { data: imports } = accountIds.length
     ? await supabase
         .from("imports")
-        .select("id, account_id, status, window_start, window_end, created_at, exported_at, error_message")
+        .select("id, account_id, status, window_start, window_end, created_at, exported_at, error_message, started_at")
         .in("account_id", accountIds)
         .order("created_at", { ascending: false })
     : { data: [] };
@@ -96,6 +97,7 @@ export default async function ImportsPage({
                     const errored = impFiles.filter((f) => f.status === "error");
                     const pending = impFiles.filter((f) => f.status === "pending");
                     const inProgress = imp.status === "parsing" || imp.status === "computing" || imp.status === "uploaded";
+                    const stuck = imp.status === "uploading" && imp.started_at === null;
                     return (
                       <div key={imp.id} style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 10 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
@@ -110,6 +112,7 @@ export default async function ImportsPage({
                         {imp.status === "failed" && imp.error_message && (
                           <div style={{ fontSize: 12, color: "#7A2E22", marginTop: 4 }}>{imp.error_message}</div>
                         )}
+                        {stuck && <StuckImport importId={imp.id} />}
                         {inProgress && impFiles.length > 0 && (
                           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
                             {impFiles.map((f) => (

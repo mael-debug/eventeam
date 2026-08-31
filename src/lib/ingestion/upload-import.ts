@@ -52,7 +52,17 @@ export async function uploadImport(
   if (insertError) throw new Error(`Création de l'import : ${insertError.message}`);
 
   let uploaded = 0;
-  const importFileRows: Database["public"]["Tables"]["import_files"]["Insert"][] = [];
+
+  // Un enregistrement import_files par fichier, immédiatement après son
+  // envoi — pas un insert groupé en fin de boucle. Si la page est quittée
+  // en cours d'envoi (onglet fermé, navigation), les fichiers déjà envoyés
+  // restent visibles dans l'historique au lieu de disparaître sans trace
+  // (l'insert groupé perdait tout le lot si la boucle n'allait pas à son
+  // terme, laissant un import 'uploading' sans aucun fichier enregistré).
+  async function recordFile(row: Database["public"]["Tables"]["import_files"]["Insert"]) {
+    const { error } = await supabase.from("import_files").insert(row);
+    if (error) throw new Error(`Enregistrement de ${row.source_path} : ${error.message}`);
+  }
 
   for (const f of scan.jsonFiles) {
     const objectPath = `${accountId}/${importId}/${sanitizeSegment(f.path)}`;
@@ -61,7 +71,7 @@ export async function uploadImport(
       contentType: "application/json",
       upsert: true,
     });
-    importFileRows.push({
+    await recordFile({
       import_id: importId,
       source_path: f.path,
       category: f.category,
@@ -89,7 +99,7 @@ export async function uploadImport(
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
     }
-    importFileRows.push({
+    await recordFile({
       import_id: importId,
       source_path: m.path,
       category: "media",
@@ -100,11 +110,6 @@ export async function uploadImport(
     });
     uploaded++;
     onProgress?.({ phase: "uploading", uploaded, total: totalFiles, message: m.path });
-  }
-
-  if (importFileRows.length > 0) {
-    const { error } = await supabase.from("import_files").insert(importFileRows);
-    if (error) throw new Error(`Enregistrement des fichiers : ${error.message}`);
   }
 
   const { error: statusError } = await supabase
