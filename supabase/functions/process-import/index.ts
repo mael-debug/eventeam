@@ -1,7 +1,6 @@
 // PRD §7.2 — Edge Function process-import.
-// Ordre : followers -> following -> insights (content/chat : Lot 5).
-// Le recalcul intégral (recompute_account, §4.10) arrive au Lot 3 ; pour
-// l'instant l'import passe directement en 'completed' après le parsing.
+// Ordre : followers -> following -> insights (content/chat : Lot 5), puis
+// recompute_account (§4.10) une fois l'import lui-même 'completed'.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -12,7 +11,7 @@ import {
   parseInteractionInsights,
 } from "../_shared/parse-insights.ts";
 
-const PARSER_VERSION = "2026-lot2.1";
+const PARSER_VERSION = "2026-lot3.1";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -292,10 +291,16 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
     filesParsed++;
   }
 
+  // recompute_account (§4.10) ne considère que les imports au statut
+  // 'completed' : celui-ci doit donc l'atteindre AVANT le recalcul, sans
+  // quoi ses propres observations seraient ignorées.
   await admin
     .from("imports")
     .update({ status: "completed", completed_at: new Date().toISOString(), files_parsed: filesParsed })
     .eq("id", importId);
+
+  const { error: recomputeError } = await admin.rpc("recompute_account", { p_account_id: accountId });
+  if (recomputeError) throw new Error(`Recalcul (§4.10) : ${recomputeError.message}`);
 
   return {
     followers: allFollowers.length,

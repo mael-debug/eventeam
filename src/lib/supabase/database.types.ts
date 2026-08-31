@@ -88,6 +88,33 @@ export type Database = {
           { foreignKeyName: "brand_members_brand_id_fkey"; columns: ["brand_id"]; isOneToOne: false; referencedRelation: "brands"; referencedColumns: ["id"] },
         ]
       }
+      cohort_survival: {
+        Row: {
+          account_id: string; cohort_week: string; departed: number; exposure_days: number
+          measured_at: string; measured_import_id: string; remaining: number; survival_rate: number
+        }
+        Insert: {
+          account_id: string; cohort_week: string; departed: number; exposure_days: number
+          measured_at: string; measured_import_id: string; remaining: number; survival_rate: number
+        }
+        Update: {
+          account_id?: string; cohort_week?: string; departed?: number; exposure_days?: number
+          measured_at?: string; measured_import_id?: string; remaining?: number; survival_rate?: number
+        }
+        Relationships: [
+          { foreignKeyName: "cohort_survival_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "cohort_survival_measured_import_id_fkey"; columns: ["measured_import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      cohorts: {
+        Row: { account_id: string; cohort_week: string; is_spike_period: boolean; origin_import_id: string; size: number }
+        Insert: { account_id: string; cohort_week: string; is_spike_period?: boolean; origin_import_id: string; size: number }
+        Update: { account_id?: string; cohort_week?: string; is_spike_period?: boolean; origin_import_id?: string; size?: number }
+        Relationships: [
+          { foreignKeyName: "cohorts_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "cohorts_origin_import_id_fkey"; columns: ["origin_import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
       brands: {
         Row: { created_at: string; id: string; name: string; org_id: string; slug: string }
         Insert: { created_at?: string; id?: string; name: string; org_id: string; slug: string }
@@ -105,6 +132,37 @@ export type Database = {
           { foreignKeyName: "follower_observations_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
         ]
       }
+      follower_states: {
+        Row: {
+          account_id: string; cohort_week: string; computed_at: string
+          departure_window_end: string | null; departure_window_start: string | null
+          episode: number; first_import_id: string; followed_at: string; last_present_import_id: string
+          profile_id: number; rename_candidate_of: number | null
+          sig_digit_suffix: boolean; sig_long_handle: boolean; sig_many_underscores: boolean
+          status: Database["public"]["Enums"]["follower_status"]; tenure_days: number | null
+        }
+        Insert: {
+          account_id: string; cohort_week: string; computed_at?: string
+          departure_window_end?: string | null; departure_window_start?: string | null
+          episode?: number; first_import_id: string; followed_at: string; last_present_import_id: string
+          profile_id: number; rename_candidate_of?: number | null
+          sig_digit_suffix?: boolean; sig_long_handle?: boolean; sig_many_underscores?: boolean
+          status: Database["public"]["Enums"]["follower_status"]; tenure_days?: number | null
+        }
+        Update: {
+          account_id?: string; cohort_week?: string; computed_at?: string
+          departure_window_end?: string | null; departure_window_start?: string | null
+          episode?: number; first_import_id?: string; followed_at?: string; last_present_import_id?: string
+          profile_id?: number; rename_candidate_of?: number | null
+          sig_digit_suffix?: boolean; sig_long_handle?: boolean; sig_many_underscores?: boolean
+          status?: Database["public"]["Enums"]["follower_status"]; tenure_days?: number | null
+        }
+        Relationships: [
+          { foreignKeyName: "follower_states_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
+          { foreignKeyName: "follower_states_first_import_id_fkey"; columns: ["first_import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+          { foreignKeyName: "follower_states_last_present_import_id_fkey"; columns: ["last_present_import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
       following_observations: {
         Row: { account_id: string; followed_at: string | null; import_id: string; profile_id: number }
         Insert: { account_id: string; followed_at?: string | null; import_id: string; profile_id: number }
@@ -112,6 +170,23 @@ export type Database = {
         Relationships: [
           { foreignKeyName: "following_observations_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
           { foreignKeyName: "following_observations_import_id_fkey"; columns: ["import_id"]; isOneToOne: false; referencedRelation: "imports"; referencedColumns: ["id"] },
+        ]
+      }
+      following_states: {
+        Row: {
+          account_id: string; followed_at: string | null; is_mutual: boolean; profile_id: number
+          removed_between_end: string | null; removed_between_start: string | null; status: string
+        }
+        Insert: {
+          account_id: string; followed_at?: string | null; is_mutual?: boolean; profile_id: number
+          removed_between_end?: string | null; removed_between_start?: string | null; status: string
+        }
+        Update: {
+          account_id?: string; followed_at?: string | null; is_mutual?: boolean; profile_id?: number
+          removed_between_end?: string | null; removed_between_start?: string | null; status?: string
+        }
+        Relationships: [
+          { foreignKeyName: "following_states_account_id_fkey"; columns: ["account_id"]; isOneToOne: false; referencedRelation: "instagram_accounts"; referencedColumns: ["id"] },
         ]
       }
       import_files: {
@@ -253,6 +328,7 @@ export type Database = {
         Returns: { profile_id: number; username: string }[]
       }
       is_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      recompute_account: { Args: { p_account_id: string }; Returns: undefined }
       reveal_usernames: {
         Args: { p_account: string; p_ids: number[] }
         Returns: { profile_id: number; username: string }[]
@@ -262,6 +338,7 @@ export type Database = {
       user_org_ids: { Args: Record<PropertyKey, never>; Returns: string[] }
     }
     Enums: {
+      follower_status: "present" | "gone" | "out_of_window" | "likely_rename"
       import_status: "uploading" | "uploaded" | "parsing" | "computing" | "completed" | "failed"
       member_role: "platform_admin" | "agency_admin" | "agency_member" | "brand_viewer"
     }
