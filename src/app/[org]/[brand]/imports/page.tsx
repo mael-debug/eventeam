@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, Badge } from "@/components/ds";
 import { ImportUploader } from "./import-uploader";
 import { StuckImport } from "./stuck-import";
+import { RetryFailedFiles } from "./retry-failed-files";
 import { CADENCE_WEEKS, CADENCE_LABEL } from "@/lib/cadence";
 import { shortDate } from "@/lib/format";
 
@@ -93,11 +94,14 @@ export default async function ImportsPage({
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {accountImports.map((imp) => {
-                    const impFiles = (files ?? []).filter((f) => f.import_id === imp.id && f.category !== "media");
+                    const importFiles = (files ?? []).filter((f) => f.import_id === imp.id);
+                    const impFiles = importFiles.filter((f) => f.category !== "media");
                     const errored = impFiles.filter((f) => f.status === "error");
+                    const allErrored = importFiles.filter((f) => f.status === "error");
                     const pending = impFiles.filter((f) => f.status === "pending");
                     const inProgress = imp.status === "parsing" || imp.status === "computing" || imp.status === "uploaded";
                     const stuck = imp.status === "uploading" && imp.started_at === null;
+                    const canRetryFailed = imp.status !== "uploading" && allErrored.length > 0;
                     return (
                       <div key={imp.id} style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 10 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
@@ -133,6 +137,14 @@ export default async function ImportsPage({
                               </span>
                             ))}
                           </div>
+                        )}
+                        {allErrored.length > 0 && allErrored.length > errored.length && (
+                          <div style={{ fontSize: 12, color: "#7A2E22", marginTop: 4 }}>
+                            + {allErrored.length - errored.length} vignette(s) en échec
+                          </div>
+                        )}
+                        {canRetryFailed && (
+                          <RetryFailedFiles accountId={account.id} importId={imp.id} failedCount={allErrored.length} />
                         )}
                       </div>
                     );

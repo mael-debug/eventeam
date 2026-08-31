@@ -24,6 +24,70 @@ function sanitizeSegment(path: string): string {
   return path.replace(/[^a-zA-Z0-9._/-]/g, "_");
 }
 
+// upsert sur (import_id, source_path) — clé unique de la table (0006) — pour
+// qu'une nouvelle tentative réécrive la même ligne au lieu d'en créer une
+// seconde.
+async function recordFile(supabase: SupabaseClient<Database>, row: Database["public"]["Tables"]["import_files"]["Insert"]) {
+  const { error } = await supabase.from("import_files").upsert(row, { onConflict: "import_id,source_path" });
+  if (error) throw new Error(`Enregistrement de ${row.source_path} : ${error.message}`);
+}
+
+async function uploadOneJsonFile(
+  supabase: SupabaseClient<Database>,
+  accountId: string,
+  importId: string,
+  f: ScanResult["jsonFiles"][number],
+): Promise<boolean> {
+  const objectPath = `${accountId}/${importId}/${sanitizeSegment(f.path)}`;
+  const blob = new Blob([JSON.stringify(f.json)], { type: "application/json" });
+  const { error } = await supabase.storage.from("raw-exports").upload(objectPath, blob, {
+    contentType: "application/json",
+    upsert: true,
+  });
+  await recordFile(supabase, {
+    import_id: importId,
+    source_path: f.path,
+    category: f.category,
+    storage_path: error ? null : `raw-exports/${objectPath}`,
+    bytes: f.bytes,
+    status: error ? "error" : "uploaded",
+    error_message: error?.message ?? null,
+  });
+  return !error;
+}
+
+async function uploadOneMediaFile(
+  supabase: SupabaseClient<Database>,
+  accountId: string,
+  importId: string,
+  m: ScanResult["mediaFiles"][number],
+): Promise<boolean> {
+  let thumbPath: string | null = null;
+  let errorMessage: string | null = null;
+  try {
+    const thumb = await makeThumbnail(m.bytes, m.mimeType);
+    const objectPath = `${accountId}/${sanitizeSegment(m.path).replace(/\.(jpg|jpeg|png)$/i, "")}.jpg`;
+    const { error } = await supabase.storage.from("media-thumbs").upload(objectPath, thumb, {
+      contentType: "image/jpeg",
+      upsert: true,
+    });
+    if (error) throw error;
+    thumbPath = `media-thumbs/${objectPath}`;
+  } catch (err) {
+    errorMessage = err instanceof Error ? err.message : String(err);
+  }
+  await recordFile(supabase, {
+    import_id: importId,
+    source_path: m.path,
+    category: "media",
+    storage_path: thumbPath,
+    bytes: m.bytes.length,
+    status: thumbPath ? "uploaded" : "error",
+    error_message: errorMessage,
+  });
+  return thumbPath !== null;
+}
+
 export async function uploadImport(
   supabase: SupabaseClient<Database>,
   accountId: string,
@@ -61,72 +125,18 @@ export async function uploadImport(
   // restent visibles dans l'historique au lieu de disparaître sans trace
   // (l'insert groupé perdait tout le lot si la boucle n'allait pas à son
   // terme, laissant un import 'uploading' sans aucun fichier enregistré).
-  // upsert sur (import_id, source_path) — clé unique de la table — pour que
-  // la passe de nouvelle tentative puisse réécrire la même ligne au lieu
-  // d'en créer une seconde.
-  async function recordFile(row: Database["public"]["Tables"]["import_files"]["Insert"]) {
-    const { error } = await supabase.from("import_files").upsert(row, { onConflict: "import_id,source_path" });
-    if (error) throw new Error(`Enregistrement de ${row.source_path} : ${error.message}`);
-  }
-
-  async function uploadJsonFile(f: ScanResult["jsonFiles"][number]): Promise<boolean> {
-    const objectPath = `${accountId}/${importId}/${sanitizeSegment(f.path)}`;
-    const blob = new Blob([JSON.stringify(f.json)], { type: "application/json" });
-    const { error } = await supabase.storage.from("raw-exports").upload(objectPath, blob, {
-      contentType: "application/json",
-      upsert: true,
-    });
-    await recordFile({
-      import_id: importId,
-      source_path: f.path,
-      category: f.category,
-      storage_path: error ? null : `raw-exports/${objectPath}`,
-      bytes: f.bytes,
-      status: error ? "error" : "uploaded",
-      error_message: error?.message ?? null,
-    });
-    return !error;
-  }
-
-  async function uploadMediaFile(m: ScanResult["mediaFiles"][number]): Promise<boolean> {
-    let thumbPath: string | null = null;
-    let errorMessage: string | null = null;
-    try {
-      const thumb = await makeThumbnail(m.bytes, m.mimeType);
-      const objectPath = `${accountId}/${sanitizeSegment(m.path).replace(/\.(jpg|jpeg|png)$/i, "")}.jpg`;
-      const { error } = await supabase.storage.from("media-thumbs").upload(objectPath, thumb, {
-        contentType: "image/jpeg",
-        upsert: true,
-      });
-      if (error) throw error;
-      thumbPath = `media-thumbs/${objectPath}`;
-    } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
-    }
-    await recordFile({
-      import_id: importId,
-      source_path: m.path,
-      category: "media",
-      storage_path: thumbPath,
-      bytes: m.bytes.length,
-      status: thumbPath ? "uploaded" : "error",
-      error_message: errorMessage,
-    });
-    return thumbPath !== null;
-  }
-
   let failedJson = new Map(scan.jsonFiles.map((f) => [f.path, f]));
   let failedMedia = new Map(scan.mediaFiles.map((m) => [m.path, m]));
 
   for (const [path, f] of failedJson) {
-    const ok = await uploadJsonFile(f);
+    const ok = await uploadOneJsonFile(supabase, accountId, importId, f);
     uploaded++;
     onProgress?.({ phase: "uploading", uploaded, total: totalFiles, message: path });
     if (ok) failedJson.delete(path);
   }
 
   for (const [path, m] of failedMedia) {
-    const ok = await uploadMediaFile(m);
+    const ok = await uploadOneMediaFile(supabase, accountId, importId, m);
     uploaded++;
     onProgress?.({ phase: "uploading", uploaded, total: totalFiles, message: path });
     if (ok) failedMedia.delete(path);
@@ -143,14 +153,14 @@ export async function uploadImport(
     const retryJson = failedJson;
     failedJson = new Map();
     for (const [path, f] of retryJson) {
-      const ok = await uploadJsonFile(f);
+      const ok = await uploadOneJsonFile(supabase, accountId, importId, f);
       if (!ok) failedJson.set(path, f);
     }
 
     const retryMedia = failedMedia;
     failedMedia = new Map();
     for (const [path, m] of retryMedia) {
-      const ok = await uploadMediaFile(m);
+      const ok = await uploadOneMediaFile(supabase, accountId, importId, m);
       if (!ok) failedMedia.set(path, m);
     }
   }
@@ -171,6 +181,81 @@ export async function uploadImport(
   onProgress?.({ phase: "done", uploaded: totalFiles, total: totalFiles });
 
   return { importId, functionResult };
+}
+
+export interface RetryFailedResult {
+  fixed: number;
+  stillFailing: string[];
+  reprocessed: boolean;
+}
+
+// Reprend un import déjà traité (au moins une fois par uploadImport) sans
+// tout renvoyer : seuls les fichiers encore au statut 'error' dans
+// import_files sont ré-uploadés, à partir du même ZIP redéposé (les octets
+// originaux n'existent nulle part côté serveur — process-import ne
+// conserve jamais les médias hors liste blanche, §5.4/§9.1 — redéposer le
+// ZIP est donc la seule source possible). Les chemins réussis sont
+// simplement ignorés, jamais retouchés.
+export async function retryFailedImportFiles(
+  supabase: SupabaseClient<Database>,
+  accountId: string,
+  importId: string,
+  scan: ScanResult,
+  onProgress?: (p: UploadProgress) => void,
+): Promise<RetryFailedResult> {
+  const { data: errorRows, error: fetchError } = await supabase
+    .from("import_files")
+    .select("source_path, category")
+    .eq("import_id", importId)
+    .eq("status", "error");
+  if (fetchError) throw new Error(`Lecture des fichiers en échec : ${fetchError.message}`);
+
+  const failedPaths = new Set((errorRows ?? []).map((r) => r.source_path));
+  let failedJson = new Map(scan.jsonFiles.filter((f) => failedPaths.has(f.path)).map((f) => [f.path, f]));
+  let failedMedia = new Map(scan.mediaFiles.filter((m) => failedPaths.has(m.path)).map((m) => [m.path, m]));
+  const totalToRetry = failedJson.size + failedMedia.size;
+  const fixedNonMediaPaths = new Set<string>();
+  let uploaded = 0;
+
+  for (let pass = 1; pass <= MAX_RETRY_PASSES && failedJson.size + failedMedia.size > 0; pass++) {
+    const retryJson = failedJson;
+    failedJson = new Map();
+    for (const [path, f] of retryJson) {
+      const ok = await uploadOneJsonFile(supabase, accountId, importId, f);
+      uploaded++;
+      onProgress?.({ phase: "retrying", uploaded, total: totalToRetry, message: `passe ${pass}/${MAX_RETRY_PASSES} — ${path}` });
+      if (ok) fixedNonMediaPaths.add(path);
+      else failedJson.set(path, f);
+    }
+
+    const retryMedia = failedMedia;
+    failedMedia = new Map();
+    for (const [path, m] of retryMedia) {
+      const ok = await uploadOneMediaFile(supabase, accountId, importId, m);
+      uploaded++;
+      onProgress?.({ phase: "retrying", uploaded, total: totalToRetry, message: `passe ${pass}/${MAX_RETRY_PASSES} — ${path}` });
+      if (!ok) failedMedia.set(path, m);
+    }
+  }
+
+  const stillFailing = [...failedJson.keys(), ...failedMedia.keys()];
+  let reprocessed = false;
+
+  // Les vignettes ne passent jamais par process-import (elles ne sont pas
+  // dans sa liste blanche de catégories) : les corriger n'a jamais besoin
+  // de relancer le moteur. Un fichier de données (followers/following/
+  // insights/content/chat) corrigé, en revanche, n'a encore jamais été
+  // ingéré — sans quoi ses lignes restent absentes des tables de calcul.
+  if (fixedNonMediaPaths.size > 0) {
+    onProgress?.({ phase: "invoking", uploaded: totalToRetry, total: totalToRetry });
+    const { error: fnError } = await supabase.functions.invoke("process-import", { body: { import_id: importId } });
+    if (fnError) throw new Error(`Traitement de l'import : ${fnError.message}`);
+    reprocessed = true;
+  }
+
+  onProgress?.({ phase: "done", uploaded: totalToRetry, total: totalToRetry });
+
+  return { fixed: totalToRetry - stillFailing.length, stillFailing, reprocessed };
 }
 
 export interface ImportOutcome {
