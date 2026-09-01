@@ -33,7 +33,9 @@ export interface ScanResult {
 }
 
 function mimeFromPath(path: string): string {
-  return /\.png$/i.test(path) ? "image/png" : "image/jpeg";
+  if (/\.png$/i.test(path)) return "image/png";
+  if (/\.mp4$/i.test(path)) return "video/mp4";
+  return "image/jpeg";
 }
 
 function concat(chunks: Uint8Array[]): Uint8Array {

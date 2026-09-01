@@ -24,6 +24,10 @@ export const WHITELIST: WhitelistEntry[] = [
   { pattern: "your_instagram_activity/messages/your_chat_information.json", category: "chat", label: "Métadonnées de conversations (Lot 5)" },
   { pattern: "media/**/*.jpg", category: "media", label: "Vignette" },
   { pattern: "media/**/*.png", category: "media", label: "Vignette" },
+  // Reels/stories vidéo (Lot 5) : sans cette entrée, aucune vignette n'était
+  // jamais générée pour ces formats — le .mp4 n'atteignait jamais le
+  // navigateur, indépendamment de la génération de vignette elle-même.
+  { pattern: "media/**/*.mp4", category: "media", label: "Vignette (image extraite de la vidéo)" },
 ];
 
 function globToRegex(glob: string): RegExp {

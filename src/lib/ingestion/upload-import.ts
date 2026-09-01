@@ -66,7 +66,7 @@ async function uploadOneMediaFile(
   let errorMessage: string | null = null;
   try {
     const thumb = await makeThumbnail(m.bytes, m.mimeType);
-    const objectPath = `${accountId}/${sanitizeSegment(m.path).replace(/\.(jpg|jpeg|png)$/i, "")}.jpg`;
+    const objectPath = `${accountId}/${sanitizeSegment(m.path).replace(/\.(jpg|jpeg|png|mp4)$/i, "")}.jpg`;
     const { error } = await supabase.storage.from("media-thumbs").upload(objectPath, thumb, {
       contentType: "image/jpeg",
       upsert: true,
