@@ -49,13 +49,13 @@ export default async function EcosystemePage({
       ) : (
         (() => {
           const n = summary.n;
-          const rows = [
+          const replyRate = (summary.n_got_reply ?? 0) / n;
+          const compositionRows = [
             { label: "Comportent une marque", n: summary.n_brand ?? 0 },
             { label: "Comportent un Creator", n: summary.n_creator ?? 0 },
             { label: "Comportent un(e) abonné(e)", n: summary.n_subscriber ?? 0 },
             { label: "Comportent un follower", n: summary.n_follower ?? 0 },
             { label: "Profil vérifié", n: summary.n_verified ?? 0 },
-            { label: "Ont obtenu une réponse", n: summary.n_got_reply ?? 0 },
           ];
           return (
             <>
@@ -65,16 +65,36 @@ export default async function EcosystemePage({
                 Instagram des comptes suivis ou abonnés. Aucun palier d&apos;audience n&apos;est exposé par Meta dans ce fichier.
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-                {rows.map((row) => (
-                  <Card key={row.label} variant="claire" interactive={false}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>{row.label}</span>
-                      <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>{pct((row.n / n) * 100)}</span>
-                      <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{fr(row.n)} discussion{row.n > 1 ? "s" : ""}</span>
-                    </div>
-                  </Card>
-                ))}
+              <Card variant="encre" interactive={false}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                  <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,248,243,0.55)" }}>
+                    Taux de réponse
+                  </span>
+                  <span style={{ fontSize: "clamp(34px, 5vw, 56px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: replyRate < 0.3 ? "#E8A79E" : "var(--vert-logo)" }}>
+                    {pct(replyRate * 100)}
+                  </span>
+                  <span style={{ fontSize: 14, color: "rgba(250,248,243,0.8)", lineHeight: 1.5 }}>
+                    {fr(summary.n_got_reply ?? 0)} discussions sur {fr(n)} ont reçu au moins une réponse — la seule mesure de
+                    cet écran qui indique une action possible (relance de la modération) plutôt qu&apos;une simple composition.
+                  </span>
+                </div>
+              </Card>
+
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10 }}>
+                  Composition des discussions (descriptif, pas une mesure de performance)
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+                  {compositionRows.map((row) => (
+                    <Card key={row.label} variant="claire" interactive={false}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>{row.label}</span>
+                        <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>{pct((row.n / n) * 100)}</span>
+                        <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{fr(row.n)} discussion{row.n > 1 ? "s" : ""}</span>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               </div>
             </>
           );
