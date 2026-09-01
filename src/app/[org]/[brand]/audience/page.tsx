@@ -47,16 +47,23 @@ export default async function AudiencePage({
 
   const latestImportId = comparability.latest_import_id!;
 
-  const [{ data: overview }, { data: audienceInsights }, { data: geo }, { data: age }, { data: activity }, { data: inflow }, { data: reconciliation }] =
-    await Promise.all([
-      supabase.from("v_overview").select("followers_total").eq("account_id", account.id).maybeSingle(),
-      supabase.from("audience_insights").select("male_pct, female_pct").eq("import_id", latestImportId).maybeSingle(),
-      supabase.from("audience_geo").select("*").eq("account_id", account.id).eq("import_id", latestImportId),
-      supabase.from("audience_age").select("*").eq("account_id", account.id).eq("import_id", latestImportId),
-      supabase.from("audience_activity").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("weekday"),
-      supabase.from("inflow_geo_estimate").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("estimated_pct", { ascending: false }),
-      supabase.from("reconciliation").select("*").eq("import_id", latestImportId).maybeSingle(),
-    ]);
+  const [
+    { data: overview },
+    { data: audienceInsights },
+    { data: geo },
+    { data: age },
+    { data: activity },
+    { data: inflow },
+    { data: reconciliation },
+  ] = await Promise.all([
+    supabase.from("v_overview").select("followers_total").eq("account_id", account.id).maybeSingle(),
+    supabase.from("audience_insights").select("male_pct, female_pct").eq("import_id", latestImportId).maybeSingle(),
+    supabase.from("audience_geo").select("*").eq("account_id", account.id).eq("import_id", latestImportId),
+    supabase.from("audience_age").select("*").eq("account_id", account.id).eq("import_id", latestImportId),
+    supabase.from("audience_activity").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("weekday"),
+    supabase.from("inflow_geo_estimate").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("estimated_pct", { ascending: false }),
+    supabase.from("reconciliation").select("*").eq("import_id", latestImportId).maybeSingle(),
+  ]);
 
   const countries = (geo ?? []).filter((g) => g.kind === "country").sort((a, b) => b.pct - a.pct).slice(0, 5);
   const cities = (geo ?? []).filter((g) => g.kind === "city").sort((a, b) => b.pct - a.pct).slice(0, 5);
@@ -67,6 +74,27 @@ export default async function AudiencePage({
   const activityRows = activity ?? [];
   const maxActivity = activityRows.length ? Math.max(...activityRows.map((a) => a.active_count)) : 0;
   const minActivity = activityRows.length ? Math.min(...activityRows.map((a) => a.active_count)) : 0;
+
+  // Profil-type : chaque dimension (genre, âge, lieu, jour, signal) est
+  // dominante dans sa propre distribution marginale — l'export Instagram ne
+  // permet de croiser aucune de ces dimensions par abonné, donc jamais une
+  // seule phrase du type "62 % sont des femmes de 25-34 ans à Paris" : les
+  // pourcentages restent listés séparément, jamais combinés en probabilité
+  // jointe.
+  const dominantGender =
+    genderMale != null && genderFemale != null
+      ? genderMale >= genderFemale
+        ? { label: "hommes", value: genderMale }
+        : { label: "femmes", value: genderFemale }
+      : null;
+  const dominantAge = ageAll[0] ?? null;
+  const dominantCountry = countries[0] ?? null;
+  const dominantCity = cities[0] ?? null;
+  const dominantWeekday =
+    activityRows.length > 0
+      ? activityRows.reduce((best, a) => (a.active_count > best.active_count ? a : best), activityRows[0])
+      : null;
+  const profileHasData = dominantGender || dominantAge || dominantCountry || dominantWeekday;
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1280, minWidth: 0 }}>
@@ -83,6 +111,55 @@ export default async function AudiencePage({
           Les deux périodes comparées se recouvrent à {pct((comparability.overlap_ratio ?? 0) * 100, 0)}. Les évolutions ne sont
           pas interprétables : une même partie de l&apos;audience est comptée dans les deux fenêtres.
         </div>
+      )}
+
+      {profileHasData && (
+        <Card variant="encre" interactive={false}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>Profil-type de l&apos;audience</h2>
+              <span style={{ fontSize: 13, color: "rgba(250,248,243,0.7)", lineHeight: 1.5 }}>
+                Les valeurs dominantes de chaque dimension, listées séparément — l&apos;export Instagram ne permet pas de savoir si
+                une même personne cumule plusieurs de ces traits (âge, genre, lieu, horaire ne sont jamais liés par abonné).
+              </span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {dominantGender && (
+                <div style={{ background: "rgba(250,248,243,0.1)", borderRadius: 12, padding: "10px 14px", minWidth: 140 }}>
+                  <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(250,248,243,0.6)" }}>Genre dominant</div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>
+                    {pct(dominantGender.value)} <span style={{ fontWeight: 600, fontSize: 14 }}>{dominantGender.label}</span>
+                  </div>
+                </div>
+              )}
+              {dominantAge && (
+                <div style={{ background: "rgba(250,248,243,0.1)", borderRadius: 12, padding: "10px 14px", minWidth: 140 }}>
+                  <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(250,248,243,0.6)" }}>Tranche d&apos;âge dominante</div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>
+                    {pct(dominantAge.pct)} <span style={{ fontWeight: 600, fontSize: 14 }}>{dominantAge.age_bucket} ans</span>
+                  </div>
+                </div>
+              )}
+              {dominantCountry && (
+                <div style={{ background: "rgba(250,248,243,0.1)", borderRadius: 12, padding: "10px 14px", minWidth: 140 }}>
+                  <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(250,248,243,0.6)" }}>Pays dominant</div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>
+                    {pct(dominantCountry.pct)} <span style={{ fontWeight: 600, fontSize: 14 }}>{dominantCountry.name}</span>
+                  </div>
+                  {dominantCity && <div style={{ fontSize: 12, color: "rgba(250,248,243,0.65)", marginTop: 2 }}>dont {dominantCity.name} {pct(dominantCity.pct)}</div>}
+                </div>
+              )}
+              {dominantWeekday && (
+                <div style={{ background: "rgba(250,248,243,0.1)", borderRadius: 12, padding: "10px 14px", minWidth: 140 }}>
+                  <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(250,248,243,0.6)" }}>Jour le plus actif</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, textTransform: "capitalize" }}>
+                    {WEEKDAY_LABEL[dominantWeekday.weekday - 1] ?? dominantWeekday.weekday}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, alignItems: "stretch" }}>
