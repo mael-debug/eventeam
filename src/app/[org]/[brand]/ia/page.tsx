@@ -2,6 +2,14 @@ import { Card, Badge } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, shortDate } from "@/lib/format";
 import { TrendLine } from "@/components/trend-line";
+import { MOCK_AUDIENCE_INTELLIGENCE } from "./mock-audience-intelligence";
+import { AudienceAISummary } from "./audience-ai-summary";
+import { AudiencePersonaCard } from "./audience-persona-card";
+import { AudienceAffinityChart } from "./audience-affinity-chart";
+import { AudienceBrandFit } from "./audience-brand-fit";
+import { AudienceSignals } from "./audience-signals";
+import { AudienceRecommendations } from "./audience-recommendations";
+import { AudiencePrivacyNotice } from "./audience-privacy-notice";
 
 // Showroom IA — page volontairement statique (aucune génération en direct
 // ici) : elle illustre ce qu'un module IA pourrait produire à partir des
@@ -343,6 +351,44 @@ export default async function IaShowroomPage({
             <li>Réponse automatique aux stories partagées par des abonnés (UGC) pour faire remonter le taux de réponse sans charge de modération supplémentaire.</li>
           </ul>
         </MockCard>
+      </div>
+
+      {/* Audience Intelligence — section 100 % démo (mock-audience-intelligence.ts),
+          aucune donnée réelle ni appel réseau : cf. en-tête du fichier de données. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <Badge variant="cadrage">{fr(MOCK_AUDIENCE_INTELLIGENCE.sampleSize)} profils actifs analysés</Badge>
+            <Badge variant="forfait">Données anonymisées</Badge>
+          </div>
+          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-0.01em" }}>Découvrez qui compose réellement votre audience</h2>
+          <p style={{ margin: 0, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 760, textWrap: "pretty" }}>
+            L&apos;IA transforme les signaux agrégés de votre communauté en personas, affinités et opportunités marketing.
+          </p>
+          <span style={{ fontSize: 12, fontStyle: "italic", color: "var(--text-muted)" }}>Données fictives à des fins de démonstration.</span>
+        </div>
+
+        <AudienceAISummary data={MOCK_AUDIENCE_INTELLIGENCE} />
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+          {MOCK_AUDIENCE_INTELLIGENCE.personas.map((persona) => (
+            <AudiencePersonaCard key={persona.name} persona={persona} />
+          ))}
+        </div>
+
+        <AudienceAffinityChart interests={MOCK_AUDIENCE_INTELLIGENCE.interests} brandAffinities={MOCK_AUDIENCE_INTELLIGENCE.brandAffinities} />
+
+        <AudienceBrandFit
+          score={MOCK_AUDIENCE_INTELLIGENCE.brandFit}
+          dimensions={MOCK_AUDIENCE_INTELLIGENCE.brandFitDimensions}
+          insight="L'audience reste très cohérente avec le territoire historique de la marque. Le principal signal d'évolution concerne la progression d'un univers lifestyle plus contemporain."
+        />
+
+        <AudienceSignals signals={MOCK_AUDIENCE_INTELLIGENCE.signals} />
+
+        <AudienceRecommendations recommendations={MOCK_AUDIENCE_INTELLIGENCE.recommendations} />
+
+        <AudiencePrivacyNotice />
       </div>
     </main>
   );
