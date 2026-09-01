@@ -3,12 +3,7 @@ import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, shortDate } from "@/lib/format";
 import { ReconciliationBanner } from "@/components/reconciliation-banner";
 import { RevealDepartures, type DepartureRow } from "@/components/reveal-departures";
-
-function qualityColor(score: number): string {
-  if (score >= 70) return "var(--vert-logo)";
-  if (score >= 40) return "var(--pastel-jaune)";
-  return "#C0392B";
-}
+import { qualityColor } from "@/lib/cohort-quality";
 
 const DEPARTURES_SHOWN = 8;
 

@@ -4,6 +4,7 @@ import { fr, pct, shortDate } from "@/lib/format";
 import { ReconciliationBanner } from "@/components/reconciliation-banner";
 import { setSpikeBudgetAction } from "./actions";
 import { CustomWindowsSection } from "./custom-windows-section";
+import { qualityColor, isoWeekMonday } from "@/lib/cohort-quality";
 
 const NATURE_LABEL: Record<string, string> = {
   probable_paid: "Achat probable",
@@ -84,7 +85,7 @@ export default async function AcquisitionPage({
 
   const latestImportId = comparability.latest_import_id!;
 
-  const [{ data: spikes }, { data: cohortRows }, { data: reconciliation }, { data: cohortTotals }] = await Promise.all([
+  const [{ data: spikes }, { data: cohortRows }, { data: reconciliation }, { data: cohortTotals }, { data: qualityRows }] = await Promise.all([
     supabase.from("acquisition_spikes_with_budget").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("spike_start"),
     supabase
       .from("cohort_survival")
@@ -94,8 +95,13 @@ export default async function AcquisitionPage({
       .order("cohort_week"),
     supabase.from("reconciliation").select("*").eq("import_id", latestImportId).maybeSingle(),
     supabase.from("v_cohort_totals").select("total_measurable").eq("account_id", account.id).maybeSingle(),
+    // Croisement pic d'acquisition ↔ cohorte : le score de qualité de la
+    // semaine (Croissance) donne un contexte au pic (arrivées massives mais
+    // fragiles, ou saines) que la seule rétention du pic ne montre pas.
+    supabase.from("cross_analyses").select("dimension, payload, confidence").eq("account_id", account.id).eq("code", "cohort_quality_score"),
   ]);
 
+  const qualityByWeek = new Map((qualityRows ?? []).map((q) => [q.dimension, q]));
   const peaks = spikes ?? [];
   const priced = peaks.filter((p) => p.budget_eur != null);
   const budgetTotal = priced.reduce((s, p) => s + (p.budget_eur ?? 0), 0);
@@ -199,6 +205,11 @@ export default async function AcquisitionPage({
                           Conservés
                         </Th>
                       </th>
+                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "center" }}>
+                        <Th title="Score de qualité (0-100) de la cohorte hebdomadaire recouvrant ce pic — voir Croissance. Un pic à fort volume mais faible score cohorte gagne des abonnés fragiles.">
+                          Cohorte
+                        </Th>
+                      </th>
                       <th style={{ padding: "0 8px 10px", fontWeight: 600 }}>
                         <Th title="Montant dépensé pour ce pic — à saisir manuellement, l'export Instagram ne le fournit pas.">Budget</Th>
                       </th>
@@ -234,6 +245,20 @@ export default async function AcquisitionPage({
                         <td style={{ padding: "12px 8px", textAlign: "right", fontWeight: 600 }}>{pct(p.retention_rate != null ? p.retention_rate * 100 : null, 0)}</td>
                         <td style={{ padding: "12px 8px", textAlign: "right", color: "var(--text-muted)" }}>
                           {p.retention_rate != null && p.volume != null ? fr(Math.round(p.volume * p.retention_rate)) : "—"}
+                        </td>
+                        <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                          {(() => {
+                            const q = p.spike_start ? qualityByWeek.get(isoWeekMonday(p.spike_start)) : undefined;
+                            const score = q ? (q.payload as { score?: number })?.score : null;
+                            return score != null ? (
+                              <span
+                                title={`Cohorte du ${isoWeekMonday(p.spike_start!)} : score ${score}/100 (confiance ${q?.confidence ?? "—"})`}
+                                style={{ display: "inline-block", width: 10, height: 10, borderRadius: 999, background: qualityColor(score) }}
+                              />
+                            ) : (
+                              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>
+                            );
+                          })()}
                         </td>
                         <td style={{ padding: "12px 8px" }}>
                           {canWriteView && p.spike_start ? (
