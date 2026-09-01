@@ -1,9 +1,7 @@
 import { Card, Button } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
-import { fr, shortDate } from "@/lib/format";
-import { NominativeList, type ListRow } from "@/components/nominative-list";
-
-const LIST_LIMIT = 200;
+import { fr } from "@/lib/format";
+import { PaginatedDepartures } from "./paginated-departures";
 
 export default async function ListesPage({
   params,
@@ -33,22 +31,12 @@ export default async function ListesPage({
     );
   }
 
-  const [{ data: cohortTotals }, { data: departures, count: totalCount }] = await Promise.all([
+  // count only : la liste elle-même est chargée page par page côté client
+  // (PaginatedDepartures) pour ne pas transférer les 1138+ lignes d'un coup.
+  const [{ data: cohortTotals }, { count: totalCount }] = await Promise.all([
     supabase.from("v_cohort_totals").select("*").eq("account_id", account.id).maybeSingle(),
-    supabase.from("v_recent_departures").select("*", { count: "exact" }).eq("account_id", account.id).limit(LIST_LIMIT),
+    supabase.from("v_recent_departures").select("*", { count: "exact", head: true }).eq("account_id", account.id),
   ]);
-
-  const rows: ListRow[] = (departures ?? [])
-    .filter((d): d is typeof d & { profile_id: number; followed_at: string; cohort_week: string } => d.profile_id != null && d.followed_at != null && d.cohort_week != null)
-    .map((d) => ({
-      profileId: d.profile_id,
-      followedAtLabel: shortDate(d.followed_at),
-      cohortLabel: shortDate(d.cohort_week),
-      intervalLabel:
-        d.departure_window_start && d.departure_window_end
-          ? `${shortDate(d.departure_window_start)} → ${shortDate(d.departure_window_end)}`
-          : "—",
-    }));
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1280, minWidth: 0 }}>
@@ -66,10 +54,10 @@ export default async function ListesPage({
 
       <Card variant="claire" interactive={false}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-          {rows.length === 0 ? (
+          {!totalCount ? (
             <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucun départ mesuré sur cet import.</p>
           ) : canViewIdentities ? (
-            <NominativeList accountId={account.id} rows={rows} />
+            <PaginatedDepartures accountId={account.id} totalCount={totalCount} />
           ) : (
             <div style={{ fontSize: 13, color: "var(--text-muted)", maxWidth: 320, lineHeight: 1.5 }}>
               Rôle lecture seule : identités masquées et export désactivé tant que la marque n&apos;y est pas autorisée dans les
@@ -77,8 +65,8 @@ export default async function ListesPage({
             </div>
           )}
           <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
-            {rows.length} ligne{rows.length > 1 ? "s" : ""} sur {fr(totalCount ?? rows.length)}. L&apos;intervalle de départ
-            correspond à l&apos;écart entre les deux imports qui encadrent la disparition du compte ; aucune date exacte n&apos;existe.
+            L&apos;intervalle de départ correspond à l&apos;écart entre les deux imports qui encadrent la disparition du
+            compte ; aucune date exacte n&apos;existe.
           </div>
         </div>
       </Card>
