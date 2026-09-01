@@ -59,10 +59,20 @@ export default async function ImportsPage({
         .order("created_at", { ascending: false })
     : { data: [] };
 
+  // Les vignettes (catégorie 'media') comptent en milliers par import : les
+  // récupérer avec les fichiers de données faisait dépasser la limite par
+  // défaut de PostgREST (1000 lignes, cf. le même piège déjà rencontré dans
+  // process-import) et tronquait arbitrairement les fichiers non-média —
+  // dont, un jour, celui en erreur qu'on cherche justement à afficher. On ne
+  // demande donc que les colonnes/lignes utiles : le détail complet pour le
+  // non-média, un simple décompte pour les vignettes en échec.
   const importIds = (imports ?? []).map((i) => i.id);
-  const { data: files } = importIds.length
-    ? await supabase.from("import_files").select("import_id, source_path, category, status, error_message").in("import_id", importIds)
-    : { data: [] };
+  const [{ data: files }, { data: erroredMediaRows }] = importIds.length
+    ? await Promise.all([
+        supabase.from("import_files").select("import_id, source_path, category, status, error_message").in("import_id", importIds).neq("category", "media"),
+        supabase.from("import_files").select("import_id").in("import_id", importIds).eq("category", "media").eq("status", "error"),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -94,14 +104,14 @@ export default async function ImportsPage({
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {accountImports.map((imp) => {
-                    const importFiles = (files ?? []).filter((f) => f.import_id === imp.id);
-                    const impFiles = importFiles.filter((f) => f.category !== "media");
+                    const impFiles = (files ?? []).filter((f) => f.import_id === imp.id);
+                    const erroredMediaCount = (erroredMediaRows ?? []).filter((f) => f.import_id === imp.id).length;
                     const errored = impFiles.filter((f) => f.status === "error");
-                    const allErrored = importFiles.filter((f) => f.status === "error");
+                    const allErroredCount = errored.length + erroredMediaCount;
                     const pending = impFiles.filter((f) => f.status === "pending");
                     const inProgress = imp.status === "parsing" || imp.status === "computing" || imp.status === "uploaded";
                     const stuck = imp.status === "uploading" && imp.started_at === null;
-                    const canRetryFailed = imp.status !== "uploading" && allErrored.length > 0;
+                    const canRetryFailed = imp.status !== "uploading" && allErroredCount > 0;
                     return (
                       <div key={imp.id} style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 10 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
@@ -138,13 +148,13 @@ export default async function ImportsPage({
                             ))}
                           </div>
                         )}
-                        {allErrored.length > 0 && allErrored.length > errored.length && (
+                        {erroredMediaCount > 0 && (
                           <div style={{ fontSize: 12, color: "#7A2E22", marginTop: 4 }}>
-                            + {allErrored.length - errored.length} vignette(s) en échec
+                            + {erroredMediaCount} vignette(s) en échec
                           </div>
                         )}
                         {canRetryFailed && (
-                          <RetryFailedFiles accountId={account.id} importId={imp.id} failedCount={allErrored.length} />
+                          <RetryFailedFiles accountId={account.id} importId={imp.id} failedCount={allErroredCount} />
                         )}
                       </div>
                     );
