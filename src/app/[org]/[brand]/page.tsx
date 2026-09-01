@@ -92,7 +92,7 @@ export default async function BrandOverviewPage({
     );
   }
 
-  const [{ data: overview }, { data: reach }, { data: cohorts }] = await Promise.all([
+  const [{ data: overview }, { data: reach }, { data: cohorts }, { data: qualityRows }] = await Promise.all([
     supabase.from("v_overview").select("*").eq("account_id", account.id).maybeSingle(),
     supabase.from("reach_insights").select("*").eq("import_id", comparability.latest_import_id!).maybeSingle(),
     supabase
@@ -100,6 +100,13 @@ export default async function BrandOverviewPage({
       .select("cohort_week, remaining, departed")
       .eq("account_id", account.id)
       .eq("measured_import_id", comparability.latest_import_id!),
+    // Même score que Croissance (cross_analyses.cohort_quality_score) : les
+    // cohortes les plus récentes affichent souvent 0 départ simplement
+    // faute de temps pour partir, ce qui aveugle l'alerte "Rupture de
+    // cohorte" ci-dessous (garde best.rate > 0). Le score, normalisé sur la
+    // survie à l'horizon commun plutôt que le taux brut, ne partage pas ce
+    // biais et peut détecter une dégradation que l'autre alerte manque.
+    supabase.from("cross_analyses").select("dimension, payload").eq("account_id", account.id).eq("code", "cohort_quality_score").order("dimension"),
   ]);
 
   const windowLabel =
@@ -155,6 +162,25 @@ export default async function BrandOverviewPage({
           href: `${base}/acquisition`,
         });
       }
+    }
+  }
+
+  const qualitySeries = (qualityRows ?? [])
+    .map((q) => (q.payload as { score?: number })?.score)
+    .filter((s): s is number => s != null);
+  if (qualitySeries.length >= 4) {
+    const recent = qualitySeries.slice(-3);
+    const older = qualitySeries.slice(0, -3);
+    const recentAvg = recent.reduce((s, v) => s + v, 0) / recent.length;
+    const olderAvg = older.reduce((s, v) => s + v, 0) / older.length;
+    if (olderAvg - recentAvg >= 25) {
+      alerts.push({
+        badge: "Qualité des cohortes",
+        title: `Les cohortes récentes décrochent : score de qualité à ${Math.round(recentAvg)}/100 contre ${Math.round(olderAvg)}/100 avant.`,
+        detail: "Moins de survie à horizon commun, plus de signaux de faux comptes ou d'arrivées nocturnes — invisible dans le taux de départ brut, ces cohortes sont trop récentes pour avoir eu le temps de partir.",
+        cta: "Ouvrir Croissance →",
+        href: `${base}/croissance`,
+      });
     }
   }
 
