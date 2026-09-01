@@ -2,6 +2,8 @@ import { Card } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, signedPct, shortDate } from "@/lib/format";
 import { SampleWindow } from "@/components/sample-window";
+import { TrendLine } from "@/components/trend-line";
+import { isoWeekMonday } from "@/lib/cohort-quality";
 
 const CONFIDENCE_LABEL: Record<string, string> = { robuste: "robuste", indicatif: "indicatif", insuffisant: "insuffisant" };
 const CONFIDENCE_BG: Record<string, string> = {
@@ -10,6 +12,7 @@ const CONFIDENCE_BG: Record<string, string> = {
   insuffisant: "var(--creme-fonce)",
 };
 const FORMAT_LABEL: Record<string, string> = { post: "Posts", reel: "Reels", story: "Stories" };
+const MEDIA_TYPE_LABEL: Record<string, string> = { post: "post", reel: "reel", story: "story" };
 
 export default async function ContenuPage({
   params,
@@ -41,34 +44,41 @@ export default async function ContenuPage({
     );
   }
 
-  const [{ data: content }, { data: metrics }, { data: attribution }, { data: interactions }, { count: reelsCount }, { count: storiesCount }, { data: formatRetention }] =
-    await Promise.all([
-      supabase.from("content").select("*").eq("account_id", account.id).eq("first_import_id", latestImport.import_id!),
-      supabase.from("content_metrics").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
-      supabase.from("content_attribution").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
-      supabase.from("interaction_insights").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!).in("format", ["reels", "posts"]),
-      supabase.from("content").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("media_type", "reel"),
-      supabase.from("content").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("media_type", "story"),
-      // Croisement rétention × format (§3.3) : media_type est une donnée
-      // réelle (contrairement au territoire éditorial, non classifiable) —
-      // calculée à partir de content_attribution.retention_rate ci-dessus.
-      supabase
-        .from("cross_analyses")
-        .select("dimension, payload, sample_size, confidence, confidence_reason")
-        .eq("account_id", account.id)
-        .eq("import_id", latestImport.import_id!)
-        .eq("code", "format_retention")
-        .order("dimension"),
-    ]);
+  // Toute publication (post, reel, story) datée dans la fenêtre de l'import
+  // — pas first_import_id, qui ne marque que la première fois qu'un média
+  // a été VU dans un export (reels.json/stories.json redonnent l'historique
+  // complet à chaque fois) : sur ce compte, filtrer par first_import_id
+  // masquait 23 posts sur 27 et 91 stories sur 134 réellement publiées
+  // dans la période affichée.
+  let contentQuery = supabase.from("content").select("*").eq("account_id", account.id);
+  if (latestImport.window_start) contentQuery = contentQuery.gte("published_at", latestImport.window_start);
+  if (latestImport.window_end) contentQuery = contentQuery.lte("published_at", latestImport.window_end);
+
+  const [{ data: content }, { data: metrics }, { data: attribution }, { data: interactions }, { data: formatRetention }] = await Promise.all([
+    contentQuery.order("published_at", { ascending: false }),
+    supabase.from("content_metrics").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
+    supabase.from("content_attribution").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
+    supabase.from("interaction_insights").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!).in("format", ["reels", "posts"]),
+    // Croisement rétention × format (§3.3) : media_type est une donnée
+    // réelle (contrairement au territoire éditorial, non classifiable) —
+    // calculée à partir de content_attribution.retention_rate.
+    supabase
+      .from("cross_analyses")
+      .select("dimension, payload, sample_size, confidence, confidence_reason")
+      .eq("account_id", account.id)
+      .eq("import_id", latestImport.import_id!)
+      .eq("code", "format_retention")
+      .order("dimension"),
+  ]);
 
   const metricsByContent = new Map((metrics ?? []).map((m) => [m.content_id, m]));
   const attributionByContent = new Map((attribution ?? []).map((a) => [a.content_id, a]));
 
-  const posts = (content ?? [])
-    .map((c) => ({ content: c, metrics: metricsByContent.get(c.id), attribution: attributionByContent.get(c.id) }))
-    .filter((p) => p.metrics)
-    .sort((a, b) => (b.metrics?.follow_conversion_rate ?? 0) - (a.metrics?.follow_conversion_rate ?? 0))
-    .slice(0, 6);
+  const posts = (content ?? []).map((c) => ({
+    content: c,
+    metrics: metricsByContent.get(c.id),
+    attribution: attributionByContent.get(c.id),
+  }));
 
   // thumb_path est stocké préfixé du bucket ("media-thumbs/...", même
   // convention que storage_path ailleurs) — media-thumbs est un bucket
@@ -90,18 +100,51 @@ export default async function ContenuPage({
   const reels = (interactions ?? []).find((i) => i.format === "reels");
   const postsAgg = (interactions ?? []).find((i) => i.format === "posts");
 
+  // Courbe : arrivées excédentaires attribuées (48 h post-publication),
+  // sommées par semaine ISO — la seule série avec assez de points pour
+  // dessiner une évolution sur la période (contrairement aux métriques
+  // Insights, qui n'ont qu'un point par import, deux à ce jour).
+  const weeklyBuckets = new Map<string, number>();
+  for (const { content: c, attribution: a } of posts) {
+    if (!a || a.excess_arrivals == null) continue;
+    const week = isoWeekMonday(c.published_at.slice(0, 10));
+    weeklyBuckets.set(week, (weeklyBuckets.get(week) ?? 0) + a.excess_arrivals);
+  }
+  const trendPoints = [...weeklyBuckets.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([week, value]) => ({ label: shortDate(week), value }));
+
+  const formatCounts = { post: 0, reel: 0, story: 0 } as Record<string, number>;
+  for (const { content: c } of posts) formatCounts[c.media_type] = (formatCounts[c.media_type] ?? 0) + 1;
+
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1280, minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
         <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-0.01em" }}>Contenu</h1>
         <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          Tri par taux de conversion en abonnés, décroissant
+          {fr(posts.length)} publication{posts.length > 1 ? "s" : ""} · {fr(formatCounts.post)} posts · {fr(formatCounts.reel)} reels ·{" "}
+          {fr(formatCounts.story)} stories
           {latestImport.window_start && latestImport.window_end ? ` · ${shortDate(latestImport.window_start)} → ${shortDate(latestImport.window_end)}` : ""}
         </span>
       </div>
 
+      {trendPoints.length > 1 && (
+        <Card variant="claire" interactive={false}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Arrivées excédentaires attribuées, par semaine</h2>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Somme des arrivées excédentaires (48 h post-publication, cf. cartes ci-dessous) de toutes les publications de
+                chaque semaine — une corrélation temporelle, jamais une attribution certaine.
+              </span>
+            </div>
+            <TrendLine points={trendPoints} />
+          </div>
+        </Card>
+      )}
+
       {posts.length === 0 ? (
-        <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucune publication rattachée à cet import (posts.json non fourni ou vide).</p>
+        <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucune publication datée dans cette période.</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
           {posts.map(({ content: c, metrics: m, attribution: a }) => (
@@ -122,20 +165,28 @@ export default async function ContenuPage({
                 <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--text-muted)" }}>
                   <span style={{ fontWeight: 600, color: "var(--encre)" }}>{shortDate(c.published_at)}</span>
                   <span>·</span>
-                  <span>{c.media_type}</span>
+                  <span>{MEDIA_TYPE_LABEL[c.media_type] ?? c.media_type}</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Conversion</span>
-                    <span style={{ fontSize: "clamp(24px, 2.6vw, 34px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>
-                      {pct(m?.follow_conversion_rate != null ? m.follow_conversion_rate * 100 : null)}
-                    </span>
+
+                {m ? (
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Conversion</span>
+                      <span style={{ fontSize: "clamp(24px, 2.6vw, 34px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>
+                        {pct(m.follow_conversion_rate != null ? m.follow_conversion_rate * 100 : null)}
+                      </span>
+                    </div>
+                    <div style={{ textAlign: "right", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                      <div>{fr(m.reach ?? null)} de portée</div>
+                      <div>{fr(m.follows_gained ?? null)} abonnés gagnés</div>
+                    </div>
                   </div>
-                  <div style={{ textAlign: "right", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                    <div>{fr(m?.reach ?? null)} de portée</div>
-                    <div>{fr(m?.follows_gained ?? null)} abonnés gagnés</div>
+                ) : (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+                    Aucune métrique de portée pour ce format — Meta ne l&apos;expose que pour les posts statiques.
                   </div>
-                </div>
+                )}
+
                 <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                     <span
@@ -191,8 +242,7 @@ export default async function ContenuPage({
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>Rétention par format</h2>
               <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                Moyenne de la rétention à 48 h (ci-dessus) regroupée par format réel — la seule dimension de format que
-                l&apos;export documente, contrairement au territoire éditorial ci-dessous.
+                Moyenne de la rétention à 48 h (ci-dessus) regroupée par format réel.
               </span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
@@ -209,23 +259,13 @@ export default async function ContenuPage({
                 );
               })}
             </div>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              La rétention par territoire éditorial (thème, mise en scène) reste hors de portée : contrairement au format,
+              elle nécessite une classification automatique du contenu jamais construite.
+            </span>
           </div>
         </Card>
       )}
-
-      {((reelsCount ?? 0) > 0 || (storiesCount ?? 0) > 0) && (
-        <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5, textWrap: "pretty" }}>
-          {fr(reelsCount ?? 0)} reel{(reelsCount ?? 0) > 1 ? "s" : ""} et {fr(storiesCount ?? 0)} {(storiesCount ?? 0) > 1 ? "stories" : "story"} recensés
-          sur l&apos;historique du compte, hors grille ci-dessus : vérifié sur l&apos;export réel, aucune métrique de portée ou de
-          conversion n&apos;existe pour ces formats, contrairement aux publications statiques. Seules leur date et leur légende
-          sont connues.
-        </div>
-      )}
-
-      <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5 }}>
-        La rétention par territoire éditorial (thème, mise en scène) n&apos;est pas encore disponible : contrairement au format
-        ci-dessus, elle nécessite une classification automatique du contenu qui n&apos;a pas encore été construite.
-      </div>
     </main>
   );
 }
