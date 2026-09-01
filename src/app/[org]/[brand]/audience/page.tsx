@@ -151,34 +151,32 @@ export default async function AudiencePage({
                 ))}
               </div>
             )}
+
+            <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Activité par jour de semaine</h3>
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                  Comptes actifs. Écart entre le jour le plus faible et le plus fort :{" "}
+                  {maxActivity > 0 ? pct(((maxActivity - minActivity) / maxActivity) * 100) : "—"}.
+                </span>
+              </div>
+              {activityRows.length === 0 ? (
+                <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Pas de données d&apos;activité dans cet import.</p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8, alignItems: "end" }}>
+                  {activityRows.map((a) => (
+                    <div key={a.weekday} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{fr(a.active_count)}</span>
+                      <div style={{ width: "100%", height: maxActivity > 0 ? Math.max(4, Math.round((a.active_count / maxActivity) * 64)) : 4, borderRadius: "6px 6px 0 0", background: "var(--bleu)" }} />
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{WEEKDAY_LABEL[a.weekday - 1]?.slice(0, 3) ?? a.weekday}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </Card>
       </div>
-
-      <Card variant="claire" interactive={false}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Activité par jour de semaine</h2>
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              Comptes actifs. Écart entre le jour le plus faible et le plus fort :{" "}
-              {maxActivity > 0 ? pct(((maxActivity - minActivity) / maxActivity) * 100) : "—"}.
-            </span>
-          </div>
-          {activityRows.length === 0 ? (
-            <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Pas de données d&apos;activité dans cet import.</p>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 10, alignItems: "end" }}>
-              {activityRows.map((a) => (
-                <div key={a.weekday} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{fr(a.active_count)}</span>
-                  <div style={{ width: "100%", height: maxActivity > 0 ? Math.max(4, Math.round((a.active_count / maxActivity) * 88)) : 4, borderRadius: "8px 8px 0 0", background: "var(--bleu)" }} />
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{WEEKDAY_LABEL[a.weekday - 1] ?? a.weekday}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
 
       <ReconciliationBanner reconciliation={reconciliation ?? null} />
     </main>

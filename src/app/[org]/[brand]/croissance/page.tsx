@@ -106,6 +106,12 @@ export default async function CroissancePage({
               </span>
             </div>
 
+            <div style={{ background: "var(--vert-pastel)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--bleu)", lineHeight: 1.5, textWrap: "pretty" }}>
+              Une cohorte regroupe tous les comptes abonnés au cours d&apos;une même semaine. On la suit ensuite dans le temps :
+              combien sont arrivés cette semaine-là, combien d&apos;entre eux sont partis depuis. Comparer des cohortes plutôt qu&apos;un
+              total permet de voir si les arrivées récentes se comportent différemment des anciennes.
+            </div>
+
             {rows.length === 0 ? (
               <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Pas encore de cohortes mesurables.</p>
             ) : (
@@ -131,7 +137,8 @@ export default async function CroissancePage({
                         }}
                       >
                         <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{fr(b.arrivals)}</span>
-                        <div style={{ width: "100%", maxWidth: 34, borderRadius: "5px 5px 0 0", background: "var(--bleu)", height: maxArrivals > 0 ? Math.max(4, Math.round(((b.arrivals ?? 0) / maxArrivals) * 110)) : 4 }} />
+                        <div style={{ width: "100%", maxWidth: 34, borderRadius: "5px 5px 0 0", background: "var(--bleu)", height: maxArrivals > 0 ? Math.max(4, Math.round(((b.arrivals ?? 0) / maxArrivals) * 130)) : 4 }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--encre)", whiteSpace: "nowrap", textAlign: "center" }}>{b.cohort_week ? shortDate(b.cohort_week) : "—"}</span>
                       </div>
                     ))}
                   </div>
@@ -157,8 +164,8 @@ export default async function CroissancePage({
                         }}
                       >
                         <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{fr(b.departed)}</span>
-                        <div style={{ width: "100%", maxWidth: 34, borderRadius: "5px 5px 0 0", background: "#A8A196", height: maxDeparted > 0 ? Math.max(4, Math.round(((b.departed ?? 0) / maxDeparted) * 110)) : 4 }} />
-                        <span style={{ fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>{b.cohort_week ? shortDate(b.cohort_week) : "—"}</span>
+                        <div style={{ width: "100%", maxWidth: 34, borderRadius: "5px 5px 0 0", background: "#A8A196", height: maxDeparted > 0 ? Math.max(4, Math.round(((b.departed ?? 0) / maxDeparted) * 130)) : 4 }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--encre)", whiteSpace: "nowrap", textAlign: "center" }}>{b.cohort_week ? shortDate(b.cohort_week) : "—"}</span>
                       </div>
                     ))}
                   </div>
