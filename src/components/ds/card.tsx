@@ -51,6 +51,7 @@ export function Card({
         e.currentTarget.style.transform = tilt ? `rotate(${tilt}deg) translateY(-2px)` : "translateY(-2px)";
       }}
       onMouseLeave={(e) => {
+        if (!interactive) return;
         e.currentTarget.style.boxShadow = "var(--ombre-carte)";
         e.currentTarget.style.transform = tilt ? `rotate(${tilt}deg)` : "translateY(0)";
       }}

@@ -47,7 +47,7 @@ export function CustomWindowModal({ orgSlug, brandSlug, accountId }: { orgSlug: 
     <div
       role="dialog"
       aria-modal="true"
-      style={{ position: "fixed", inset: 0, background: "rgba(28,26,22,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}
+      style={{ position: "fixed", inset: 0, background: "rgba(28,26,22,0.45)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}
       onClick={(e) => {
         if (e.target === e.currentTarget) setOpen(false);
       }}
