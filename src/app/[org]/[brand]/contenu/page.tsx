@@ -1,6 +1,7 @@
 import { Card } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, signedPct, shortDate } from "@/lib/format";
+import { SampleWindow } from "@/components/sample-window";
 
 const CONFIDENCE_LABEL: Record<string, string> = { robuste: "robuste", indicatif: "indicatif", insuffisant: "insuffisant" };
 const CONFIDENCE_BG: Record<string, string> = {
@@ -8,6 +9,7 @@ const CONFIDENCE_BG: Record<string, string> = {
   indicatif: "var(--pastel-jaune)",
   insuffisant: "var(--creme-fonce)",
 };
+const FORMAT_LABEL: Record<string, string> = { post: "Posts", reel: "Reels", story: "Stories" };
 
 export default async function ContenuPage({
   params,
@@ -39,7 +41,7 @@ export default async function ContenuPage({
     );
   }
 
-  const [{ data: content }, { data: metrics }, { data: attribution }, { data: interactions }, { count: reelsCount }, { count: storiesCount }] =
+  const [{ data: content }, { data: metrics }, { data: attribution }, { data: interactions }, { count: reelsCount }, { count: storiesCount }, { data: formatRetention }] =
     await Promise.all([
       supabase.from("content").select("*").eq("account_id", account.id).eq("first_import_id", latestImport.import_id!),
       supabase.from("content_metrics").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
@@ -47,6 +49,16 @@ export default async function ContenuPage({
       supabase.from("interaction_insights").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!).in("format", ["reels", "posts"]),
       supabase.from("content").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("media_type", "reel"),
       supabase.from("content").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("media_type", "story"),
+      // Croisement rétention × format (§3.3) : media_type est une donnée
+      // réelle (contrairement au territoire éditorial, non classifiable) —
+      // calculée à partir de content_attribution.retention_rate ci-dessus.
+      supabase
+        .from("cross_analyses")
+        .select("dimension, payload, sample_size, confidence, confidence_reason")
+        .eq("account_id", account.id)
+        .eq("import_id", latestImport.import_id!)
+        .eq("code", "format_retention")
+        .order("dimension"),
     ]);
 
   const metricsByContent = new Map((metrics ?? []).map((m) => [m.content_id, m]));
@@ -173,6 +185,34 @@ export default async function ContenuPage({
         </Card>
       )}
 
+      {(formatRetention ?? []).length > 0 && (
+        <Card variant="claire" interactive={false}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>Rétention par format</h2>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Moyenne de la rétention à 48 h (ci-dessus) regroupée par format réel — la seule dimension de format que
+                l&apos;export documente, contrairement au territoire éditorial ci-dessous.
+              </span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+              {(formatRetention ?? []).map((f) => {
+                const retention = (f.payload as { retention_moyenne?: number })?.retention_moyenne;
+                return (
+                  <div key={f.dimension} style={{ border: "1px solid var(--bordure-carte)", borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>{FORMAT_LABEL[f.dimension] ?? f.dimension}</span>
+                    <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>
+                      {retention != null ? pct(retention * 100) : "—"}
+                    </span>
+                    <SampleWindow n={f.sample_size} confidence={f.confidence} reason={f.confidence_reason} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {((reelsCount ?? 0) > 0 || (storiesCount ?? 0) > 0) && (
         <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5, textWrap: "pretty" }}>
           {fr(reelsCount ?? 0)} reel{(reelsCount ?? 0) > 1 ? "s" : ""} et {fr(storiesCount ?? 0)} {(storiesCount ?? 0) > 1 ? "stories" : "story"} recensés
@@ -183,8 +223,8 @@ export default async function ContenuPage({
       )}
 
       <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5 }}>
-        La rétention par territoire éditorial n&apos;est pas encore disponible : elle nécessite une classification automatique du
-        contenu (territoire, mise en scène) qui n&apos;a pas encore été construite.
+        La rétention par territoire éditorial (thème, mise en scène) n&apos;est pas encore disponible : contrairement au format
+        ci-dessus, elle nécessite une classification automatique du contenu qui n&apos;a pas encore été construite.
       </div>
     </main>
   );
