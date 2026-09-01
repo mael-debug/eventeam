@@ -85,9 +85,9 @@ export default async function AudiencePage({
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, alignItems: "start" }}>
-        <Card variant="claire" interactive={false}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, alignItems: "stretch" }}>
+        <Card variant="claire" interactive={false} style={{ height: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0, height: "100%" }}>
             <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Pays et villes</h2>
             {countries.length === 0 ? (
               <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Pas de répartition géographique dans cet import.</p>
@@ -127,8 +127,8 @@ export default async function AudiencePage({
           </div>
         </Card>
 
-        <Card variant="claire" interactive={false}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+        <Card variant="claire" interactive={false} style={{ height: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0, height: "100%" }}>
             <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Âge et genre</h2>
             {genderMale != null || genderFemale != null ? (
               <div style={{ display: "flex", gap: 24, alignItems: "baseline" }}>
