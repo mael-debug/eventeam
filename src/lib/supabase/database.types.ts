@@ -1528,6 +1528,47 @@ export type Database = {
           },
         ]
       }
+      custom_acquisition_windows: {
+        Row: {
+          account_id: string
+          budget_eur: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          account_id: string
+          budget_eur?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          account_id?: string
+          budget_eur?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_acquisition_windows_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ecosystem_profiles: {
         Row: {
           account_id: string
@@ -3620,6 +3661,17 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      custom_window_stats: {
+        Args: {
+          p_account_id: string
+          p_window_end: string
+          p_window_start: string
+        }
+        Returns: {
+          retained: number
+          volume: number
+        }[]
       }
       delete_stuck_import: { Args: { p_import_id: string }; Returns: undefined }
       ingest_resolve_usernames: {

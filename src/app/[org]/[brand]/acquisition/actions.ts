@@ -49,3 +49,45 @@ export async function setSpikeBudgetAction(
 
   revalidatePath(`/${orgSlug}/${brandSlug}/acquisition`);
 }
+
+// Périodes personnalisées (0037) — second mode de chiffrage, à côté des
+// pics détectés par le moteur : l'agence choisit ses propres dates plutôt
+// que d'attendre qu'un pic statistique soit détecté.
+export async function createCustomWindowAction(
+  orgSlug: string,
+  brandSlug: string,
+  accountId: string,
+  formData: FormData,
+) {
+  const label = String(formData.get("label") ?? "").trim();
+  const windowStart = String(formData.get("window_start") ?? "").trim();
+  const windowEnd = String(formData.get("window_end") ?? "").trim();
+  const budgetRaw = String(formData.get("budget_eur") ?? "").trim();
+
+  if (!windowStart || !windowEnd || windowEnd < windowStart) return;
+
+  const budgetEur = budgetRaw === "" ? null : Number(budgetRaw.replace(",", "."));
+  if (budgetEur !== null && (!Number.isFinite(budgetEur) || budgetEur < 0)) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  await supabase.from("custom_acquisition_windows").insert({
+    account_id: accountId,
+    label: label || null,
+    window_start: windowStart,
+    window_end: windowEnd,
+    budget_eur: budgetEur,
+    created_by: user?.id ?? null,
+  });
+
+  revalidatePath(`/${orgSlug}/${brandSlug}/acquisition`);
+}
+
+export async function deleteCustomWindowAction(orgSlug: string, brandSlug: string, windowId: string) {
+  const supabase = await createClient();
+  await supabase.from("custom_acquisition_windows").delete().eq("id", windowId);
+  revalidatePath(`/${orgSlug}/${brandSlug}/acquisition`);
+}

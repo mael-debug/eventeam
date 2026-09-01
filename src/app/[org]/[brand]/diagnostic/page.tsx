@@ -247,7 +247,7 @@ export default async function DiagnosticPage({
                       <td style={{ padding: "11px 8px", textAlign: "right" }}>{fr(p.volume)}</td>
                       <td style={{ padding: "11px 8px", textAlign: "right", color: "var(--text-muted)" }}>{p.multiple.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}×</td>
                       <td style={{ padding: "11px 8px", color: "var(--text-muted)" }}>{SHAPE_LABEL[p.shape] ?? p.shape}</td>
-                      <td style={{ padding: "11px 8px", textAlign: "right" }}>{pct(p.night_share != null ? p.night_share * 100 : null, 0)}</td>
+                      <td style={{ padding: "11px 8px", textAlign: "right" }}>{pct(p.night_share, 0)}</td>
                       <td style={{ padding: "11px 8px", textAlign: "right", fontWeight: 600 }}>{pct(p.retention_rate != null ? p.retention_rate * 100 : null, 0)}</td>
                       <td style={{ padding: "11px 0" }}>
                         <span style={{ borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 700, background: NATURE_BG[p.inferred_type] ?? "var(--creme-fonce)" }}>

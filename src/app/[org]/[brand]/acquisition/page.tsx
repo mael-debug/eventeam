@@ -3,6 +3,7 @@ import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, shortDate } from "@/lib/format";
 import { ReconciliationBanner } from "@/components/reconciliation-banner";
 import { setSpikeBudgetAction } from "./actions";
+import { CustomWindowsSection } from "./custom-windows-section";
 
 const NATURE_LABEL: Record<string, string> = {
   probable_paid: "Achat probable",
@@ -27,6 +28,14 @@ const CONFIDENCE_BG: Record<string, string> = {
 function eur(n: number | null) {
   if (n === null || n === undefined || !Number.isFinite(n)) return "—";
   return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+}
+
+function Th({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <span style={{ textDecoration: "underline dotted", textUnderlineOffset: 3, cursor: "help" }} title={title}>
+      {children}
+    </span>
+  );
 }
 
 export default async function AcquisitionPage({
@@ -164,15 +173,45 @@ export default async function AcquisitionPage({
                 <table style={{ width: "100%", minWidth: 900, fontSize: 14, borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ textAlign: "left", color: "var(--text-muted)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                      <th style={{ padding: "0 8px 10px 0", fontWeight: 600 }}>Pic</th>
-                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Volume</th>
-                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Multiple</th>
-                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Part nocturne</th>
-                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Rétention</th>
-                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Conservés</th>
-                      <th style={{ padding: "0 8px 10px", fontWeight: 600 }}>Budget</th>
-                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Coût brut</th>
-                      <th style={{ padding: "0 0 10px", fontWeight: 600, textAlign: "right" }}>Coût conservé</th>
+                      <th style={{ padding: "0 8px 10px 0", fontWeight: 600 }}>
+                        <Th title="Semaine où les arrivées ont dépassé 3× la médiane mobile des 14 jours précédents — détecté automatiquement, jamais saisi.">
+                          Pic
+                        </Th>
+                      </th>
+                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>
+                        <Th title="Nombre de comptes arrivés pendant ce pic.">Volume</Th>
+                      </th>
+                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>
+                        <Th title="Rapport entre le rythme d'arrivées au plus fort du pic et le rythme normal (médiane mobile) juste avant.">
+                          Multiple
+                        </Th>
+                      </th>
+                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>
+                        <Th title="Part des arrivées du pic survenues entre 0 h et 6 h, heure de Paris. Une part élevée est un indice de comptes achetés ou automatisés, pas une preuve.">
+                          Part nocturne
+                        </Th>
+                      </th>
+                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>
+                        <Th title="Part des comptes arrivés pendant ce pic encore abonnés aujourd'hui.">Rétention</Th>
+                      </th>
+                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>
+                        <Th title="Nombre de comptes arrivés pendant ce pic encore abonnés aujourd'hui (Volume × Rétention).">
+                          Conservés
+                        </Th>
+                      </th>
+                      <th style={{ padding: "0 8px 10px", fontWeight: 600 }}>
+                        <Th title="Montant dépensé pour ce pic — à saisir manuellement, l'export Instagram ne le fournit pas.">Budget</Th>
+                      </th>
+                      <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>
+                        <Th title="Budget divisé par le volume d'arrivées — le chiffre habituellement présenté par les régies publicitaires.">
+                          Coût brut
+                        </Th>
+                      </th>
+                      <th style={{ padding: "0 0 10px", fontWeight: 600, textAlign: "right" }}>
+                        <Th title="Budget divisé par le nombre de comptes encore présents aujourd'hui — le coût réel de ce pic.">
+                          Coût conservé
+                        </Th>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -191,7 +230,7 @@ export default async function AcquisitionPage({
                         </td>
                         <td style={{ padding: "12px 8px", textAlign: "right" }}>{fr(p.volume)}</td>
                         <td style={{ padding: "12px 8px", textAlign: "right", color: "var(--text-muted)" }}>{(p.multiple ?? 0).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}×</td>
-                        <td style={{ padding: "12px 8px", textAlign: "right", color: "var(--text-muted)" }}>{pct(p.night_share != null ? p.night_share * 100 : null, 0)}</td>
+                        <td style={{ padding: "12px 8px", textAlign: "right", color: "var(--text-muted)" }}>{pct(p.night_share, 0)}</td>
                         <td style={{ padding: "12px 8px", textAlign: "right", fontWeight: 600 }}>{pct(p.retention_rate != null ? p.retention_rate * 100 : null, 0)}</td>
                         <td style={{ padding: "12px 8px", textAlign: "right", color: "var(--text-muted)" }}>
                           {p.retention_rate != null && p.volume != null ? fr(Math.round(p.volume * p.retention_rate)) : "—"}
@@ -234,6 +273,8 @@ export default async function AcquisitionPage({
           )}
         </div>
       </Card>
+
+      <CustomWindowsSection supabase={supabase} orgSlug={orgSlug} brandSlug={brandSlug} accountId={account.id} canWriteView={canWriteView} />
 
       <Card variant="claire" interactive={false}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
