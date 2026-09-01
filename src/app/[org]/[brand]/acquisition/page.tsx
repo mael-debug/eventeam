@@ -240,9 +240,18 @@ export default async function AcquisitionPage({
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>Survie par cohorte d&apos;arrivée</h2>
             <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              Taux brut observé, et taux ramené à l&apos;horizon commun{horizonDays != null ? ` (${horizonDays} j)` : ""} calculé par le moteur.
+              Taux de départ observé, et survie ramenée à l&apos;horizon commun{horizonDays != null ? ` (${horizonDays} j)` : ""} calculée par le moteur.
             </span>
           </div>
+
+          <div style={{ background: "var(--vert-pastel)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--bleu)", lineHeight: 1.5, textWrap: "pretty" }}>
+            Chaque ligne suit les comptes arrivés la même semaine. Deux chiffres, pas un seul, parce qu&apos;ils ne mesurent pas la
+            même chose : <strong>« Taux de départ observé »</strong> est le % déjà parti aujourd&apos;hui — mais une cohorte
+            récente a eu moins de temps pour partir, ce qui l&apos;avantage injustement face à une cohorte ancienne. <strong>«
+            Survie à l&apos;horizon »</strong> corrige ce biais en ne regardant que les {horizonDays ?? "…"} premiers jours de
+            chaque cohorte, pour toutes : c&apos;est la seule des deux colonnes vraiment comparable d&apos;une semaine à l&apos;autre.
+          </div>
+
           {(cohortRows ?? []).length === 0 ? (
             <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Pas encore de cohorte mesurable — il faut deux imports consécutifs.</p>
           ) : (
@@ -253,8 +262,8 @@ export default async function AcquisitionPage({
                     <th style={{ padding: "0 0 10px", fontWeight: 600 }}>Semaine</th>
                     <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Effectif</th>
                     <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Partis</th>
-                    <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Taux brut</th>
-                    <th style={{ padding: "0 8px 10px", fontWeight: 600 }}>Taux à l&apos;horizon</th>
+                    <th style={{ padding: "0 8px 10px", fontWeight: 600, textAlign: "right" }}>Taux de départ observé</th>
+                    <th style={{ padding: "0 8px 10px", fontWeight: 600 }}>Survie à l&apos;horizon</th>
                     <th style={{ padding: "0 0 10px", fontWeight: 600, textAlign: "right" }}>Exposition</th>
                   </tr>
                 </thead>
@@ -306,8 +315,8 @@ export default async function AcquisitionPage({
             </div>
           )}
           <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
-            Le taux à l&apos;horizon est calculé par le moteur à partir de la distribution réelle des départs par âge d&apos;abonnement.
-            Aucune valeur n&apos;est extrapolée au-delà de la dernière observation.
+            La survie à l&apos;horizon est calculée par le moteur à partir de la distribution réelle des départs par âge
+            d&apos;abonnement. Aucune valeur n&apos;est extrapolée au-delà de la dernière observation.
           </div>
         </div>
       </Card>
