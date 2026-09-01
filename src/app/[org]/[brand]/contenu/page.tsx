@@ -2,8 +2,10 @@ import { Card } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, signedPct, shortDate } from "@/lib/format";
 import { SampleWindow } from "@/components/sample-window";
-import { TrendLine } from "@/components/trend-line";
+import { TrendLine, type TrendSeries } from "@/components/trend-line";
 import { isoWeekMonday } from "@/lib/cohort-quality";
+
+const SERIES_COLOR: Record<string, string> = { post: "var(--bleu)", reel: "var(--vert-logo)", story: "#8B5CF6" };
 
 const CONFIDENCE_LABEL: Record<string, string> = { robuste: "robuste", indicatif: "indicatif", insuffisant: "insuffisant" };
 const CONFIDENCE_BG: Record<string, string> = {
@@ -101,18 +103,27 @@ export default async function ContenuPage({
   const postsAgg = (interactions ?? []).find((i) => i.format === "posts");
 
   // Courbe : arrivées excédentaires attribuées (48 h post-publication),
-  // sommées par semaine ISO — la seule série avec assez de points pour
-  // dessiner une évolution sur la période (contrairement aux métriques
-  // Insights, qui n'ont qu'un point par import, deux à ce jour).
-  const weeklyBuckets = new Map<string, number>();
+  // sommées par semaine ISO et par format — la seule série avec assez de
+  // points pour dessiner une évolution sur la période (contrairement aux
+  // métriques Insights, qui n'ont qu'un point par import, deux à ce jour).
+  const weeklyByFormat: Record<string, Map<string, number>> = { post: new Map(), reel: new Map(), story: new Map() };
   for (const { content: c, attribution: a } of posts) {
     if (!a || a.excess_arrivals == null) continue;
+    const bucket = weeklyByFormat[c.media_type];
+    if (!bucket) continue;
     const week = isoWeekMonday(c.published_at.slice(0, 10));
-    weeklyBuckets.set(week, (weeklyBuckets.get(week) ?? 0) + a.excess_arrivals);
+    bucket.set(week, (bucket.get(week) ?? 0) + a.excess_arrivals);
   }
-  const trendPoints = [...weeklyBuckets.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([week, value]) => ({ label: shortDate(week), value }));
+  const allWeeks = [...new Set(Object.values(weeklyByFormat).flatMap((m) => [...m.keys()]))].sort();
+  const trendLabels = allWeeks.map((w) => shortDate(w));
+  const trendSeries: TrendSeries[] = (["post", "reel", "story"] as const)
+    .filter((type) => weeklyByFormat[type].size > 0)
+    .map((type) => ({
+      key: type,
+      label: FORMAT_LABEL[type],
+      color: SERIES_COLOR[type],
+      values: allWeeks.map((w) => weeklyByFormat[type].get(w) ?? 0),
+    }));
 
   const formatCounts = { post: 0, reel: 0, story: 0 } as Record<string, number>;
   for (const { content: c } of posts) formatCounts[c.media_type] = (formatCounts[c.media_type] ?? 0) + 1;
@@ -128,17 +139,18 @@ export default async function ContenuPage({
         </span>
       </div>
 
-      {trendPoints.length > 1 && (
+      {trendLabels.length > 1 && trendSeries.length > 0 && (
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Arrivées excédentaires attribuées, par semaine</h2>
               <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                Somme des arrivées excédentaires (48 h post-publication, cf. cartes ci-dessous) de toutes les publications de
-                chaque semaine — une corrélation temporelle, jamais une attribution certaine.
+                Somme des arrivées excédentaires (48 h post-publication, cf. cartes ci-dessous), par format et par semaine —
+                cliquez une puce pour isoler ou masquer un format ; survolez un point pour le détail. Une corrélation
+                temporelle, jamais une attribution certaine.
               </span>
             </div>
-            <TrendLine points={trendPoints} />
+            <TrendLine labels={trendLabels} series={trendSeries} />
           </div>
         </Card>
       )}
