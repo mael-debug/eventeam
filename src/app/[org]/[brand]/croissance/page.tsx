@@ -202,12 +202,19 @@ export default async function CroissancePage({
 
       <Card variant="claire" interactive={false}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>Derniers départs</h2>
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              {departureRows.length} ligne{departureRows.length > 1 ? "s" : ""} affichée{departureRows.length > 1 ? "s" : ""} sur{" "}
-              {fr(departuresCount ?? departureRows.length)}. Aucune date exacte : l&apos;écart entre deux imports fixe la précision.
-            </span>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>Derniers départs</h2>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                {departureRows.length} ligne{departureRows.length > 1 ? "s" : ""} affichée{departureRows.length > 1 ? "s" : ""} sur{" "}
+                {fr(departuresCount ?? departureRows.length)}. Aucune date exacte : l&apos;écart entre deux imports fixe la précision.
+              </span>
+            </div>
+            {(departuresCount ?? 0) > departureRows.length && (
+              <Button href={`${base}/listes`} variant="secondaire" size="sm">
+                Voir la liste complète ({fr(departuresCount ?? 0)})
+              </Button>
+            )}
           </div>
           {departureRows.length === 0 ? (
             <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucun départ mesuré sur cet import.</p>
