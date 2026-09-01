@@ -4,6 +4,12 @@ import { fr, pct, shortDate } from "@/lib/format";
 import { ReconciliationBanner } from "@/components/reconciliation-banner";
 import { RevealDepartures, type DepartureRow } from "@/components/reveal-departures";
 
+function qualityColor(score: number): string {
+  if (score >= 70) return "var(--vert-logo)";
+  if (score >= 40) return "var(--pastel-jaune)";
+  return "#C0392B";
+}
+
 const DEPARTURES_SHOWN = 8;
 
 export default async function CroissancePage({
@@ -51,7 +57,7 @@ export default async function CroissancePage({
       ? `${shortDate(comparability.latest_window_start)} → ${shortDate(comparability.latest_window_end)}`
       : "—";
 
-  const [{ data: bars }, { data: cohortTotals }, { data: renames }, { data: departures, count: departuresCount }, { data: reconciliation }] =
+  const [{ data: bars }, { data: cohortTotals }, { data: renames }, { data: departures, count: departuresCount }, { data: reconciliation }, { data: qualityRows }] =
     await Promise.all([
       supabase.from("v_growth_by_cohort").select("*").eq("account_id", account.id).order("cohort_week"),
       supabase.from("v_cohort_totals").select("*").eq("account_id", account.id).maybeSingle(),
@@ -62,11 +68,29 @@ export default async function CroissancePage({
         .eq("account_id", account.id)
         .limit(DEPARTURES_SHOWN),
       supabase.from("reconciliation").select("*").eq("import_id", comparability.latest_import_id!).maybeSingle(),
+      // Score composite déjà calculé par le moteur (survie, ancienneté au
+      // départ, absence de signal suspect, part diurne) mais jamais affiché
+      // nulle part jusqu'ici — cf. cross_analyses, migration 0017 §3.5.
+      supabase.from("cross_analyses").select("dimension, payload, confidence").eq("account_id", account.id).eq("code", "cohort_quality_score"),
     ]);
 
   const rows = bars ?? [];
   const maxArrivals = rows.length ? Math.max(...rows.map((b) => b.arrivals ?? 0)) : 0;
   const maxDeparted = rows.length ? Math.max(...rows.map((b) => b.departed ?? 0)) : 0;
+
+  const qualityByWeek = new Map((qualityRows ?? []).map((q) => [q.dimension, q]));
+  const qualitySeries = rows
+    .map((b) => (b.cohort_week ? qualityByWeek.get(b.cohort_week) : undefined))
+    .filter((q): q is NonNullable<typeof q> => !!q && (q.payload as { score?: number })?.score != null);
+  const recentQuality = qualitySeries.slice(-3);
+  const olderQuality = qualitySeries.slice(0, -3);
+  const recentAvg = recentQuality.length
+    ? recentQuality.reduce((s, q) => s + (q.payload as { score: number }).score, 0) / recentQuality.length
+    : null;
+  const olderAvg = olderQuality.length
+    ? olderQuality.reduce((s, q) => s + (q.payload as { score: number }).score, 0) / olderQuality.length
+    : null;
+  const qualityDrop = recentAvg != null && olderAvg != null && olderAvg - recentAvg >= 25;
 
   const departureRows: DepartureRow[] = (departures ?? [])
     .filter((d): d is typeof d & { profile_id: number; followed_at: string; cohort_week: string } => d.profile_id != null && d.followed_at != null && d.cohort_week != null)
@@ -92,6 +116,14 @@ export default async function CroissancePage({
         <div style={{ background: "var(--pastel-jaune)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--encre)", lineHeight: 1.5 }}>
           Les deux derniers imports se recouvrent presque entièrement ({pct((comparability.overlap_ratio ?? 0) * 100, 0)} de
           recouvrement) : {comparability.comparability_reason}. Les chiffres ci-dessous restent affichés, à lire avec cette réserve.
+        </div>
+      )}
+
+      {qualityDrop && recentAvg != null && olderAvg != null && (
+        <div style={{ background: "#FBE4E1", border: "1px solid #E8A79E", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--encre)", lineHeight: 1.5 }}>
+          <strong>Le score de qualité des cohortes récentes décroche</strong> : {Math.round(recentAvg)}/100 en moyenne sur les 3
+          dernières semaines, contre {Math.round(olderAvg)}/100 avant — moins de survie à horizon commun, plus de signaux de
+          faux comptes ou d&apos;arrivées nocturnes. Voir le détail par semaine ci-dessous.
         </div>
       )}
 
@@ -171,6 +203,36 @@ export default async function CroissancePage({
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Les semaines surlignées sont les pics d&apos;acquisition, inférés du volume d&apos;arrivées.</div>
+
+                {qualitySeries.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0, borderTop: "1px solid var(--bordure-carte)", paddingTop: 14 }}>
+                    <div
+                      style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)", textDecoration: "underline dotted", textUnderlineOffset: 3, width: "fit-content" }}
+                      title="Score composite 0-100 par cohorte : survie à l'horizon commun (45%), ancienneté médiane au départ (20%), part sans signal de faux compte (20%), part arrivée aux heures de bureau Europe (15%). Plus bas = cohorte plus fragile."
+                    >
+                      Score qualité de la cohorte
+                    </div>
+                    <div style={{ display: "grid", gridAutoFlow: "column", gridAutoColumns: "minmax(0, 1fr)", gap: 8, minWidth: 0 }}>
+                      {rows.map((b) => {
+                        const q = b.cohort_week ? qualityByWeek.get(b.cohort_week) : undefined;
+                        const score = q ? (q.payload as { score?: number })?.score : null;
+                        return (
+                          <div key={b.cohort_week} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 0 }}>
+                            {score != null ? (
+                              <span
+                                title={`${score}/100 · confiance ${q?.confidence ?? "—"}`}
+                                style={{ width: 12, height: 12, borderRadius: 999, background: qualityColor(score) }}
+                              />
+                            ) : (
+                              <span style={{ width: 12, height: 12, borderRadius: 999, background: "var(--creme-fonce)" }} title="Pas assez de données" />
+                            )}
+                            <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{score ?? "—"}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
