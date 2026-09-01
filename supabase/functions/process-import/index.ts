@@ -1,6 +1,6 @@
 // PRD §7.2 — Edge Function process-import.
-// Ordre : followers -> following -> insights -> posts -> chat, puis
-// recompute_account (§4.10) une fois l'import lui-même 'completed'.
+// Ordre : followers -> following -> insights -> posts -> reels/stories ->
+// chat, puis recompute_account (§4.10) une fois l'import lui-même 'completed'.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -12,10 +12,11 @@ import {
   firstStringMap,
 } from "../_shared/parse-insights.ts";
 import { parsePostsFile, collectPostKeys } from "../_shared/parse-posts.ts";
+import { parseReelsFile, parseStoriesFile, parseActivityPostCaptions, type ParsedActivityMedia } from "../_shared/parse-activity-media.ts";
 import { parseChatFile } from "../_shared/parse-chat.ts";
-import { normalizedKeysOf } from "../_shared/parsing.ts";
+import { extractMediaKey, normalizedKeysOf } from "../_shared/parsing.ts";
 
-const PARSER_VERSION = "2026-lot5.2";
+const PARSER_VERSION = "2026-lot5.3";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -127,6 +128,18 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   );
 
   let filesParsed = 0;
+
+  // Vignettes uploadées (media/**/*.jpg|png, cf. whitelist.ts) — utilisé par
+  // posts.json ET stories.json (certaines stories sont des photos). Les
+  // reels et les stories vidéo (.mp4) ne sont jamais uploadés (hors liste
+  // blanche media), donc jamais retrouvés ici : thumbByMediaKey.get() renvoie
+  // simplement undefined pour eux, pas une erreur.
+  const thumbByMediaKey = new Map<string, string>();
+  for (const f of fileRows) {
+    if (f.category !== "media" || f.status !== "uploaded" || !f.storage_path) continue;
+    const mediaKey = extractMediaKey(f.source_path);
+    if (mediaKey) thumbByMediaKey.set(mediaKey, f.storage_path);
+  }
 
   // ---- followers_*.json (§7.5 : agrège tous les fragments, sans borne N) ----
   const followerFiles = fileRows.filter((f) => /^followers(_\d+)?\.json$/.test(basename(f.source_path)));
@@ -366,21 +379,8 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       // uploadOneMediaFile dans upload-import.ts). Les deux ne coïncident
       // jamais littéralement : on retrouve la vraie vignette par le seul
       // identifiant fiable partagé, le media_key numérique Instagram
-      // (présent dans les deux chemins), en le recherchant dans
-      // import_files où la vignette a déjà été enregistrée à l'upload.
-      //
-      // fileRows vient de selectAllPages : couvre bien les milliers de
-      // fichiers médias d'un import réel (un .select() non paginé s'arrête
-      // silencieusement à la limite par défaut de PostgREST, 1000 lignes —
-      // bug confirmé, la plupart des vignettes manquaient en pratique
-      // malgré un fichier bien présent dans le bucket).
-      const thumbByMediaKey = new Map<string, string>();
-      for (const f of fileRows) {
-        if (f.category !== "media" || f.status !== "uploaded" || !f.storage_path) continue;
-        const match = f.source_path.match(/(\d{6,})/);
-        if (match) thumbByMediaKey.set(match[1], f.storage_path);
-      }
-
+      // (présent dans les deux chemins), via thumbByMediaKey (hoisté plus
+      // haut, réutilisé aussi par stories.json plus bas).
       let inserted = 0;
       for (const p of parsed) {
         const realThumbPath = thumbByMediaKey.get(p.mediaKey) ?? null;
@@ -455,6 +455,99 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       return inserted;
     });
     filesParsed++;
+  }
+
+  // ---- reels.json / stories.json (your_instagram_activity/media/, Lot 5)
+  // — cf. en-tête de _shared/parse-activity-media.ts : aucune métrique
+  // n'existe pour ces formats dans l'export (vérifié : les media_key des
+  // reels n'apparaissent nulle part dans organic_insights_posts). content
+  // reçoit donc une ligne (légende, date, vignette si photo) mais jamais de
+  // content_metrics — Contenu ne les mélange jamais à la grille classée par
+  // conversion, qui exige une métrique.
+  async function upsertActivityContent(mediaType: "reel" | "story", entries: ParsedActivityMedia[]): Promise<number> {
+    let count = 0;
+    for (const e of entries) {
+      const { data: existing, error: lookupError } = await admin
+        .from("content")
+        .select("id")
+        .eq("account_id", accountId)
+        .eq("media_key", e.mediaKey)
+        .maybeSingle();
+      if (lookupError) throw new Error(`content (lecture ${mediaType}) : ${lookupError.message}`);
+
+      const thumbPath = thumbByMediaKey.get(e.mediaKey) ?? null;
+      if (existing) {
+        const { error: updateError } = await admin
+          .from("content")
+          .update({ caption: e.caption, thumb_path: thumbPath })
+          .eq("id", existing.id);
+        if (updateError) throw new Error(`content (mise à jour ${mediaType}) : ${updateError.message}`);
+      } else {
+        const { error: insertError } = await admin.from("content").insert({
+          account_id: accountId,
+          media_key: e.mediaKey,
+          permalink: null,
+          media_type: mediaType,
+          published_at: e.publishedAt.toISOString(),
+          caption: e.caption,
+          thumb_path: thumbPath,
+          first_import_id: importId,
+        });
+        if (insertError) throw new Error(`content (création ${mediaType}) : ${insertError.message}`);
+      }
+      count++;
+    }
+    return count;
+  }
+
+  const reelsFile = fileRows.find((f) => basename(f.source_path) === "reels.json");
+  if (reelsFile) {
+    await withFileTracking(admin, reelsFile, async () => {
+      const parsed = parseReelsFile(await downloadJson(admin, reelsFile.storage_path));
+      return await upsertActivityContent("reel", parsed);
+    });
+    filesParsed++;
+  }
+
+  const storiesFile = fileRows.find((f) => basename(f.source_path) === "stories.json");
+  if (storiesFile) {
+    await withFileTracking(admin, storiesFile, async () => {
+      const parsed = parseStoriesFile(await downloadJson(admin, storiesFile.storage_path));
+      return await upsertActivityContent("story", parsed);
+    });
+    filesParsed++;
+  }
+
+  // ---- posts_N.json (your_instagram_activity/media/, Lot 5) — jamais une
+  // source de nouvelles publications (seul posts.json à métriques fait foi
+  // sur QUELLES publications existent, cf. parsePostsFile) : sert
+  // uniquement à compléter une légende vide, avec les vraies images du
+  // carrousel le cas échéant (le fichier à métriques n'en garde qu'une).
+  const activityPostFiles = fileRows.filter((f) => /^posts_\d+\.json$/.test(basename(f.source_path)));
+  if (activityPostFiles.length > 0) {
+    for (const f of activityPostFiles) {
+      await withFileTracking(admin, f, async () => {
+        const captions = parseActivityPostCaptions(await downloadJson(admin, f.storage_path));
+        const { data: existingPosts, error: postsError } = await admin
+          .from("content")
+          .select("id, media_key, caption")
+          .eq("account_id", accountId)
+          .eq("media_type", "post");
+        if (postsError) throw new Error(`content (lecture légendes) : ${postsError.message}`);
+
+        let updated = 0;
+        for (const row of existingPosts ?? []) {
+          if (row.caption) continue;
+          const caption = captions.get(row.media_key);
+          if (!caption) continue;
+          const { error: updateError } = await admin.from("content").update({ caption }).eq("id", row.id);
+          if (updateError) throw new Error(`content (complément légende) : ${updateError.message}`);
+          updated++;
+        }
+        return updated;
+      });
+      filesParsed++;
+    }
   }
 
   // ---- your_chat_information.json (§7.4, Lot 5) — agrégat uniquement,

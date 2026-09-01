@@ -5,6 +5,21 @@
 // libellés varient selon la langue du compte et sont eux-mêmes affectés par
 // le mojibake).
 
+// media_key = identifiant numérique Instagram embarqué dans un chemin de
+// fichier media (uri d'export ou source_path de storage). Piège confirmé
+// contre un export réel : un chemin comme "media/reels/202608/186144...mp4"
+// contient DEUX suites de 6+ chiffres — le dossier "202608" (année-mois) et
+// le vrai identifiant du fichier — et un /(\d{6,})/ sur le chemin complet
+// attrape le premier, donc le dossier, pas le fichier. Se limiter au nom de
+// fichier (dernier segment du chemin) élimine ce piège : seul l'identifiant
+// réel y figure.
+export function extractMediaKey(pathOrUri: string | undefined | null): string | null {
+  if (!pathOrUri) return null;
+  const filename = pathOrUri.split("/").pop() ?? pathOrUri;
+  const match = filename.match(/(\d{6,})/);
+  return match ? match[1] : null;
+}
+
 export function normalizeKey(s: string): string {
   return s
     .normalize("NFD")

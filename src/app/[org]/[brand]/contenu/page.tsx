@@ -39,12 +39,15 @@ export default async function ContenuPage({
     );
   }
 
-  const [{ data: content }, { data: metrics }, { data: attribution }, { data: interactions }] = await Promise.all([
-    supabase.from("content").select("*").eq("account_id", account.id).eq("first_import_id", latestImport.import_id!),
-    supabase.from("content_metrics").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
-    supabase.from("content_attribution").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
-    supabase.from("interaction_insights").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!).in("format", ["reels", "posts"]),
-  ]);
+  const [{ data: content }, { data: metrics }, { data: attribution }, { data: interactions }, { count: reelsCount }, { count: storiesCount }] =
+    await Promise.all([
+      supabase.from("content").select("*").eq("account_id", account.id).eq("first_import_id", latestImport.import_id!),
+      supabase.from("content_metrics").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
+      supabase.from("content_attribution").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
+      supabase.from("interaction_insights").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!).in("format", ["reels", "posts"]),
+      supabase.from("content").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("media_type", "reel"),
+      supabase.from("content").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("media_type", "story"),
+    ]);
 
   const metricsByContent = new Map((metrics ?? []).map((m) => [m.content_id, m]));
   const attributionByContent = new Map((attribution ?? []).map((a) => [a.content_id, a]));
@@ -168,6 +171,15 @@ export default async function ContenuPage({
             </div>
           </div>
         </Card>
+      )}
+
+      {((reelsCount ?? 0) > 0 || (storiesCount ?? 0) > 0) && (
+        <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5, textWrap: "pretty" }}>
+          {fr(reelsCount ?? 0)} reel{(reelsCount ?? 0) > 1 ? "s" : ""} et {fr(storiesCount ?? 0)} {(storiesCount ?? 0) > 1 ? "stories" : "story"} recensés
+          sur l&apos;historique du compte, hors grille ci-dessus : vérifié sur l&apos;export réel, aucune métrique de portée ou de
+          conversion n&apos;existe pour ces formats, contrairement aux publications statiques. Seules leur date et leur légende
+          sont connues.
+        </div>
       )}
 
       <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5 }}>

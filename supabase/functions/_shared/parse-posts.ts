@@ -36,7 +36,7 @@
 // jour (le PRD v1.0 §6.8 prévoit 'reel'/'story'/'live'/'carousel' aussi).
 
 import { fixMojibake } from "./mojibake.ts";
-import { findExact, normalizeKey, parseFormattedInt, type StringMap } from "./parsing.ts";
+import { extractMediaKey, findExact, normalizeKey, parseFormattedInt, type StringMap } from "./parsing.ts";
 
 interface RawMediaEntry {
   uri?: string;
@@ -63,12 +63,6 @@ export interface ParsedPost {
   profileVisits: number | null;
   followsGained: number | null;
   externalTaps: number | null;
-}
-
-function extractMediaKey(uri: string | undefined): string | null {
-  if (!uri) return null;
-  const match = uri.match(/(\d{6,})/);
-  return match ? match[1] : null;
 }
 
 function cleanStringMap(raw: StringMap | undefined): StringMap {
