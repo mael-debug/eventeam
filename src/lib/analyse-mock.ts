@@ -122,29 +122,108 @@ export function mockAccountReachSeries(accountId: string, followersTotal: number
   return points;
 }
 
+export interface FormatReachSeries {
+  dates: string[];
+  post: number[];
+  reel: number[];
+  story: number[];
+}
+
+// Même courbe, décomposée par format — possible car `reach` accepte le
+// breakdown media_product_type (§3.B). Un Reel touche typiquement bien plus
+// de comptes hors abonnés qu'un post classique ou qu'une story.
+export function mockAccountReachByFormat(accountId: string, followersTotal: number, days = 30): FormatReachSeries {
+  const r = rng(`${accountId}:reach-by-format`);
+  const basePost = Math.round(followersTotal * 0.009);
+  const baseReel = Math.round(followersTotal * 0.014);
+  const baseStory = Math.round(followersTotal * 0.006);
+  const dates: string[] = [];
+  const post: number[] = [];
+  const reel: number[] = [];
+  const story: number[] = [];
+  const today = new Date("2026-09-01T00:00:00Z");
+  let levelPost = basePost;
+  let levelReel = baseReel;
+  let levelStory = baseStory;
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() - i);
+    levelPost = Math.max(80, levelPost + between(r, -Math.round(basePost * 0.15), Math.round(basePost * 0.18)));
+    levelReel = Math.max(80, levelReel + between(r, -Math.round(baseReel * 0.2), Math.round(baseReel * 0.25)));
+    levelStory = Math.max(80, levelStory + between(r, -Math.round(baseStory * 0.15), Math.round(baseStory * 0.18)));
+    dates.push(d.toISOString().slice(0, 10));
+    post.push(levelPost);
+    reel.push(levelReel);
+    story.push(levelStory);
+  }
+  return { dates, post, reel, story };
+}
+
+export interface MonthlyReachPoint {
+  month: string;
+  reach: number;
+}
+
+// Tendance sur plusieurs mois — ce que seul notre propre historique permet
+// de tracer, puisque Meta ne conserve ces données que 90 jours (§3.B).
+export function mockAccountReachMonthly(accountId: string, followersTotal: number, months = 6): MonthlyReachPoint[] {
+  const r = rng(`${accountId}:reach-monthly`);
+  const base = Math.round(followersTotal * 0.55);
+  const points: MonthlyReachPoint[] = [];
+  const start = new Date("2026-09-01T00:00:00Z");
+  let level = base;
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(start);
+    d.setUTCMonth(d.getUTCMonth() - i);
+    level = Math.max(1000, Math.round(level * (1 + between(r, -12, 18) / 100)));
+    points.push({ month: d.toISOString().slice(0, 7), reach: level });
+  }
+  return points;
+}
+
+export interface TrendMetric {
+  value: number;
+  deltaPct: number;
+}
+
 export interface AccountPeriodTotals {
-  accountsEngaged: number;
-  totalInteractions: number;
-  likes: number;
-  comments: number;
-  shares: number;
-  saves: number;
-  followsAndUnfollows: { follows: number; unfollows: number };
-  profileLinksTaps: number;
+  accountsEngaged: TrendMetric;
+  totalInteractions: TrendMetric;
+  likes: TrendMetric;
+  comments: TrendMetric;
+  shares: TrendMetric;
+  saves: TrendMetric;
+  follows: TrendMetric;
+  unfollows: TrendMetric;
+  profileLinksTaps: TrendMetric;
+}
+
+// Chaque métrique est générée avec son niveau du mois précédent, puis le
+// mois courant en dérive avec une variation plausible — le delta affiché
+// (§ "comparaison avec le mois d'avant") vient directement de ces deux
+// niveaux, jamais d'un pourcentage tiré indépendamment.
+function withTrend(r: () => number, previous: number): TrendMetric {
+  const growth = 1 + between(r, -20, 35) / 100;
+  const value = Math.max(0, Math.round(previous * growth));
+  const deltaPct = previous > 0 ? Math.round(((value - previous) / previous) * 1000) / 10 : 0;
+  return { value, deltaPct };
 }
 
 export function mockAccountPeriodTotals(accountId: string, followersTotal: number): AccountPeriodTotals {
   const r = rng(`${accountId}:period-totals`);
-  const likes = Math.round(followersTotal * (between(r, 8, 14) / 100));
-  const comments = Math.round(likes * 0.05);
-  const shares = between(r, 400, 1200);
-  const saves = between(r, 800, 2400);
+  const prevLikes = Math.round(followersTotal * (between(r, 8, 14) / 100));
+  const likes = withTrend(r, prevLikes);
+  const comments = withTrend(r, Math.round(prevLikes * 0.05));
+  const shares = withTrend(r, between(r, 400, 1200));
+  const saves = withTrend(r, between(r, 800, 2400));
+  const totalInteractionsPrev = prevLikes + comments.value + shares.value + saves.value;
   return {
-    accountsEngaged: Math.round(followersTotal * (between(r, 3, 6) / 100)),
-    totalInteractions: likes + comments + shares + saves,
+    accountsEngaged: withTrend(r, Math.round(followersTotal * (between(r, 3, 6) / 100))),
+    totalInteractions: withTrend(r, totalInteractionsPrev),
     likes, comments, shares, saves,
-    followsAndUnfollows: { follows: between(r, 8000, 20000), unfollows: between(r, 4000, 11000) },
-    profileLinksTaps: between(r, 600, 1800),
+    follows: withTrend(r, between(r, 8000, 20000)),
+    unfollows: withTrend(r, between(r, 4000, 11000)),
+    profileLinksTaps: withTrend(r, between(r, 600, 1800)),
   };
 }
 

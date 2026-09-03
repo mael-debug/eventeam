@@ -1,16 +1,18 @@
 import { Card, Chip } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
-import { fr, shortDate } from "@/lib/format";
+import { fr, shortDate, signedPct } from "@/lib/format";
 import { TrendLine } from "@/components/trend-line";
 import {
   mockMediaInsights,
-  mockAccountReachSeries,
+  mockAccountReachByFormat,
+  mockAccountReachMonthly,
   mockAccountPeriodTotals,
   mockAudienceDemographics,
   mockMentions,
   mockCompetitors,
   mockTopCommenters,
   type MediaType,
+  type TrendMetric,
 } from "@/lib/analyse-mock";
 import { CadenceChip } from "./cadence-chip";
 import { LiveComments } from "./live-comments";
@@ -25,6 +27,11 @@ import { LiveComments } from "./live-comments";
 // validée avec le client — rien d'autre n'est montré ici.
 
 const MEDIA_LABEL: Record<MediaType, string> = { post: "Post", reel: "Reel", story: "Story" };
+const SERIES_COLOR: Record<MediaType, string> = { post: "var(--bleu)", reel: "var(--vert-logo)", story: "#8B5CF6" };
+
+function monthLabel(month: string): string {
+  return new Date(`${month}-01T00:00:00Z`).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
+}
 
 function SimTag() {
   return (
@@ -57,6 +64,23 @@ function MetricRow({ label, value }: { label: string; value: string | number | n
   );
 }
 
+function TrendTile({ label, metric }: { label: string; metric: TrendMetric }) {
+  const up = metric.deltaPct > 0;
+  const flat = metric.deltaPct === 0;
+  return (
+    <div style={{ border: "1px solid var(--bordure-carte)", borderRadius: 14, padding: 14, display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>{fr(metric.value)}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: flat ? "var(--text-muted)" : up ? "var(--vert-logo)" : "var(--text-muted)" }}>
+          {signedPct(metric.deltaPct, 0)}
+        </span>
+      </div>
+      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{label}</span>
+      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>vs moyenne du mois précédent</span>
+    </div>
+  );
+}
+
 export default async function AnalysePage({
   params,
 }: {
@@ -74,7 +98,7 @@ export default async function AnalysePage({
     supabase.from("audience_insights").select("followers_total, period_end").eq("account_id", account.id).order("period_end", { ascending: false }).limit(1).maybeSingle(),
     supabase
       .from("content")
-      .select("id, media_type, published_at, caption, thumb_path")
+      .select("id, media_type, published_at, caption")
       .eq("account_id", account.id)
       .in("media_type", ["post", "reel"])
       .not("caption", "is", null)
@@ -83,7 +107,7 @@ export default async function AnalysePage({
       .limit(12),
     supabase
       .from("content")
-      .select("id, media_type, published_at, caption, thumb_path")
+      .select("id, media_type, published_at, caption")
       .eq("account_id", account.id)
       .eq("media_type", "story")
       .order("published_at", { ascending: false })
@@ -92,21 +116,8 @@ export default async function AnalysePage({
 
   const followersTotal = latestInsights?.followers_total ?? 0;
 
-  const allForThumbs = [...(posts ?? []), ...(stories ?? [])];
-  const thumbUrls = new Map<string, string>();
-  await Promise.all(
-    allForThumbs.map(async (c) => {
-      if (!c.thumb_path) return;
-      const slash = c.thumb_path.indexOf("/");
-      if (slash < 0) return;
-      const bucket = c.thumb_path.slice(0, slash);
-      const objectPath = c.thumb_path.slice(slash + 1);
-      const { data } = await supabase.storage.from(bucket).createSignedUrl(objectPath, 3600);
-      if (data?.signedUrl) thumbUrls.set(c.id, data.signedUrl);
-    }),
-  );
-
-  const reachSeries = mockAccountReachSeries(account.id, followersTotal);
+  const reachByFormat = mockAccountReachByFormat(account.id, followersTotal);
+  const reachMonthly = mockAccountReachMonthly(account.id, followersTotal);
   const periodTotals = mockAccountPeriodTotals(account.id, followersTotal);
   const demographics = mockAudienceDemographics(account.id, followersTotal);
   const mentions = mockMentions(account.id);
@@ -153,32 +164,53 @@ export default async function AnalysePage({
         </div>
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 15, fontWeight: 700 }}>Comptes touchés, par jour</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>Comptes touchés, par jour et par format</span>
               <SimTag />
             </div>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              Possible car la métrique <code>reach</code> accepte le détail par format de contenu (posts, reels, stories).
+            </span>
             <TrendLine
-              labels={reachSeries.map((p) => shortDate(p.date))}
-              series={[{ key: "reach", label: "Comptes touchés", color: "var(--bleu)", values: reachSeries.map((p) => p.reach) }]}
+              labels={reachByFormat.dates.map((d) => shortDate(d))}
+              series={[
+                { key: "post", label: "Posts", color: SERIES_COLOR.post, values: reachByFormat.post },
+                { key: "reel", label: "Reels", color: SERIES_COLOR.reel, values: reachByFormat.reel },
+                { key: "story", label: "Stories", color: SERIES_COLOR.story, values: reachByFormat.story },
+              ]}
+            />
+          </div>
+        </Card>
+        <Card variant="claire" interactive={false}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>Tendance de la portée, sur plusieurs mois</span>
+              <SimTag />
+            </div>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              Meta ne garde que 90 jours : cette vue longue n&apos;existe que grâce à notre propre historique, construit mois après mois.
+            </span>
+            <TrendLine
+              labels={reachMonthly.map((p) => monthLabel(p.month))}
+              series={[{ key: "reach", label: "Comptes touchés", color: "var(--bleu)", values: reachMonthly.map((p) => p.reach) }]}
             />
           </div>
         </Card>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
-          {[
-            ["Comptes ayant interagi", periodTotals.accountsEngaged],
-            ["Interactions totales", periodTotals.totalInteractions],
-            ["J'aime", periodTotals.likes],
-            ["Commentaires", periodTotals.comments],
-            ["Partages", periodTotals.shares],
-            ["Enregistrements", periodTotals.saves],
-            ["Abonnements", periodTotals.followsAndUnfollows.follows],
-            ["Désabonnements", periodTotals.followsAndUnfollows.unfollows],
-            ["Clics sur les liens du profil", periodTotals.profileLinksTaps],
-          ].map(([label, value]) => (
-            <div key={label as string} style={{ border: "1px solid var(--bordure-carte)", borderRadius: 14, padding: 14, display: "flex", flexDirection: "column", gap: 4 }}>
-              <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>{fr(value as number)}</span>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{label}</span>
-            </div>
+          {(
+            [
+              ["Comptes ayant interagi", periodTotals.accountsEngaged],
+              ["Interactions totales", periodTotals.totalInteractions],
+              ["J'aime", periodTotals.likes],
+              ["Commentaires", periodTotals.comments],
+              ["Partages", periodTotals.shares],
+              ["Enregistrements", periodTotals.saves],
+              ["Abonnements", periodTotals.follows],
+              ["Désabonnements", periodTotals.unfollows],
+              ["Clics sur les liens du profil", periodTotals.profileLinksTaps],
+            ] as [string, TrendMetric][]
+          ).map(([label, metric]) => (
+            <TrendTile key={label} label={label} metric={metric} />
           ))}
         </div>
       </div>
@@ -189,30 +221,23 @@ export default async function AnalysePage({
           n={3}
           title="Publications"
           cadence={<CadenceChip cadence="J" />}
-          subtitle="Contenu réel (légende, vignette, date) — métriques simulées en attendant l'API. Aucun insight n'existe pour les images individuelles d'un carrousel : seul l'album entier est mesuré."
+          subtitle="Contenu réel (légende, date) — métriques simulées en attendant l'API. Aucun insight n'existe pour les images individuelles d'un carrousel : seul l'album entier est mesuré."
         />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
           {(posts ?? []).map((p) => {
             const insights = mockMediaInsights(p.id, p.media_type as MediaType, followersTotal);
-            const url = thumbUrls.get(p.id);
             return (
               <Card key={p.id} variant="claire" interactive={false}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-                  {url ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- URL signée temporaire (1 h)
-                    <img src={url} alt="" style={{ height: 160, width: "100%", borderRadius: 12, objectFit: "cover", background: "var(--creme-fonce)" }} />
-                  ) : (
-                    <div style={{ height: 160, borderRadius: 12, background: "var(--creme-fonce)", display: "grid", placeItems: "center", fontSize: 12, color: "var(--text-muted)" }}>
-                      Vignette indisponible
-                    </div>
-                  )}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-muted)" }}>
                     <span style={{ fontWeight: 700, color: "var(--encre)" }}>{shortDate(p.published_at)}</span>
                     <Chip style={{ fontSize: 11, padding: "3px 9px" }}>{MEDIA_LABEL[p.media_type as MediaType]}</Chip>
                   </div>
-                  <p style={{ margin: 0, fontSize: 13, color: "var(--encre)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                    {p.caption}
-                  </p>
+                  <div style={{ background: "var(--panneau)", borderRadius: 12, padding: "14px 16px", minHeight: 96, display: "flex", alignItems: "center" }}>
+                    <p style={{ margin: 0, fontSize: 14, color: "var(--encre)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden", textWrap: "pretty" }}>
+                      {p.caption}
+                    </p>
+                  </div>
                   <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
                       <SimTag />
@@ -313,20 +338,27 @@ export default async function AnalysePage({
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           {(stories ?? []).map((s) => {
             const insights = mockMediaInsights(s.id, "story", followersTotal);
-            const url = thumbUrls.get(s.id);
             return (
               <Card key={s.id} variant="claire" interactive={false}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-                  {url ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- URL signée temporaire (1 h)
-                    <img src={url} alt="" style={{ height: 200, width: "100%", borderRadius: 12, objectFit: "cover", background: "var(--creme-fonce)" }} />
-                  ) : (
-                    <div style={{ height: 200, borderRadius: 12, background: "var(--creme-fonce)", display: "grid", placeItems: "center", fontSize: 12, color: "var(--text-muted)" }}>
-                      Vignette indisponible
-                    </div>
-                  )}
-                  <span style={{ fontSize: 12, fontWeight: 700 }}>{shortDate(s.published_at)}</span>
-                  {s.caption && <span style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>{s.caption}</span>}
+                  <div
+                    style={{
+                      height: 168,
+                      borderRadius: 12,
+                      background: "linear-gradient(150deg, var(--bleu-bg), var(--pastel-violet))",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      padding: 14,
+                    }}
+                  >
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--bleu)" }}>
+                      Story · {shortDate(s.published_at)}
+                    </span>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--encre)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden", textWrap: "pretty" }}>
+                      {s.caption || "🎀 Story sans légende"}
+                    </p>
+                  </div>
                   <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 8, display: "flex", flexDirection: "column", gap: 5 }}>
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
                       <SimTag />
