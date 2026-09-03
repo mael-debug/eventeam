@@ -48,20 +48,18 @@ function ContentCard({ item }: { item: ContentItem }) {
           {item.caption || "Sans légende"}
         </p>
 
-        {item.followsGained != null ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {item.reach != null || item.followConversionRate != null ? (
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: "clamp(24px, 2.6vw, 32px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                {fr(item.followsGained)} nouveaux abonnés
+              <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Conversion</span>
+              <span style={{ fontSize: "clamp(22px, 2.4vw, 30px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>
+                {pct(item.followConversionRate != null ? item.followConversionRate * 100 : null)}
               </span>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Instagram attribue directement ces abonnements à ce post.</span>
             </div>
-            {(item.followConversionRate != null || item.reach != null) && (
-              <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                {item.followConversionRate != null && <div>{pct(item.followConversionRate * 100)} des personnes touchées se sont abonnées</div>}
-                {item.reach != null && <div>{fr(item.reach)} personnes touchées</div>}
-              </div>
-            )}
+            <div style={{ textAlign: "right", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
+              <div>{fr(item.reach)} de portée</div>
+              <div>{fr(item.followsGained)} abonnés gagnés</div>
+            </div>
           </div>
         ) : (
           <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
