@@ -3,9 +3,6 @@ import { IntroHero } from "./intro-hero";
 import { IntroDifferentiatorsSection } from "./intro-differentiators-section";
 import { IntroSnapshotSection } from "./intro-snapshot-section";
 import { IntroEdenParkQuestions } from "./intro-eden-park-questions";
-import { IntroEdenParkSynthesis } from "./intro-eden-park-synthesis";
-import { IntroEdenParkRoadmap } from "./intro-eden-park-roadmap";
-import { IntroFooterSection } from "./intro-footer-section";
 
 // Page Intro — page statique et non technique expliquant ce que Community
 // Intelligence peut réellement savoir, et ce qu'elle ne peut pas savoir.
@@ -54,18 +51,6 @@ export default async function IntroPage({
 
       <Section>
         <IntroEdenParkQuestions />
-      </Section>
-
-      <Section>
-        <IntroEdenParkSynthesis />
-      </Section>
-
-      <Section>
-        <IntroEdenParkRoadmap />
-      </Section>
-
-      <Section>
-        <IntroFooterSection />
       </Section>
     </main>
   );

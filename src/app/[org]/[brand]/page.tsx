@@ -1,7 +1,6 @@
 import { Card, Badge, Button } from "@/components/ds";
 import { Input } from "@/components/ui/input";
 import { resolveBrandContext } from "@/lib/context/brand-context";
-import { CADENCE_WEEKS } from "@/lib/cadence";
 import { fr, signedFr, pct, signedPct, shortDate } from "@/lib/format";
 import { createInstagramAccountAction } from "./actions";
 
@@ -52,7 +51,7 @@ export default async function BrandOverviewPage({
   params: Promise<{ org: string; brand: string }>;
 }) {
   const { org: orgSlug, brand: brandSlug } = await params;
-  const { supabase, org, brand, accounts, canWriteView } = await resolveBrandContext(orgSlug, brandSlug);
+  const { supabase, org, brand, accounts } = await resolveBrandContext(orgSlug, brandSlug);
   const base = `/${orgSlug}/${brandSlug}`;
   const attachAction = createInstagramAccountAction.bind(null, org.slug, brand.slug, brand.id);
 
@@ -195,7 +194,6 @@ export default async function BrandOverviewPage({
     });
   }
 
-  const cadenceWeeks = CADENCE_WEEKS[account.import_cadence] ?? null;
   const totalMeasurable = overview?.total_measurable ?? 0;
   const totalDeparted = overview?.total_departed ?? 0;
 
@@ -272,61 +270,6 @@ export default async function BrandOverviewPage({
             ))}
           </div>
         </div>
-      )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
-        <Card variant="claire" interactive={false}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Ce que nous mesurons, et sur quoi</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 14, color: "var(--text-muted)", lineHeight: 1.55 }}>
-              <div>
-                Le taux de départ porte sur les {fr(totalMeasurable)} comptes présents dans deux imports consécutifs, pas sur
-                les {fr(overview?.followers_total ?? null)} abonnés. Les {fr(overview?.followers_lost ?? null)} pertes affichées par
-                Instagram ne sont pas nominatives.
-              </div>
-              {cadenceWeeks && cadenceWeeks > 1 && (
-                <div>
-                  Vos exports sont espacés de {cadenceWeeks} semaines. Une date de désabonnement est donc connue à {cadenceWeeks}{" "}
-                  semaines près, jamais au jour.
-                </div>
-              )}
-            </div>
-            <Button variant="lien" href={`${base}/imports`}>
-              Régler la cadence d&apos;import
-            </Button>
-          </div>
-        </Card>
-        <Card variant="encre" interactive={false}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,248,243,0.5)" }}>
-              Non calculable aujourd&apos;hui
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 14, lineHeight: 1.5 }}>
-              <div>Date exacte de désabonnement — Meta n&apos;expose aucun événement de désabonnement.</div>
-              <div>Coût par abonné réel par campagne — nécessite l&apos;accès au Gestionnaire de publicités.</div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {canWriteView && (
-        <Card variant="claire" interactive={false}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Comptes Instagram</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {accounts.map((a) => (
-                <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid var(--bordure-carte)", fontSize: 14 }}>
-                  <span>@{a.handle}</span>
-                  <Badge variant="statut">{a.import_cadence}</Badge>
-                </div>
-              ))}
-            </div>
-            <form action={attachAction} style={{ display: "flex", gap: 8 }}>
-              <Input name="handle" required placeholder="edenpark" />
-              <Button type="submit">Rattacher</Button>
-            </form>
-          </div>
-        </Card>
       )}
     </main>
   );

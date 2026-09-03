@@ -1,7 +1,6 @@
 import { Card, Badge, Button } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, shortDate } from "@/lib/format";
-import { ReconciliationBanner } from "@/components/reconciliation-banner";
 import { setSpikeBudgetAction } from "./actions";
 import { CustomWindowsSection } from "./custom-windows-section";
 import { qualityColor, isoWeekMonday } from "@/lib/cohort-quality";
@@ -85,7 +84,7 @@ export default async function AcquisitionPage({
 
   const latestImportId = comparability.latest_import_id!;
 
-  const [{ data: spikes }, { data: cohortRows }, { data: reconciliation }, { data: cohortTotals }, { data: qualityRows }] = await Promise.all([
+  const [{ data: spikes }, { data: cohortRows }, { data: cohortTotals }, { data: qualityRows }] = await Promise.all([
     supabase.from("acquisition_spikes_with_budget").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("spike_start"),
     supabase
       .from("cohort_survival")
@@ -93,7 +92,6 @@ export default async function AcquisitionPage({
       .eq("account_id", account.id)
       .eq("measured_import_id", latestImportId)
       .order("cohort_week"),
-    supabase.from("reconciliation").select("*").eq("import_id", latestImportId).maybeSingle(),
     supabase.from("v_cohort_totals").select("total_measurable").eq("account_id", account.id).maybeSingle(),
     // Croisement pic d'acquisition ↔ cohorte : le score de qualité de la
     // semaine (Croissance) donne un contexte au pic (arrivées massives mais
@@ -386,8 +384,6 @@ export default async function AcquisitionPage({
           </div>
         </div>
       </Card>
-
-      <ReconciliationBanner reconciliation={reconciliation ?? null} />
     </main>
   );
 }

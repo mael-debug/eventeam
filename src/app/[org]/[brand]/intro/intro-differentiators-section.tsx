@@ -19,8 +19,8 @@ const DIFFERENTIATORS: { title: string; text: string }[] = [
     text: "Contenu, acquisition, rétention et écosystème sont reliés entre eux, plutôt que consultés séparément comme dans le reporting natif.",
   },
   {
-    title: "Action",
-    text: "Les constats se traduisent en pistes concrètes pour la marque — sans jamais présenter une corrélation comme une certitude.",
+    title: "Anticipation",
+    text: "Comparer un mois à celui d'il y a un an, ou à la tendance des derniers mois, permet de repérer un décrochage tôt — avant qu'il ne devienne visible dans le compteur d'abonnés.",
   },
 ];
 
@@ -42,6 +42,20 @@ export function IntroDifferentiatorsSection() {
           périodes entre elles et répond à des questions qu&apos;un rapport ponctuel ne pose pas.
         </p>
       </div>
+
+      <Card variant="encre" interactive={false}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,248,243,0.55)" }}>
+            Exemple fictif — comparer à l&apos;an dernier (N-1)
+          </span>
+          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, textWrap: "pretty" }}>
+            En octobre, vous voulez savoir si la communauté grandit mieux que l&apos;octobre précédent. Instagram
+            ne garde qu&apos;un instantané récent : cette comparaison n&apos;y est pas possible. Community
+            Intelligence, elle, a mémorisé chaque mois depuis le début du suivi — la comparaison à un an
+            d&apos;écart devient une simple lecture, pas une reconstitution.
+          </p>
+        </div>
+      </Card>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
         {DIFFERENTIATORS.map((d) => (

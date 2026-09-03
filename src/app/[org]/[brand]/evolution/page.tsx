@@ -118,12 +118,9 @@ export default async function EvolutionPage({
 
       {anyFrozen && (
         <div style={{ background: "var(--pastel-jaune)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--encre)", lineHeight: 1.5 }}>
-          Au moins un des imports listés ci-dessous a des chiffres Meta (abonnés, gagnés, perdus, genre) identiques à
-          l&apos;import précédent — repérable dans le tableau plus bas. Confirmé sur ce compte : le fichier Insights de
-          Meta reflète une fenêtre glissante d&apos;environ 90 jours calculée au moment de la demande d&apos;export, pas
-          la période sélectionnée pour les autres catégories. Deux exports demandés le même jour reçoivent donc le même
-          instantané, même avec des plages de dates différentes — pour un vrai suivi mensuel de ces chiffres, espacez
-          les demandes d&apos;export d&apos;au moins un mois. Les courbes ci-dessous n&apos;en dépendent pas.
+          Certains chiffres Meta (abonnés, gagnés, perdus, genre) sont identiques entre deux imports rapprochés —
+          repérable dans le tableau plus bas. Espacez vos exports d&apos;au moins un mois pour un suivi fiable de ces
+          chiffres. Les courbes ci-dessous n&apos;en dépendent pas.
         </div>
       )}
 

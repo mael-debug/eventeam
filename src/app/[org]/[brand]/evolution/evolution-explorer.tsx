@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from "react";
 import { TrendLine } from "@/components/trend-line";
-import { fr, pct, signedFr, signedPct, shortDate } from "@/lib/format";
+import { fr, shortDate } from "@/lib/format";
 
 export interface EvolutionPoint {
   importId: string;
@@ -31,11 +31,6 @@ export function EvolutionExplorer({ points }: { points: EvolutionPoint[] }) {
   const [toIndex, setToIndex] = useState(points.length - 1);
 
   const range = useMemo(() => points.slice(fromIndex, toIndex + 1), [points, fromIndex, toIndex]);
-  const start = points[fromIndex];
-  const end = points[toIndex];
-
-  const arrivalsDelta = end.cumulativeArrivals - start.cumulativeArrivals;
-  const coverageDelta = end.arrivalsCoverage != null && start.arrivalsCoverage != null ? (end.arrivalsCoverage - start.arrivalsCoverage) * 100 : null;
 
   function handleFrom(i: number) {
     setFromIndex(i);
@@ -81,28 +76,6 @@ export function EvolutionExplorer({ points }: { points: EvolutionPoint[] }) {
           {range.length} import{range.length > 1 ? "s" : ""} dans la fenêtre choisie
         </span>
       </div>
-
-      {fromIndex !== toIndex && (
-        <div style={{ background: "var(--encre)", color: "var(--surface-creme)", borderRadius: 18, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
-          <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(250,248,243,0.55)" }}>
-            Comparaison {start.label} → {end.label}
-          </span>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(250,248,243,0.55)" }}>Abonnés identifiés nommément</span>
-              <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>{fr(end.cumulativeArrivals)}</span>
-              <span style={{ fontSize: 13, color: "rgba(250,248,243,0.75)" }}>{signedFr(arrivalsDelta)} depuis {start.label}</span>
-            </div>
-            {coverageDelta != null && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <span style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(250,248,243,0.55)" }}>Couverture des arrivées Meta</span>
-                <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>{pct((end.arrivalsCoverage ?? 0) * 100, 0)}</span>
-                <span style={{ fontSize: 13, color: "rgba(250,248,243,0.75)" }}>{signedPct(coverageDelta, 0)} de points depuis {start.label}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
         <div style={{ border: "1px solid var(--bordure-carte)", borderRadius: 18, padding: 20, background: "var(--carte-claire)" }}>
@@ -159,7 +132,7 @@ export function EvolutionExplorer({ points }: { points: EvolutionPoint[] }) {
                   {p.insightsFrozen && (
                     <span
                       style={{ fontSize: 11, fontWeight: 700, color: "var(--encre)", background: "var(--pastel-jaune)", borderRadius: 999, padding: "3px 9px", cursor: "help" }}
-                      title="Ces chiffres Meta (abonnés, gagnés, perdus, genre) sont identiques à l'import précédent : le fichier Insights de Meta reflète une fenêtre glissante d'environ 90 jours calculée au moment de la demande d'export, pas la période que vous sélectionnez pour les autres catégories. Deux exports demandés le même jour reçoivent donc le même instantané, même avec des plages de dates différentes — il faut un vrai écart d'un mois entre les demandes pour que ce fichier varie. Les colonnes ci-dessus restent affichées telles quelles, sans correction."
+                      title="Ces chiffres Meta n'ont pas changé depuis l'import précédent — espacez vos exports d'au moins un mois pour qu'ils varient."
                     >
                       identique à l&apos;import précédent
                     </span>
@@ -170,10 +143,8 @@ export function EvolutionExplorer({ points }: { points: EvolutionPoint[] }) {
           </tbody>
         </table>
         <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-          Ces trois colonnes viennent du fichier d&apos;Insights Meta de chaque export, jamais recalculées. Si elles
-          n&apos;évoluent pas d&apos;un import à l&apos;autre, l&apos;export contenait probablement le même instantané —
-          la courbe « Abonnés identifiés » ci-dessus reste, elle, calculée directement à partir des listes de comptes
-          suivis, qui diffèrent bien à chaque import.
+          Ces trois colonnes viennent directement de Meta. La courbe « Abonnés identifiés » ci-dessus est calculée
+          séparément, à partir des listes de comptes suivis, et reste fiable même quand ces colonnes ne bougent pas.
         </p>
       </div>
     </div>

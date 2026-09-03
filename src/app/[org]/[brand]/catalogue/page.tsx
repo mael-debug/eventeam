@@ -21,7 +21,7 @@ export default async function CataloguePage({
     .eq("account_id", account.id)
     .eq("entity_type", "feature_catalog");
 
-  const validSlugs = new Set(CATALOGUE.flatMap((g) => g.items.map((it) => it.slug)));
+  const validSlugs = new Set(CATALOGUE.map((it) => it.slug));
   const initialRatings: Record<string, CatalogueRating> = {};
   const initialNotes: Record<string, string> = {};
   for (const e of entries ?? []) {

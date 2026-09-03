@@ -1,7 +1,6 @@
 import { Card, Button } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, shortDate } from "@/lib/format";
-import { ReconciliationBanner } from "@/components/reconciliation-banner";
 import { SampleWindow } from "@/components/sample-window";
 
 // Comptes-rendu génériques par code de croisement — cadence_vs_churn n'est
@@ -93,7 +92,7 @@ export default async function DiagnosticPage({
 
   const latestImportId = comparability.latest_import_id!;
 
-  const [{ data: hazardRows }, { data: spikes }, { data: crossings }, { data: reconciliation }] = await Promise.all([
+  const [{ data: hazardRows }, { data: spikes }, { data: crossings }] = await Promise.all([
     supabase
       .from("hazard_curve")
       .select("age_bucket, at_risk, departed, hazard_rate")
@@ -108,7 +107,6 @@ export default async function DiagnosticPage({
       .eq("account_id", account.id)
       .eq("import_id", latestImportId)
       .in("code", ["cadence_vs_churn", "reach_quality", "unfollow_boomerang"]),
-    supabase.from("reconciliation").select("*").eq("import_id", latestImportId).maybeSingle(),
   ]);
 
   const buckets = hazardRows ?? [];
@@ -280,8 +278,6 @@ export default async function DiagnosticPage({
           );
         })}
       </div>
-
-      <ReconciliationBanner reconciliation={reconciliation ?? null} />
     </main>
   );
 }

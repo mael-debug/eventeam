@@ -4,17 +4,10 @@ import { fr, pct, signedPct, shortDate } from "@/lib/format";
 import { SampleWindow } from "@/components/sample-window";
 import { TrendLine, type TrendSeries } from "@/components/trend-line";
 import { isoWeekMonday } from "@/lib/cohort-quality";
+import { ContentFeed, type ContentItem } from "./content-feed";
 
 const SERIES_COLOR: Record<string, string> = { post: "var(--bleu)", reel: "var(--vert-logo)", story: "#8B5CF6" };
-
-const CONFIDENCE_LABEL: Record<string, string> = { robuste: "robuste", indicatif: "indicatif", insuffisant: "insuffisant" };
-const CONFIDENCE_BG: Record<string, string> = {
-  robuste: "var(--vert-pastel)",
-  indicatif: "var(--pastel-jaune)",
-  insuffisant: "var(--creme-fonce)",
-};
 const FORMAT_LABEL: Record<string, string> = { post: "Posts", reel: "Reels", story: "Stories" };
-const MEDIA_TYPE_LABEL: Record<string, string> = { post: "post", reel: "reel", story: "story" };
 
 export default async function ContenuPage({
   params,
@@ -82,22 +75,21 @@ export default async function ContenuPage({
     attribution: attributionByContent.get(c.id),
   }));
 
-  // thumb_path est stocké préfixé du bucket ("media-thumbs/...", même
-  // convention que storage_path ailleurs) — media-thumbs est un bucket
-  // privé, l'URL signée est donc générée côté serveur, jamais une URL
-  // publique directe.
-  const thumbUrls = new Map<string, string>();
-  await Promise.all(
-    posts.map(async ({ content: c }) => {
-      if (!c.thumb_path) return;
-      const slash = c.thumb_path.indexOf("/");
-      if (slash < 0) return;
-      const bucket = c.thumb_path.slice(0, slash);
-      const objectPath = c.thumb_path.slice(slash + 1);
-      const { data } = await supabase.storage.from(bucket).createSignedUrl(objectPath, 3600);
-      if (data?.signedUrl) thumbUrls.set(c.id, data.signedUrl);
-    }),
-  );
+  // Plus de vignette : les fichiers médias (.jpg/.png/.mp4) ne sont plus
+  // importés — seule la légende, déjà dans le JSON de l'export, est affichée.
+  const contentItems: ContentItem[] = posts.map(({ content: c, metrics: m, attribution: a }) => ({
+    id: c.id,
+    publishedAt: c.published_at,
+    mediaType: c.media_type,
+    caption: c.caption,
+    permalink: c.permalink,
+    reach: m?.reach ?? null,
+    followsGained: m?.follows_gained ?? null,
+    followConversionRate: m?.follow_conversion_rate ?? null,
+    excessArrivals: a?.excess_arrivals ?? null,
+    retentionRate: a?.retention_rate ?? null,
+    confidence: a?.confidence ?? null,
+  }));
 
   const reels = (interactions ?? []).find((i) => i.format === "reels");
   const postsAgg = (interactions ?? []).find((i) => i.format === "posts");
@@ -158,74 +150,7 @@ export default async function ContenuPage({
       {posts.length === 0 ? (
         <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucune publication datée dans cette période.</p>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-          {posts.map(({ content: c, metrics: m, attribution: a }) => (
-            <Card key={c.id} variant="claire" interactive={false}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-                {thumbUrls.has(c.id) ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- URL signée temporaire (1 h), un <Image> next/image la mettrait en cache au-delà de sa validité.
-                  <img
-                    src={thumbUrls.get(c.id)}
-                    alt=""
-                    style={{ height: 150, width: "100%", borderRadius: 12, objectFit: "cover", background: "var(--creme-fonce)" }}
-                  />
-                ) : (
-                  <div style={{ height: 150, borderRadius: 12, background: "var(--creme-fonce)", display: "grid", placeItems: "center", fontSize: 12, color: "var(--text-muted)" }}>
-                    Vignette indisponible
-                  </div>
-                )}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--text-muted)" }}>
-                  <span style={{ fontWeight: 600, color: "var(--encre)" }}>{shortDate(c.published_at)}</span>
-                  <span>·</span>
-                  <span>{MEDIA_TYPE_LABEL[c.media_type] ?? c.media_type}</span>
-                </div>
-
-                {m ? (
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Conversion</span>
-                      <span style={{ fontSize: "clamp(24px, 2.6vw, 34px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>
-                        {pct(m.follow_conversion_rate != null ? m.follow_conversion_rate * 100 : null)}
-                      </span>
-                    </div>
-                    <div style={{ textAlign: "right", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                      <div>{fr(m.reach ?? null)} de portée</div>
-                      <div>{fr(m.follows_gained ?? null)} abonnés gagnés</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
-                    Aucune métrique de portée pour ce format — Meta ne l&apos;expose que pour les posts statiques.
-                  </div>
-                )}
-
-                <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <span
-                      style={{ color: "var(--text-muted)", textDecoration: "underline dotted", textUnderlineOffset: 3 }}
-                      title="Arrivées observées dans les 48 heures suivant la publication, au-delà de la ligne de base. Une corrélation temporelle n'est pas une attribution : rien dans l'export ne relie un abonné à une publication."
-                    >
-                      Arrivées excédentaires 48 h
-                    </span>
-                    <span style={{ fontWeight: 700 }}>{a ? fr(a.excess_arrivals) : "—"}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <span style={{ color: "var(--text-muted)" }}>Rétention de ces arrivées</span>
-                    <span style={{ fontWeight: 700 }}>{a?.retention_rate != null ? pct(a.retention_rate * 100) : "non calculé"}</span>
-                  </div>
-                  {a && (
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                      <span style={{ color: "var(--text-muted)" }}>Confiance</span>
-                      <span style={{ borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 700, background: CONFIDENCE_BG[a.confidence] ?? "var(--creme-fonce)" }}>
-                        {CONFIDENCE_LABEL[a.confidence] ?? a.confidence}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <ContentFeed items={contentItems} />
       )}
 
       {(reels || postsAgg) && (

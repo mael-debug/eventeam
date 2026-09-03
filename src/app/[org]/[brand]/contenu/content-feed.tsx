@@ -1,0 +1,157 @@
+"use client";
+
+// Écran Contenu — liste des publications, triée par date, groupée par
+// format. Plus de vignette (les fichiers médias ne seront plus importés) :
+// la légende remplace l'image. Le filtre ci-dessus ne refait aucun appel
+// réseau, il montre ou cache des groupes déjà reçus du serveur.
+
+import { useState } from "react";
+import { Card } from "@/components/ds";
+import { fr, pct, shortDate } from "@/lib/format";
+
+const CONFIDENCE_LABEL: Record<string, string> = { robuste: "robuste", indicatif: "indicatif", insuffisant: "insuffisant" };
+const CONFIDENCE_BG: Record<string, string> = {
+  robuste: "var(--vert-pastel)",
+  indicatif: "var(--pastel-jaune)",
+  insuffisant: "var(--creme-fonce)",
+};
+const FORMAT_LABEL: Record<string, string> = { post: "Posts", reel: "Reels", story: "Stories" };
+
+export interface ContentItem {
+  id: string;
+  publishedAt: string;
+  mediaType: string;
+  caption: string | null;
+  permalink: string | null;
+  reach: number | null;
+  followsGained: number | null;
+  followConversionRate: number | null;
+  excessArrivals: number | null;
+  retentionRate: number | null;
+  confidence: string | null;
+}
+
+function ContentCard({ item }: { item: ContentItem }) {
+  return (
+    <Card variant="claire" interactive={false}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 13, color: "var(--text-muted)" }}>
+          <span style={{ fontWeight: 600, color: "var(--encre)" }}>{shortDate(item.publishedAt)}</span>
+          {item.permalink && (
+            <a href={item.permalink} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600, color: "var(--bleu)" }}>
+              Voir sur Instagram ↗
+            </a>
+          )}
+        </div>
+
+        <p style={{ margin: 0, fontSize: 13, color: item.caption ? "var(--encre)" : "var(--text-muted)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", fontStyle: item.caption ? "normal" : "italic" }}>
+          {item.caption || "Sans légende"}
+        </p>
+
+        {item.reach != null || item.followConversionRate != null ? (
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Conversion</span>
+              <span style={{ fontSize: "clamp(22px, 2.4vw, 30px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>
+                {pct(item.followConversionRate != null ? item.followConversionRate * 100 : null)}
+              </span>
+            </div>
+            <div style={{ textAlign: "right", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
+              <div>{fr(item.reach)} de portée</div>
+              <div>{fr(item.followsGained)} abonnés gagnés</div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+            Aucune métrique de portée pour ce format — Meta ne l&apos;expose que pour les posts statiques.
+          </div>
+        )}
+
+        <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+            <span
+              style={{ color: "var(--text-muted)", textDecoration: "underline dotted", textUnderlineOffset: 3 }}
+              title="Arrivées observées dans les 48 heures suivant la publication, au-delà de la ligne de base. Une corrélation temporelle n'est pas une attribution."
+            >
+              Arrivées excédentaires 48 h
+            </span>
+            <span style={{ fontWeight: 700 }}>{item.excessArrivals != null ? fr(item.excessArrivals) : "—"}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+            <span style={{ color: "var(--text-muted)" }}>Rétention de ces arrivées</span>
+            <span style={{ fontWeight: 700 }}>{item.retentionRate != null ? pct(item.retentionRate * 100) : "non calculé"}</span>
+          </div>
+          {item.confidence && (
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+              <span style={{ color: "var(--text-muted)" }}>Confiance</span>
+              <span style={{ borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 700, background: CONFIDENCE_BG[item.confidence] ?? "var(--creme-fonce)" }}>
+                {CONFIDENCE_LABEL[item.confidence] ?? item.confidence}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+export function ContentFeed({ items }: { items: ContentItem[] }) {
+  const [filter, setFilter] = useState<"all" | "post" | "reel" | "story">("all");
+
+  const counts = { post: 0, reel: 0, story: 0 } as Record<string, number>;
+  for (const item of items) counts[item.mediaType] = (counts[item.mediaType] ?? 0) + 1;
+
+  const groups = (["post", "reel", "story"] as const)
+    .filter((type) => filter === "all" || filter === type)
+    .map((type) => ({ type, items: items.filter((i) => i.mediaType === type) }))
+    .filter((g) => g.items.length > 0);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, minWidth: 0 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {(["all", "post", "reel", "story"] as const).map((type) => {
+          const active = filter === type;
+          const label = type === "all" ? "Tous" : FORMAT_LABEL[type];
+          const count = type === "all" ? items.length : counts[type] ?? 0;
+          return (
+            <button
+              key={type}
+              onClick={() => setFilter(type)}
+              style={{
+                cursor: "pointer",
+                borderRadius: 999,
+                padding: "8px 16px",
+                fontSize: 13,
+                fontWeight: 600,
+                border: active ? "1px solid transparent" : "1px solid var(--bordure)",
+                background: active ? "var(--encre)" : "transparent",
+                color: active ? "#FAF8F3" : "var(--text-muted)",
+              }}
+            >
+              {label} · {fr(count)}
+            </button>
+          );
+        })}
+      </div>
+
+      {groups.length === 0 ? (
+        <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucune publication de ce type dans cette période.</p>
+      ) : (
+        groups.map((g) => (
+          <div key={g.type} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {filter === "all" && (
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>
+                {FORMAT_LABEL[g.type]} · {fr(g.items.length)}
+              </h2>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+              {g.items.map((item) => (
+                <ContentCard key={item.id} item={item} />
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}

@@ -2,7 +2,6 @@ import { Card, Button } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, shortDate } from "@/lib/format";
 import { SampleWindow } from "@/components/sample-window";
-import { ReconciliationBanner } from "@/components/reconciliation-banner";
 
 // Les segments ne sont PAS des clusters recalculés : ce sont les pics
 // d'acquisition (acquisition_spikes) déjà classés par le moteur (0019,
@@ -74,10 +73,9 @@ export default async function SegmentsPage({
 
   const latestImportId = comparability.latest_import_id!;
 
-  const [{ data: segments }, { data: riskRows }, { data: reconciliation }] = await Promise.all([
+  const [{ data: segments }, { data: riskRows }] = await Promise.all([
     supabase.from("v_segments").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("volume_total", { ascending: false }),
     supabase.from("v_recent_arrival_risk").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("risk_tier", { ascending: false }),
-    supabase.from("reconciliation").select("*").eq("import_id", latestImportId).maybeSingle(),
   ]);
 
   const rows = segments ?? [];
@@ -214,8 +212,6 @@ export default async function SegmentsPage({
         Ces segments décrivent les pics d&apos;acquisition détectés sur cet import, pas l&apos;ensemble de l&apos;audience :
         les arrivées progressives, sans pic, n&apos;apparaissent dans aucun segment ci-dessus.
       </div>
-
-      <ReconciliationBanner reconciliation={reconciliation ?? null} />
     </main>
   );
 }
