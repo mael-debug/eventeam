@@ -11,6 +11,14 @@ import { AudienceSignals } from "./audience-signals";
 import { AudienceRecommendations } from "./audience-recommendations";
 import { AudiencePrivacyNotice } from "./audience-privacy-notice";
 
+// Portée minimale pour qu'un post entre dans un classement ou une moyenne
+// basé sur follow_conversion_rate/engagement_rate — sous ce seuil, un ratio
+// est un artefact d'échantillon quasi nul (ex. 3 comptes touchés, 2
+// abonnés gagnés = 66 % de conversion), pas un signal de performance. Ne
+// change rien à la donnée stockée (colonne non bornée depuis la migration
+// 0040), seulement à ce qui est mis en avant côté rendu.
+const MIN_RELIABLE_REACH = 50;
+
 // Showroom IA — page volontairement statique (aucune génération en direct
 // ici) : elle illustre ce qu'un module IA pourrait produire à partir des
 // données déjà réelles de ce compte. Chaque section sépare strictement ce
@@ -100,7 +108,7 @@ export default async function IaShowroomPage({
   const metricsByContent = new Map((postsMetrics ?? []).map((m) => [m.content_id, m]));
   const withMetrics = (postsContent ?? [])
     .map((c) => ({ ...c, m: metricsByContent.get(c.id) ?? null }))
-    .filter((c) => c.m && c.m.follow_conversion_rate != null)
+    .filter((c) => c.m && c.m.follow_conversion_rate != null && (c.m.reach ?? 0) >= MIN_RELIABLE_REACH)
     .sort((a, b) => (b.m!.follow_conversion_rate ?? 0) - (a.m!.follow_conversion_rate ?? 0))
     .slice(0, 3);
 

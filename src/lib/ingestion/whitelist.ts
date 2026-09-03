@@ -17,11 +17,22 @@ export const WHITELIST: WhitelistEntry[] = [
   { pattern: "logged_information/past_instagram_insights/profiles_reached.json", category: "insights", label: "Portée, impressions, visites, clics" },
   { pattern: "logged_information/past_instagram_insights/content_interactions.json", category: "insights", label: "Interactions par format" },
   { pattern: "logged_information/past_instagram_insights/posts.json", category: "insights", label: "Performance par publication (Lot 5)" },
-  { pattern: "logged_information/past_instagram_insights/live_videos.json", category: "insights", label: "Performance des lives (Lot 5)" },
+  // live_videos.json EXCLU (2026-09-03) : structurellement vide côté Meta,
+  // pas un manque de parseur. Vérifié sur un export réel (556 entrées) —
+  // "Heure de début" = "", "Durée" = "0", toutes les métriques ("Comptes
+  // atteints", "Nombre maximal de spectateurs simultanés", "Commentaires",
+  // "Partages") = "--", timestamp = 0 sur les 556. Meta écrit la structure
+  // sans jamais la remplir. Ne pas réintroduire cette entrée sans revérifier
+  // sur un export récent que ça a changé.
+  //
   // Élargi de "posts_*.json" à "posts*.json" : certains exports récents
   // livrent aussi un posts.json (sans underscore, ~21 Mo) à côté de
   // posts_1.json — l'ancien motif l'ignorait silencieusement alors que
-  // c'est du contenu réel à ingérer (§5.4 point 5).
+  // c'est du contenu réel à ingérer (§5.4 point 5). Attention : posts.json
+  // (sans suffixe) a une structure totalement différente de posts_N.json
+  // (label_values façon your_chat_information.json, pas media[]/title) —
+  // cf. parse-post-labels.ts, traité par un bloc dédié dans process-import,
+  // jamais par la même fonction que posts_N.json.
   { pattern: "your_instagram_activity/media/posts*.json", category: "content", label: "Légendes, dates, URI des médias (Lot 5)" },
   { pattern: "your_instagram_activity/media/reels.json", category: "content", label: "Légendes, dates, URI des médias (Lot 5)" },
   { pattern: "your_instagram_activity/media/stories.json", category: "content", label: "Légendes, dates, URI des médias (Lot 5)" },

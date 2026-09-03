@@ -44,3 +44,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# jamais d'export Instagram décompressé ou zippé dans le repo (dépôt
+# public) : ces dossiers contiendraient des données personnelles réelles
+# (abonnés, messages) — même par accident via un `git add -A` malheureux.
+connections/
+logged_information/
+your_instagram_activity/
+personal_information/
+preferences/
+security_and_login_information/
+ads_information/
+apps_and_websites_off_of_instagram/
+*.zip

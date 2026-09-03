@@ -12,6 +12,7 @@ import {
   firstStringMap,
 } from "../_shared/parse-insights.ts";
 import { parsePostsFile, collectPostKeys } from "../_shared/parse-posts.ts";
+import { parsePostLabelsFile } from "../_shared/parse-post-labels.ts";
 import { parseReelsFile, parseStoriesFile, parseActivityPostCaptions, type ParsedActivityMedia } from "../_shared/parse-activity-media.ts";
 import { parseChatFile } from "../_shared/parse-chat.ts";
 import { extractMediaKey, normalizedKeysOf } from "../_shared/parsing.ts";
@@ -214,9 +215,16 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
 
   // ---- insights (§7.4, best-effort — voir avertissement en tête de
   // supabase/functions/_shared/parse-insights.ts) ----
-  const insightFile = (name: string) => fileRows.find((f) => basename(f.source_path) === name);
+  // Filtré par catégorie, pas seulement par nom de fichier : posts.json
+  // existe en DEUX exemplaires dans un export réel, à des chemins et des
+  // catégories différentes (logged_information/.../posts.json, category
+  // "insights", métriques ; your_instagram_activity/media/posts.json,
+  // category "content", label_values) — un basename() seul les confondrait
+  // selon l'ordre de retour de la requête, non garanti.
+  const findFile = (name: string, category: string) =>
+    fileRows.find((f) => basename(f.source_path) === name && f.category === category);
 
-  const audienceFile = insightFile("audience_insights.json");
+  const audienceFile = findFile("audience_insights.json", "insights");
   if (audienceFile) {
     await withFileTracking(admin, audienceFile, async () => {
       const audienceJson = await downloadJson(admin, audienceFile.storage_path);
@@ -291,7 +299,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
     filesParsed++;
   }
 
-  const reachFile = insightFile("profiles_reached.json");
+  const reachFile = findFile("profiles_reached.json", "insights");
   if (reachFile) {
     await withFileTracking(admin, reachFile, async () => {
       const reachJson = await downloadJson(admin, reachFile.storage_path);
@@ -324,7 +332,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
     filesParsed++;
   }
 
-  const interactionsFile = insightFile("content_interactions.json");
+  const interactionsFile = findFile("content_interactions.json", "insights");
   if (interactionsFile) {
     await withFileTracking(admin, interactionsFile, async () => {
       const interactionsJson = await downloadJson(admin, interactionsFile.storage_path);
@@ -360,7 +368,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
     filesParsed++;
   }
 
-  const postsFile = insightFile("posts.json");
+  const postsFile = findFile("posts.json", "insights");
   if (postsFile) {
     await withFileTracking(admin, postsFile, async () => {
       const postsJson = await downloadJson(admin, postsFile.storage_path);
@@ -476,18 +484,15 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
     filesParsed++;
   }
 
-  // ---- posts_N.json / posts.json (your_instagram_activity/media/, Lot 5)
-  // — jamais une source de nouvelles publications (seul posts.json à
-  // métriques fait foi sur QUELLES publications existent, cf.
-  // parsePostsFile) : sert uniquement à compléter une légende vide, avec
-  // les vraies images du carrousel le cas échéant (le fichier à métriques
-  // n'en garde qu'une). posts.json (sans suffixe, whitelist élargie —
-  // migration/commit précédent) est inclus au même titre que posts_N.json :
-  // structure non revérifiée sur un export réel pour ce nom précis, mais
-  // parseActivityPostCaptions() est déjà défensif (renvoie une map vide
-  // sans lever si la racine n'est pas un tableau), donc sans risque au pire
-  // un no-op si la forme diffère.
-  const activityPostFiles = fileRows.filter((f) => /^posts(_\d+)?\.json$/.test(basename(f.source_path)));
+  // ---- posts_N.json (your_instagram_activity/media/, Lot 5) — jamais une
+  // source de nouvelles publications (seul posts.json à métriques fait foi
+  // sur QUELLES publications existent, cf. parsePostsFile) : sert
+  // uniquement à compléter une légende vide, avec les vraies images du
+  // carrousel le cas échéant (le fichier à métriques n'en garde qu'une).
+  // posts.json SANS suffixe (même dossier) a une structure sans rapport
+  // (label_values, pas media[]/title) — jamais routé ici, cf. bloc dédié
+  // plus bas (parsePostLabelsFile).
+  const activityPostFiles = fileRows.filter((f) => /^posts_\d+\.json$/.test(basename(f.source_path)) && f.category === "content");
   if (activityPostFiles.length > 0) {
     for (const f of activityPostFiles) {
       await withFileTracking(admin, f, async () => {
@@ -514,10 +519,45 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
     }
   }
 
+  // ---- posts.json SANS suffixe (your_instagram_activity/media/, label_values,
+  // Lot 5) — cf. en-tête de _shared/parse-post-labels.ts. Enrichit une ligne
+  // content déjà là (jointure fbid = media_key), ne crée jamais de nouvelle
+  // publication : upsert_post_labels_batch fait un UPDATE par lot, jamais un
+  // INSERT — même motif CPU que posts_N.json/reels/stories ci-dessus.
+  const postLabelsFile = findFile("posts.json", "content");
+  if (postLabelsFile) {
+    await withFileTracking(admin, postLabelsFile, async () => {
+      const parsed = parsePostLabelsFile(await downloadJson(admin, postLabelsFile.storage_path));
+      const rows = parsed.map((p) => ({
+        media_key: p.mediaKey,
+        caption: p.caption,
+        is_ai_generated: p.isAiGenerated,
+        is_ad: p.isAd,
+        is_branded_content: p.isBrandedContent,
+        is_published: p.isPublished,
+        story_type: p.storyType,
+        publish_mode: p.publishMode,
+        hashtags: p.hashtags,
+        location: p.location,
+        brand_partner: p.brandPartner,
+        extra_labels: p.extraLabels,
+      }));
+      for (const batch of chunk(rows, 500)) {
+        const { error } = await admin.rpc("upsert_post_labels_batch", {
+          p_account_id: accountId,
+          p_rows: batch,
+        });
+        if (error) throw new Error(`content (labels, lot) : ${error.message}`);
+      }
+      return rows.length;
+    });
+    filesParsed++;
+  }
+
   // ---- your_chat_information.json (§7.4, Lot 5) — agrégat uniquement,
   // cf. en-tête de _shared/parse-chat.ts : fbid n'a aucune correspondance
   // avec un pseudo Instagram, jamais de jointure vers ecosystem_profiles.
-  const chatFile = insightFile("your_chat_information.json");
+  const chatFile = findFile("your_chat_information.json", "chat");
   if (chatFile) {
     await withFileTracking(admin, chatFile, async () => {
       const chatJson = await downloadJson(admin, chatFile.storage_path);

@@ -1002,35 +1002,65 @@ export type Database = {
       content: {
         Row: {
           account_id: string
+          brand_partner: string | null
           caption: string | null
+          extra_labels: Json | null
           first_import_id: string
+          hashtags: string[] | null
           id: string
+          is_ad: boolean | null
+          is_ai_generated: boolean | null
+          is_branded_content: boolean | null
+          is_published: boolean | null
+          location: string | null
           media_key: string
           media_type: string
           permalink: string | null
+          publish_mode: string | null
           published_at: string
+          story_type: string | null
           thumb_path: string | null
         }
         Insert: {
           account_id: string
+          brand_partner?: string | null
           caption?: string | null
+          extra_labels?: Json | null
           first_import_id: string
+          hashtags?: string[] | null
           id?: string
+          is_ad?: boolean | null
+          is_ai_generated?: boolean | null
+          is_branded_content?: boolean | null
+          is_published?: boolean | null
+          location?: string | null
           media_key: string
           media_type: string
           permalink?: string | null
+          publish_mode?: string | null
           published_at: string
+          story_type?: string | null
           thumb_path?: string | null
         }
         Update: {
           account_id?: string
+          brand_partner?: string | null
           caption?: string | null
+          extra_labels?: Json | null
           first_import_id?: string
+          hashtags?: string[] | null
           id?: string
+          is_ad?: boolean | null
+          is_ai_generated?: boolean | null
+          is_branded_content?: boolean | null
+          is_published?: boolean | null
+          location?: string | null
           media_key?: string
           media_type?: string
           permalink?: string | null
+          publish_mode?: string | null
           published_at?: string
+          story_type?: string | null
           thumb_path?: string | null
         }
         Relationships: [
@@ -3707,6 +3737,23 @@ export type Database = {
         Args: { p_brand_id: string; p_enabled: boolean; p_user_id: string }
         Returns: undefined
       }
+      upsert_activity_content_batch: {
+        Args: {
+          p_account_id: string
+          p_import_id: string
+          p_media_type: string
+          p_rows: Json
+        }
+        Returns: undefined
+      }
+      upsert_post_content_batch: {
+        Args: { p_account_id: string; p_import_id: string; p_rows: Json }
+        Returns: undefined
+      }
+      upsert_post_labels_batch: {
+        Args: { p_account_id: string; p_rows: Json }
+        Returns: undefined
+      }
       user_account_ids: { Args: never; Returns: string[] }
       user_brand_ids: { Args: never; Returns: string[] }
       user_org_ids: { Args: never; Returns: string[] }
@@ -3740,12 +3787,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3769,11 +3816,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3794,11 +3841,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3819,11 +3866,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3836,11 +3883,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
