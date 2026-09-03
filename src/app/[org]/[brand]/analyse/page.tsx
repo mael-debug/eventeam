@@ -68,16 +68,18 @@ function TrendTile({ label, metric }: { label: string; metric: TrendMetric }) {
   const up = metric.deltaPct > 0;
   const flat = metric.deltaPct === 0;
   return (
-    <div style={{ border: "1px solid var(--bordure-carte)", borderRadius: 14, padding: 14, display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>{fr(metric.value)}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: flat ? "var(--text-muted)" : up ? "var(--vert-logo)" : "var(--text-muted)" }}>
-          {signedPct(metric.deltaPct, 0)}
-        </span>
+    <Card variant="claire" interactive={false} style={{ padding: 14 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>{fr(metric.value)}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: flat ? "var(--text-muted)" : up ? "var(--vert-logo)" : "var(--text-muted)" }}>
+            {signedPct(metric.deltaPct, 0)}
+          </span>
+        </div>
+        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{label}</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>vs moyenne du mois précédent</span>
       </div>
-      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{label}</span>
-      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>vs moyenne du mois précédent</span>
-    </div>
+    </Card>
   );
 }
 
@@ -174,6 +176,12 @@ export default async function AnalysePage({
             <TrendLine
               labels={reachByFormat.dates.map((d) => shortDate(d))}
               series={[
+                {
+                  key: "total",
+                  label: "Total",
+                  color: "var(--gris-serie)",
+                  values: reachByFormat.dates.map((_, i) => reachByFormat.post[i] + reachByFormat.reel[i] + reachByFormat.story[i]),
+                },
                 { key: "post", label: "Posts", color: SERIES_COLOR.post, values: reachByFormat.post },
                 { key: "reel", label: "Reels", color: SERIES_COLOR.reel, values: reachByFormat.reel },
                 { key: "story", label: "Stories", color: SERIES_COLOR.story, values: reachByFormat.story },
