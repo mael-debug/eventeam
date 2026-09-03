@@ -91,7 +91,7 @@ export default async function BrandOverviewPage({
     );
   }
 
-  const [{ data: overview }, { data: reach }, { data: cohorts }, { data: qualityRows }] = await Promise.all([
+  const [{ data: overview }, { data: reach }, { data: cohorts }] = await Promise.all([
     supabase.from("v_overview").select("*").eq("account_id", account.id).maybeSingle(),
     supabase.from("reach_insights").select("*").eq("import_id", comparability.latest_import_id!).maybeSingle(),
     supabase
@@ -99,13 +99,6 @@ export default async function BrandOverviewPage({
       .select("cohort_week, remaining, departed")
       .eq("account_id", account.id)
       .eq("measured_import_id", comparability.latest_import_id!),
-    // Même score que Croissance (cross_analyses.cohort_quality_score) : les
-    // cohortes les plus récentes affichent souvent 0 départ simplement
-    // faute de temps pour partir, ce qui aveugle l'alerte "Rupture de
-    // cohorte" ci-dessous (garde best.rate > 0). Le score, normalisé sur la
-    // survie à l'horizon commun plutôt que le taux brut, ne partage pas ce
-    // biais et peut détecter une dégradation que l'autre alerte manque.
-    supabase.from("cross_analyses").select("dimension, payload").eq("account_id", account.id).eq("code", "cohort_quality_score").order("dimension"),
   ]);
 
   const windowLabel =
@@ -128,8 +121,8 @@ export default async function BrandOverviewPage({
         ? ` et les clics externes de ${pct(Math.abs(reach.external_taps_delta_pct))}`
         : "";
     alerts.push({
-      badge: "Portée sans effet",
-      title: `La portée augmente de ${pct(reach.impressions_delta_pct)} mais les visites de profil reculent de ${pct(Math.abs(reach.profile_visits_delta_pct))}${tapsNote}.`,
+      badge: "Impressions sans effet",
+      title: `Les impressions augmentent de ${pct(reach.impressions_delta_pct)} mais les visites de profil reculent de ${pct(Math.abs(reach.profile_visits_delta_pct))}${tapsNote}.`,
       detail: `${fr(reach.impressions)} impressions, ${fr(reach.accounts_reached)} comptes touchés${
         reach.non_follower_reach_pct != null ? ` dont ${pct(reach.non_follower_reach_pct, 0)} de non-abonnés` : ""
       }.`,
@@ -164,31 +157,17 @@ export default async function BrandOverviewPage({
     }
   }
 
-  const qualitySeries = (qualityRows ?? [])
-    .map((q) => (q.payload as { score?: number })?.score)
-    .filter((s): s is number => s != null);
-  if (qualitySeries.length >= 4) {
-    const recent = qualitySeries.slice(-3);
-    const older = qualitySeries.slice(0, -3);
-    const recentAvg = recent.reduce((s, v) => s + v, 0) / recent.length;
-    const olderAvg = older.reduce((s, v) => s + v, 0) / older.length;
-    if (olderAvg - recentAvg >= 25) {
-      alerts.push({
-        badge: "Qualité des cohortes",
-        title: `Les cohortes récentes décrochent : score de qualité à ${Math.round(recentAvg)}/100 contre ${Math.round(olderAvg)}/100 avant.`,
-        detail: "Moins de survie à horizon commun, plus de signaux de faux comptes ou d'arrivées nocturnes — invisible dans le taux de départ brut, ces cohortes sont trop récentes pour avoir eu le temps de partir.",
-        cta: "Ouvrir Croissance →",
-        href: `${base}/croissance`,
-      });
-    }
-  }
+  // Alerte "Qualité des cohortes" désactivée : le score cross_analyses.cohort_quality_score
+  // est expérimental (pondérations arbitraires, NULL de survival_at_horizon
+  // converti en 0 ce qui pénalise à tort les cohortes récentes) et ne doit
+  // pas être présenté comme un indicateur métier fiable. Le calcul reste en
+  // base pour du travail R&D, simplement plus affiché ici.
 
-  if (overview?.organic_share != null && overview.followers_gained) {
-    const unattributed = overview.followers_gained - (overview.organic_gained ?? 0);
+  if (overview?.organic_gained != null) {
     alerts.push({
       badge: "Origine de l'acquisition",
-      title: `Le contenu organique n'explique que ${pct(overview.organic_share * 100)} des abonnés gagnés.`,
-      detail: `${fr(unattributed)} abonnés sur ${fr(overview.followers_gained)} proviennent d'une source non attribuée par Instagram.`,
+      title: `${fr(overview.organic_gained)} abonnements sont explicitement attribués aux publications statiques analysées sur cette période.`,
+      detail: "Les autres acquisitions peuvent provenir de Reels, du profil, d'Explore, de recherches, de partages, de campagnes paid ou d'autres sources que les données actuellement importées ne permettent pas d'attribuer.",
       cta: "Ouvrir Acquisition →",
       href: `${base}/acquisition`,
     });

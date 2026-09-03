@@ -1,11 +1,8 @@
-import { Card, Badge } from "@/components/ds";
+import { Card } from "@/components/ds";
 
 // Page Intro — mécanique du snapshot mensuel, expliquée en langage simple
 // (pas de notation ensembliste : ce n'est pas le public de cette page).
-// L'exemple chiffré est fictif et annoncé comme tel. Les états WINDOWED /
-// FULL_SNAPSHOT_VALIDATED sont mentionnés comme direction future du moteur
-// — non implémentés, et rien sur cette page ne doit laisser croire le
-// contraire.
+// L'exemple chiffré est fictif et annoncé comme tel.
 
 export function IntroSnapshotSection() {
   return (
@@ -49,15 +46,6 @@ export function IntroSnapshotSection() {
           </div>
         </div>
       </Card>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <Badge variant="cadrage" style={{ alignSelf: "flex-start" }}>Direction future — non implémenté</Badge>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 680, textWrap: "pretty" }}>
-          Le moteur pourra un jour indiquer, pour chaque import, si sa couverture est seulement partielle ou
-          bien confirmée par recoupement avec les métriques Meta. Cette qualification n&apos;existe pas encore
-          aujourd&apos;hui — c&apos;est une direction, pas une fonctionnalité active.
-        </p>
-      </div>
     </div>
   );
 }
