@@ -2,6 +2,13 @@
 -- PRD §5.2, §5.4, §7.1. Buckets privés, cloisonnés par compte Instagram.
 -- Convention de chemin : {bucket}/{account_id}/... (account_id en premier
 -- segment, utilisé par les policies ci-dessous).
+--
+-- media-thumbs est DORMANT depuis le 2026-09-03 : les exports désormais
+-- déposés ne contiennent plus jamais media/**/*.{jpg,png,mp4} (régime
+-- permanent) — plus aucun objet n'y est écrit (cf. thumbnail.ts et
+-- uploadOneMediaFile() dans src/lib/ingestion/upload-import.ts, en-tête).
+-- Conservé tel quel, pas supprimé : c'est la spec correcte le jour où un
+-- export complet (avec media/) arrive à nouveau.
 
 insert into storage.buckets (id, name, public)
 values ('raw-exports', 'raw-exports', false),

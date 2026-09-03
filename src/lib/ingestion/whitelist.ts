@@ -18,7 +18,11 @@ export const WHITELIST: WhitelistEntry[] = [
   { pattern: "logged_information/past_instagram_insights/content_interactions.json", category: "insights", label: "Interactions par format" },
   { pattern: "logged_information/past_instagram_insights/posts.json", category: "insights", label: "Performance par publication (Lot 5)" },
   { pattern: "logged_information/past_instagram_insights/live_videos.json", category: "insights", label: "Performance des lives (Lot 5)" },
-  { pattern: "your_instagram_activity/media/posts_*.json", category: "content", label: "Légendes, dates, URI des médias (Lot 5)" },
+  // Élargi de "posts_*.json" à "posts*.json" : certains exports récents
+  // livrent aussi un posts.json (sans underscore, ~21 Mo) à côté de
+  // posts_1.json — l'ancien motif l'ignorait silencieusement alors que
+  // c'est du contenu réel à ingérer (§5.4 point 5).
+  { pattern: "your_instagram_activity/media/posts*.json", category: "content", label: "Légendes, dates, URI des médias (Lot 5)" },
   { pattern: "your_instagram_activity/media/reels.json", category: "content", label: "Légendes, dates, URI des médias (Lot 5)" },
   { pattern: "your_instagram_activity/media/stories.json", category: "content", label: "Légendes, dates, URI des médias (Lot 5)" },
   { pattern: "your_instagram_activity/messages/your_chat_information.json", category: "chat", label: "Métadonnées de conversations (Lot 5)" },

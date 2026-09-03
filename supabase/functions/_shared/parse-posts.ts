@@ -108,7 +108,13 @@ export function parsePostsFile(json: unknown): ParsedPost[] {
       permalink: media?.uri ?? null,
       publishedAt: new Date(timestampSeconds * 1000),
       caption: media?.title ? fixMojibake(media.title) : null,
-      thumbPath: media?.uri ?? null,
+      // Forcé à null (2026-09-03) : media?.uri est le chemin brut de l'export
+      // ("media/posts/xxxx.jpg"), qui ne correspond à aucun fichier jamais
+      // uploadé — le dossier media/ n'est plus jamais fourni (régime
+      // permanent, pas une anomalie). Le vrai chemin, quand une vignette
+      // existe réellement en storage, se retrouve uniquement via
+      // thumbByMediaKey dans process-import/index.ts.
+      thumbPath: null,
       reach: parseFormattedInt(findExact(map, ["comptes touches"])),
       impressions: parseFormattedInt(findExact(map, ["impressions"])),
       likes: parseFormattedInt(findExact(map, ["j'aime", "jaime"])),

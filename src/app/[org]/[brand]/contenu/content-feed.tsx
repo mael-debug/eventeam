@@ -24,11 +24,28 @@ export interface ContentItem {
   caption: string | null;
   permalink: string | null;
   reach: number | null;
+  impressions: number | null;
+  profileVisits: number | null;
+  saves: number | null;
+  shares: number | null;
   followsGained: number | null;
   followConversionRate: number | null;
   excessArrivals: number | null;
   retentionRate: number | null;
   confidence: string | null;
+}
+
+// Sans vignette (media/ n'est plus jamais fourni), la légende porte
+// l'essentiel de l'identification visuelle — ces 4 métriques de posts.json
+// (en plus de la portée déjà affichée au-dessus) complètent l'état texte
+// seul pour qu'il reste aussi lisible qu'une carte avec image.
+function MetricCell({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.01em", lineHeight: 1.1 }}>{value != null ? fr(value) : "—"}</span>
+      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{label}</span>
+    </div>
+  );
 }
 
 function ContentCard({ item }: { item: ContentItem }) {
@@ -64,6 +81,15 @@ function ContentCard({ item }: { item: ContentItem }) {
         ) : (
           <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
             Aucune métrique de portée pour ce format — Meta ne l&apos;expose que pour les posts statiques.
+          </div>
+        )}
+
+        {(item.impressions != null || item.profileVisits != null || item.saves != null || item.shares != null) && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, background: "var(--panneau)", borderRadius: 12, padding: "10px 12px" }}>
+            <MetricCell label="Impressions" value={item.impressions} />
+            <MetricCell label="Visites profil" value={item.profileVisits} />
+            <MetricCell label="Enregistrements" value={item.saves} />
+            <MetricCell label="Partages" value={item.shares} />
           </div>
         )}
 

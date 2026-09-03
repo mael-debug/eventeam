@@ -7,6 +7,13 @@
 // Chemin séparé : décodage via <video> hors DOM, on avance à la première
 // image utile (0 s peut être un cadre noir de transition) puis on dessine
 // l'image courante sur le même canvas que pour les photos.
+//
+// DORMANT depuis le 2026-09-03 : les exports désormais déposés ne
+// contiennent plus jamais media/**/*.{jpg,png,mp4} (régime permanent, pas
+// une anomalie ponctuelle) — makeThumbnail() n'est donc plus jamais
+// exercé en pratique (aucun mediaFiles n'atteint uploadOneMediaFile dans
+// upload-import.ts). Conservé tel quel, pas supprimé : c'est la spec
+// correcte le jour où un export complet (avec media/) arrive à nouveau.
 
 async function makeImageThumbnail(bytes: Uint8Array, mimeType: string): Promise<Blob> {
   const blob = new Blob([bytes as unknown as BlobPart], { type: mimeType });

@@ -3,7 +3,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
-import type { ScanResult } from "./scan-zip";
+import type { ScanResult } from "./collect";
 import { makeThumbnail } from "./thumbnail";
 
 export interface UploadProgress {
@@ -56,6 +56,11 @@ async function uploadOneJsonFile(
   return !error;
 }
 
+// DORMANT depuis le 2026-09-03 : media/ n'est plus jamais fourni dans les
+// exports déposés (régime permanent) — scan.mediaFiles est donc toujours
+// vide et cette fonction n'est plus jamais appelée en pratique. Conservée
+// telle quelle, pas supprimée : c'est la spec correcte le jour où un export
+// complet (avec media/) arrive à nouveau. Cf. thumbnail.ts, en-tête.
 async function uploadOneMediaFile(
   supabase: SupabaseClient<Database>,
   accountId: string,

@@ -87,8 +87,8 @@ export default async function IaShowroomPage({
     { data: geo },
     { data: captionStats },
   ] = await Promise.all([
-    supabase.from("content").select("id, media_type, published_at, caption, thumb_path").eq("account_id", account.id).eq("media_type", "post"),
-    supabase.from("content_metrics").select("content_id, reach, likes, comments, saves, follows_gained, follow_conversion_rate").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
+    supabase.from("content").select("id, media_type, published_at, caption").eq("account_id", account.id).eq("media_type", "post"),
+    supabase.from("content_metrics").select("content_id, reach, impressions, profile_visits, likes, comments, saves, shares, follows_gained, follow_conversion_rate").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
     supabase.from("cross_analyses").select("dimension, payload").eq("account_id", account.id).eq("import_id", latestImport.import_id!).eq("code", "format_retention").order("dimension"),
     supabase.from("interaction_insights").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!).in("format", ["reels", "posts", "stories"]),
     supabase.from("cross_analyses").select("dimension, payload").eq("account_id", account.id).eq("code", "cohort_quality_score").order("dimension"),
@@ -103,17 +103,6 @@ export default async function IaShowroomPage({
     .filter((c) => c.m && c.m.follow_conversion_rate != null)
     .sort((a, b) => (b.m!.follow_conversion_rate ?? 0) - (a.m!.follow_conversion_rate ?? 0))
     .slice(0, 3);
-
-  const thumbUrls = new Map<string, string>();
-  await Promise.all(
-    withMetrics.map(async (c) => {
-      if (!c.thumb_path) return;
-      const slash = c.thumb_path.indexOf("/");
-      if (slash < 0) return;
-      const { data } = await supabase.storage.from(c.thumb_path.slice(0, slash)).createSignedUrl(c.thumb_path.slice(slash + 1), 3600);
-      if (data?.signedUrl) thumbUrls.set(c.id, data.signedUrl);
-    }),
-  );
 
   const withHashtag = (captionStats ?? []).filter((c) => c.caption?.includes("#")).length;
   const totalCaptioned = (captionStats ?? []).length;
@@ -159,24 +148,33 @@ export default async function IaShowroomPage({
         />
 
         {withMetrics.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+          // Pas de vignette (media/ n'est plus jamais fourni) : légende, date
+          // et métriques de posts.json portent seules l'identification —
+          // état nominal, pas un repli dégradé.
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
             {withMetrics.map((c) => (
               <Card key={c.id} variant="claire" interactive={false}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-                  {thumbUrls.has(c.id) ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- URL signée temporaire, cf. contenu/page.tsx
-                    <img src={thumbUrls.get(c.id)} alt="" style={{ height: 120, width: "100%", borderRadius: 10, objectFit: "cover", background: "var(--creme-fonce)" }} />
-                  ) : (
-                    <div style={{ height: 120, borderRadius: 10, background: "var(--creme-fonce)", display: "grid", placeItems: "center", fontSize: 12, color: "var(--text-muted)" }}>
-                      Vignette indisponible
-                    </div>
-                  )}
-                  <span style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: c.caption ? "normal" : "italic" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12, color: "var(--text-muted)" }}>
+                    <span style={{ fontWeight: 600, color: "var(--encre)" }}>{shortDate(c.published_at)}</span>
+                    <span style={{ fontWeight: 700, color: "var(--bleu)" }}>{pct((c.m?.follow_conversion_rate ?? 0) * 100)} conversion</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, color: c.caption ? "var(--encre)" : "var(--text-muted)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", fontStyle: c.caption ? "normal" : "italic" }}>
                     {c.caption ?? "Légende non renseignée dans l'export"}
-                  </span>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-muted)", borderTop: "1px solid var(--bordure-carte)", paddingTop: 8 }}>
-                    <span>{shortDate(c.published_at)}</span>
-                    <span style={{ fontWeight: 700, color: "var(--encre)" }}>{pct((c.m?.follow_conversion_rate ?? 0) * 100)} conversion</span>
+                  </p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, background: "var(--panneau)", borderRadius: 10, padding: "8px 10px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800 }}>{fr(c.m?.reach ?? null)}</span>
+                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Portée</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800 }}>{fr(c.m?.impressions ?? null)}</span>
+                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Impressions</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800 }}>{fr(c.m?.follows_gained ?? null)}</span>
+                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Abonnés +</span>
+                    </div>
                   </div>
                 </div>
               </Card>

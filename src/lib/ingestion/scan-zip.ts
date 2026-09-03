@@ -4,39 +4,10 @@
 // niveau de l'entrée elle-même (jamais décompressé).
 
 import { Unzip, UnzipInflate, type UnzipFile } from "fflate";
-import { classifyPath, type WhitelistEntry } from "./whitelist";
+import { classifyPath } from "./whitelist";
+import { createCollector, yieldToBrowser, type Collector } from "./collect";
 
-export interface InventoryEntry {
-  path: string;
-  category: WhitelistEntry["category"] | null;
-  label: string | null;
-  willIngest: boolean;
-}
-
-export interface ExtractedJsonFile {
-  path: string;
-  category: Exclude<WhitelistEntry["category"], "media">;
-  json: unknown;
-  bytes: number;
-}
-
-export interface ExtractedMediaFile {
-  path: string;
-  bytes: Uint8Array;
-  mimeType: string;
-}
-
-export interface ScanResult {
-  inventory: InventoryEntry[];
-  jsonFiles: ExtractedJsonFile[];
-  mediaFiles: ExtractedMediaFile[];
-}
-
-function mimeFromPath(path: string): string {
-  if (/\.png$/i.test(path)) return "image/png";
-  if (/\.mp4$/i.test(path)) return "video/mp4";
-  return "image/jpeg";
-}
+export type { ScanResult, InventoryEntry, ExtractedJsonFile, ExtractedMediaFile, Collector } from "./collect";
 
 function concat(chunks: Uint8Array[]): Uint8Array {
   const total = chunks.reduce((n, c) => n + c.length, 0);
@@ -49,59 +20,34 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   return out;
 }
 
-/** Décompresse le ZIP en flux et construit l'inventaire complet — ce qui
- * sera traité, ce qui sera ignoré, avec le motif (§7.1 étape 3). Seuls les
- * fichiers de la liste blanche sont réellement décompressés en mémoire. */
+/** Décompresse le ZIP en flux et alimente le collecteur (partagé si fourni,
+ * pour fusionner plusieurs sources en un seul import — §4). Seuls les
+ * fichiers de la liste blanche sont réellement décompressés en mémoire ;
+ * pour les autres, le collecteur est nourri directement sans décompression
+ * afin d'obtenir malgré tout une ligne d'inventaire honnête (§5.4, §9.1). */
 export async function scanExportZip(
   file: File,
   onProgress?: (processedEntries: number) => void,
-): Promise<ScanResult> {
-  const inventory: InventoryEntry[] = [];
-  const jsonFiles: ExtractedJsonFile[] = [];
-  const mediaFiles: ExtractedMediaFile[] = [];
-  let processed = 0;
-
+  collector: Collector = createCollector(onProgress),
+) {
   const unzipper = new Unzip();
   unzipper.register(UnzipInflate);
 
   unzipper.onfile = (entry: UnzipFile) => {
-    processed++;
-    onProgress?.(processed);
-
     if (entry.name.endsWith("/")) return;
 
     const match = classifyPath(entry.name);
-    inventory.push({
-      path: entry.name,
-      category: match?.category ?? null,
-      label: match?.label ?? null,
-      willIngest: match !== null,
-    });
-
-    if (!match) return; // hors liste blanche : jamais décompressé (§5.4, §9.1)
+    if (!match) {
+      collector.offer(entry.name, new Uint8Array(0)); // hors liste blanche : jamais décompressé
+      return;
+    }
 
     const chunks: Uint8Array[] = [];
     entry.ondata = (err, data, final) => {
       if (err) return;
       chunks.push(data);
       if (!final) return;
-
-      const full = concat(chunks);
-      if (match.category === "media") {
-        mediaFiles.push({ path: entry.name, bytes: full, mimeType: mimeFromPath(entry.name) });
-        return;
-      }
-      try {
-        const text = new TextDecoder("utf-8").decode(full);
-        jsonFiles.push({
-          path: entry.name,
-          category: match.category,
-          json: JSON.parse(text),
-          bytes: full.length,
-        });
-      } catch {
-        // JSON illisible : ignoré sans bloquer le reste de l'import (§7.2 étape 3).
-      }
+      collector.offer(entry.name, concat(chunks));
     };
     entry.start();
   };
@@ -115,9 +61,6 @@ export async function scanExportZip(
   // répondant pas » côté navigateur, et empêcher scanProgress de jamais se
   // repeindre à l'écran (aucun rendu React ne passe sans rendre la main).
   const CHUNK_SIZE = 512 * 1024;
-  function yieldToBrowser(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 0));
-  }
 
   let offset = 0;
   do {
@@ -128,5 +71,5 @@ export async function scanExportZip(
     await yieldToBrowser();
   } while (offset < file.size);
 
-  return { inventory, jsonFiles, mediaFiles };
+  return collector.result();
 }

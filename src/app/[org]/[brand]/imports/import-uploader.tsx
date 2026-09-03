@@ -1,10 +1,21 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type DragEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { scanExportZip, type ScanResult } from "@/lib/ingestion/scan-zip";
+import { scanExportZip } from "@/lib/ingestion/scan-zip";
+import { scanExportFolder } from "@/lib/ingestion/scan-folder";
+import { createCollector, type ScanResult } from "@/lib/ingestion/collect";
+import { readDroppedSources, type DroppedSource } from "@/lib/ingestion/read-dropped-entries";
 import { uploadImport, fetchImportOutcome, type UploadProgress, type ImportOutcome } from "@/lib/ingestion/upload-import";
 import { Button, Badge, Card } from "@/components/ds";
+
+// webkitdirectory n'est pas dans les types React par défaut — augmentation
+// plutôt qu'un `as any` sur l'élément.
+declare module "react" {
+  interface InputHTMLAttributes<T> {
+    webkitdirectory?: string;
+  }
+}
 
 type Step = "idle" | "scanning" | "reviewing" | "uploading" | "done" | "error";
 
@@ -25,15 +36,28 @@ export function ImportUploader({ accountId, accountHandle }: { accountId: string
   const [error, setError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<ImportOutcome | null>(null);
   const [followerCounts, setFollowerCounts] = useState<{ followers: number; following: number } | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = useCallback(async (file: File) => {
+  // Point d'entrée unique : un ZIP, un dossier, ou un mélange des deux (drop
+  // multiple) alimentent tous le même collecteur — un seul ScanResult, donc
+  // un seul import, quelle que soit la façon dont les sources arrivent.
+  const handleSources = useCallback(async (sources: DroppedSource[]) => {
+    if (sources.length === 0) return;
     setError(null);
     setStep("scanning");
     setScanProgress(0);
     try {
-      const result = await scanExportZip(file, (n) => setScanProgress(n));
-      setScan(result);
+      const collector = createCollector((n) => setScanProgress(n));
+      for (const source of sources) {
+        if (source.kind === "zip") {
+          await scanExportZip(source.file, undefined, collector);
+        } else {
+          await scanExportFolder(source.files, undefined, collector);
+        }
+      }
+      setScan(collector.result());
       setStep("reviewing");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -65,8 +89,26 @@ export function ImportUploader({ accountId, accountHandle }: { accountId: string
     setError(null);
     setOutcome(null);
     setFollowerCounts(null);
-    if (inputRef.current) inputRef.current.value = "";
+    if (zipInputRef.current) zipInputRef.current.value = "";
+    if (folderInputRef.current) folderInputRef.current.value = "";
   };
+
+  const handleDrop = useCallback(
+    async (e: DragEvent<HTMLLabelElement>) => {
+      e.preventDefault();
+      setDragActive(false);
+      // Un dossier n'apparaît jamais dans e.dataTransfer.files — seul
+      // items[].webkitGetAsEntry() permet de le détecter et de le marcher.
+      if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+        const sources = await readDroppedSources(e.dataTransfer.items);
+        void handleSources(sources);
+        return;
+      }
+      const files = Array.from(e.dataTransfer.files ?? []);
+      void handleSources(files.map((file) => ({ kind: "zip" as const, file })));
+    },
+    [handleSources],
+  );
 
   const ignored = scan?.inventory.filter((e) => !e.willIngest) ?? [];
   const included = scan?.inventory.filter((e) => e.willIngest) ?? [];
@@ -90,36 +132,78 @@ export function ImportUploader({ accountId, accountHandle }: { accountId: string
 
         {step === "idle" && (
           <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragActive(true);
+            }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={handleDrop}
             style={{
               display: "flex",
               cursor: "pointer",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: 10,
               borderRadius: 12,
-              border: "2px dashed var(--bordure)",
+              border: `2px dashed ${dragActive ? "var(--bleu)" : "var(--bordure)"}`,
+              background: dragActive ? "var(--bleu-bg)" : "transparent",
               padding: "32px 16px",
               fontSize: 14,
               color: "var(--text-muted)",
+              textAlign: "center",
             }}
           >
-            Déposer le ZIP d&apos;export Instagram ici
+            <span>Déposer un ou plusieurs ZIP, ou un dossier déjà décompressé, de l&apos;export Instagram</span>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              <Button
+                variant="secondaire"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  zipInputRef.current?.click();
+                }}
+              >
+                Choisir un ou des ZIP
+              </Button>
+              <Button
+                variant="secondaire"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  folderInputRef.current?.click();
+                }}
+              >
+                Choisir un dossier
+              </Button>
+            </div>
             <input
-              ref={inputRef}
+              ref={zipInputRef}
               type="file"
               accept=".zip"
+              multiple
               style={{ display: "none" }}
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleFile(file);
+                const files = Array.from(e.target.files ?? []);
+                void handleSources(files.map((file) => ({ kind: "zip" as const, file })));
+              }}
+            />
+            <input
+              ref={folderInputRef}
+              type="file"
+              webkitdirectory=""
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                if (files.length > 0) void handleSources([{ kind: "folder", files }]);
               }}
             />
           </label>
         )}
 
         {step === "scanning" && (
-          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Analyse de l&apos;archive… {scanProgress} fichiers examinés.</p>
+          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Analyse en cours… {scanProgress} fichiers examinés.</p>
         )}
 
         {step === "reviewing" && scan && (
