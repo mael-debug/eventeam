@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -70,24 +71,34 @@ export function Header({
       </select>
 
       {(windowLabel || compareLabel) && (
-        <select
+        // Ancien <select> décoratif (aucun onChange, ne changeait jamais rien) —
+        // remplacé par un lien réel vers l'écran Évolution, seul endroit de
+        // l'app où la fenêtre d'analyse se choisit vraiment (retour du 03/09).
+        <Link
+          href={`/${orgSlug}/${currentBrandSlug}/evolution`}
+          title="Choisir la fenêtre d'analyse"
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
             border: "1px solid var(--bordure)",
             background: "transparent",
             borderRadius: 999,
             padding: "8px 14px",
             fontSize: 14,
             color: "var(--text-muted)",
-            cursor: "pointer",
             maxWidth: 340,
             flex: "1 1 auto",
             minWidth: 0,
+            overflow: "hidden",
             textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            textDecoration: "none",
           }}
         >
-          {windowLabel && <option>{windowLabel}</option>}
-          {compareLabel && <option>{compareLabel}</option>}
-        </select>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{windowLabel ?? compareLabel}</span>
+          <span aria-hidden style={{ marginLeft: "auto", flex: "0 0 auto" }}>↗</span>
+        </Link>
       )}
 
       <div style={{ marginLeft: "auto", flex: "0 0 auto", display: "flex", alignItems: "center", gap: 12 }}>

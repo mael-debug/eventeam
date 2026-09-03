@@ -6,6 +6,7 @@ import { Logo } from "@/components/ds";
 
 const NAV_ITEMS: { key: string; label: string; href: (base: string) => string }[] = [
   { key: "overview", label: "Vue d'ensemble", href: (b) => `${b}` },
+  { key: "evolution", label: "Évolution", href: (b) => `${b}/evolution` },
   { key: "audience", label: "Audience", href: (b) => `${b}/audience` },
   { key: "croissance", label: "Croissance", href: (b) => `${b}/croissance` },
   { key: "acquisition", label: "Acquisition", href: (b) => `${b}/acquisition` },
