@@ -159,7 +159,7 @@ export function EvolutionExplorer({ points }: { points: EvolutionPoint[] }) {
                   {p.insightsFrozen && (
                     <span
                       style={{ fontSize: 11, fontWeight: 700, color: "var(--encre)", background: "var(--pastel-jaune)", borderRadius: 999, padding: "3px 9px", cursor: "help" }}
-                      title="Ces chiffres Meta (abonnés, gagnés, perdus, genre) sont identiques à l'import précédent — probablement le même instantané réexporté plutôt qu'une vraie mesure de ce mois. Les colonnes ci-dessus restent affichées telles quelles, sans correction."
+                      title="Ces chiffres Meta (abonnés, gagnés, perdus, genre) sont identiques à l'import précédent : le fichier Insights de Meta reflète une fenêtre glissante d'environ 90 jours calculée au moment de la demande d'export, pas la période que vous sélectionnez pour les autres catégories. Deux exports demandés le même jour reçoivent donc le même instantané, même avec des plages de dates différentes — il faut un vrai écart d'un mois entre les demandes pour que ce fichier varie. Les colonnes ci-dessus restent affichées telles quelles, sans correction."
                     >
                       identique à l&apos;import précédent
                     </span>
