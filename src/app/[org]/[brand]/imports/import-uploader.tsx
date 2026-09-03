@@ -155,27 +155,38 @@ export function ImportUploader({ accountId, accountHandle }: { accountId: string
             }}
           >
             <span>Déposer un ou plusieurs ZIP, ou un dossier déjà décompressé, de l&apos;export Instagram</span>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-              <Button
-                variant="secondaire"
-                size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  zipInputRef.current?.click();
-                }}
-              >
-                Choisir un ou des ZIP
-              </Button>
-              <Button
-                variant="secondaire"
-                size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  folderInputRef.current?.click();
-                }}
-              >
-                Choisir un dossier
-              </Button>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, maxWidth: 220 }}>
+                <Button
+                  variant="secondaire"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    zipInputRef.current?.click();
+                  }}
+                >
+                  Choisir un ou des ZIP
+                </Button>
+                <span style={{ fontSize: 11, lineHeight: 1.4 }}>
+                  Le(s) fichier(s) .zip tel(s) que téléchargé(s) depuis Instagram — pas de fichier .json individuel.
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, maxWidth: 220 }}>
+                <Button
+                  variant="secondaire"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    folderInputRef.current?.click();
+                  }}
+                >
+                  Choisir un dossier
+                </Button>
+                <span style={{ fontSize: 11, lineHeight: 1.4 }}>
+                  Le dossier racine obtenu après décompression (celui qui contient connections, your_instagram_activity…) —
+                  pas un sous-dossier, pas des fichiers choisis un par un.
+                </span>
+              </div>
             </div>
             <input
               ref={zipInputRef}
