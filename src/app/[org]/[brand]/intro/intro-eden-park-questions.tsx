@@ -57,29 +57,22 @@ const CHECKLIST_GROUPS: { title: string; items: string[]; done: boolean }[] = [
   {
     title: "Disponible dès aujourd'hui, par export",
     done: true,
-    items: [
-      "Followers / snapshots, si le All Time est complet et validé",
-      "Dates de follow, following",
-      "Métriques d'audience agrégées : âge, genre, pays, villes, activité",
-      "Métriques organiques historiques présentes dans l'export",
-      "Contenus et dates de publication",
-      "Certaines interactions (DM, commentaires) si incluses dans l'export",
-    ],
+    items: ["Snapshots, dates de follow, contenus publiés", "Audience agrégée : âge, genre, pays, villes, activité"],
   },
   {
     title: "À ajouter avec la Graph API",
     done: false,
-    items: ["Métriques automatiques, plus fréquentes", "Performances Reels avancées", "Webhooks commentaires / messages", "Profil enrichi de certains utilisateurs qui interagissent"],
+    items: ["Métriques plus fréquentes, Reels avancés", "Profil enrichi de certains utilisateurs qui interagissent"],
   },
   {
     title: "À ajouter avec la Marketing API",
     done: false,
-    items: ["Campagnes payantes, dark posts", "Dépenses, impressions, reach, clics, coût par résultat", "Ciblage et zones géographiques des campagnes"],
+    items: ["Campagnes payantes : dépenses, reach, ciblage"],
   },
   {
     title: "À ajouter pour l'e-commerce",
     done: false,
-    items: ["Analytics (GA4 ou équivalent) pour relier campagne → trafic → conversion → communauté"],
+    items: ["Analytics (GA4 ou équivalent) pour relier campagne → conversion → communauté"],
   },
 ];
 
@@ -119,6 +112,14 @@ function DataChecklistCard() {
             Marketing API et analytics e-commerce.
           </p>
         </div>
+
+        <div style={{ background: "var(--pastel-violet)", borderRadius: 14, padding: "14px 16px" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--encre)", marginBottom: 4 }}>Avec l&apos;IA</div>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--encre)", lineHeight: 1.55, textWrap: "pretty" }}>
+            L&apos;IA aide à prioriser, dans cette liste, la donnée à collecter en premier selon la question posée
+            — elle ne remplace aucune des sources ci-dessus.
+          </p>
+        </div>
       </div>
     </Card>
   );
@@ -132,7 +133,8 @@ export function IntroEdenParkQuestions() {
           Les questions concrètes d&apos;Eden Park
         </h2>
         <p style={{ margin: 0, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 720, textWrap: "pretty" }}>
-          Une réponse honnête à chaque question posée, sans survendre la donnée.
+          Une réponse honnête à chaque question posée, sans survendre la donnée. Pour chacune, ce que l&apos;IA
+          ajoute réellement — jamais une donnée qu&apos;elle inventerait.
         </p>
       </div>
 
@@ -169,6 +171,11 @@ export function IntroEdenParkQuestions() {
             <div style={{ background: "var(--bleu-bg)", borderRadius: 14, padding: "14px 16px" }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: "var(--bleu)", marginBottom: 4 }}>Ce que Community Intelligence peut en tirer</div>
               <p style={{ margin: 0, fontSize: 14, color: "var(--encre)", lineHeight: 1.55, textWrap: "pretty" }}>{q.takeaway}</p>
+            </div>
+
+            <div style={{ background: "var(--pastel-violet)", borderRadius: 14, padding: "14px 16px" }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "var(--encre)", marginBottom: 4 }}>Avec l&apos;IA</div>
+              <p style={{ margin: 0, fontSize: 14, color: "var(--encre)", lineHeight: 1.55, textWrap: "pretty" }}>{q.aiNote}</p>
             </div>
           </div>
         </Card>

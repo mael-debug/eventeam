@@ -4,7 +4,6 @@ import { IntroDifferentiatorsSection } from "./intro-differentiators-section";
 import { IntroSnapshotSection } from "./intro-snapshot-section";
 import { IntroEdenParkQuestions } from "./intro-eden-park-questions";
 import { IntroEdenParkSynthesis } from "./intro-eden-park-synthesis";
-import { IntroIaSection } from "./intro-ia-section";
 import { IntroEdenParkRoadmap } from "./intro-eden-park-roadmap";
 import { IntroFooterSection } from "./intro-footer-section";
 
@@ -59,10 +58,6 @@ export default async function IntroPage({
 
       <Section>
         <IntroEdenParkSynthesis />
-      </Section>
-
-      <Section>
-        <IntroIaSection />
       </Section>
 
       <Section>

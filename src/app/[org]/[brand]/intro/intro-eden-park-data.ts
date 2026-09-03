@@ -1,6 +1,8 @@
 // Page Intro — réponses aux questions métier posées explicitement par Eden
-// Park. Contenu condensé mais fidèle au brief validé : ne pas reformuler les
-// statuts (yes/partial/no) ni les réserves sans revalider avec le métier.
+// Park. Contenu condensé (peu de bullets, une idée par ligne) mais fidèle
+// au brief validé : ne pas reformuler les statuts (yes/partial/no) ni les
+// réserves sans revalider avec le métier. aiNote précise, pour chaque
+// question, ce que l'IA ajoute sans jamais inventer une donnée absente.
 
 export type QStatus = "yes" | "partial" | "no";
 
@@ -13,6 +15,7 @@ export interface EdenParkQuestion {
   cannotKnow: string[];
   dataNeeded: string[];
   takeaway: string;
+  aiNote: string;
 }
 
 export const EDEN_PARK_QUESTIONS: EdenParkQuestion[] = [
@@ -20,116 +23,96 @@ export const EDEN_PARK_QUESTIONS: EdenParkQuestion[] = [
     n: 1,
     question: "Peut-on mieux connaître les personas de nos followers et les comparer à ceux de nos acheteurs physiques ?",
     status: "partial",
-    statusNote: "Oui pour une analyse agrégée, très utile",
-    canMeasure: [
-      "Répartition agrégée : genre, tranches d'âge, principaux pays et villes",
-      "Jours d'activité, et évolution de ces répartitions mois après mois",
-      "Comportement global : reach, interactions, formats qui fonctionnent, acquisition, rétention",
-    ],
-    cannotKnow: ["Le profil d'un follower précis — jamais « @username, homme, 35 ans, Paris »"],
-    dataNeeded: ["Exports mensuels", "Base CRM / magasin Eden Park (âge, ville, panier moyen…) pour la comparaison"],
-    takeaway:
-      "Avec ces deux bases, on peut comparer l'audience Instagram à la clientèle physique : est-elle plus jeune ? Certaines zones sont-elles surreprésentées ? Toujours en agrégé — jamais en reliant une personne Instagram à un acheteur précis.",
+    statusNote: "Oui en agrégé",
+    canMeasure: ["Profil agrégé de l'audience : genre, âge, pays, villes, comportement avec le contenu"],
+    cannotKnow: ["Le profil d'un follower précis — jamais un nom associé à un âge ou une ville"],
+    dataNeeded: ["Exports mensuels", "Base CRM / magasin Eden Park"],
+    takeaway: "Comparée à une base CRM, l'audience Instagram peut être confrontée à la clientèle magasin — toujours en agrégé.",
+    aiNote: "L'IA résume l'écart en une phrase lisible (« audience plus jeune que la clientèle magasin ») — jamais en reliant une personne Instagram à un acheteur.",
   },
   {
     n: 2,
     question: "Est-il possible d'identifier les différentes communautés présentes dans l'audience ?",
     status: "yes",
-    statusNote: "Pour plusieurs types de communautés ; partiel pour les centres d'intérêt individuels",
-    canMeasure: [
-      "Communautés démographiques : pays, villes, âge, genre (agrégé)",
-      "Communautés d'acquisition : arrivées pendant une même période, une campagne, un pic de croissance",
-      "Communautés de comportement : fans actifs, créateurs, comptes vérifiés, profils qui reviennent",
-      "Écosystème stratégique : athlètes, clubs, médias, influenceurs, partenaires",
-    ],
-    cannotKnow: ["Les centres d'intérêt privés de l'ensemble des followers — seulement des affinités observées avec le contenu Eden Park"],
-    dataNeeded: ["Exports mensuels", "Interactions (commentaires, réponses story, DM) si captées", "Graph API pour aller plus loin sur l'écosystème"],
-    takeaway:
-      "On peut construire des groupes utiles à l'action : Fans actifs, Créateurs, Partenaires, Communauté internationale — uniquement à partir de signaux réellement observés.",
+    statusNote: "Plusieurs types de communautés",
+    canMeasure: ["Communautés démographiques, d'acquisition, de comportement (fans actifs, créateurs) et écosystème stratégique (partenaires, médias)"],
+    cannotKnow: ["Les centres d'intérêt privés de l'ensemble des followers"],
+    dataNeeded: ["Exports mensuels", "Interactions captées"],
+    takeaway: "L'audience peut être regroupée en catégories actionnables : Fans actifs, Créateurs, Partenaires, Communauté internationale.",
+    aiNote: "L'IA nomme et résume ces groupes à partir des signaux observés — jamais en assignant une personne précise à un groupe.",
   },
   {
     n: 3,
     question: "Peut-on savoir à partir de quel contenu les personnes se désabonnent ?",
     status: "partial",
-    canMeasure: [
-      "Qu'un compte était présent au snapshot précédent et absent au suivant → un départ observé entre deux dates",
-      "Ce qui s'est passé pendant cette fenêtre : posts, campagnes, événements, pics de reach",
-    ],
-    cannotKnow: ["Le lien direct entre un post précis et un départ précis — Instagram ne relie jamais un unfollow à un contenu"],
-    dataNeeded: ["Deux snapshots successifs", "Calendrier de publication et de campagnes sur la même période"],
-    takeaway: "On peut montrer une corrélation temporelle (les départs augmentent autour de ce contenu), jamais une causalité prouvée.",
+    canMeasure: ["Un départ observé entre deux dates, et ce qui a été publié pendant cette fenêtre"],
+    cannotKnow: ["Le lien direct entre un post précis et un départ précis"],
+    dataNeeded: ["Deux snapshots successifs"],
+    takeaway: "On peut montrer une corrélation temporelle, jamais une causalité prouvée.",
+    aiNote: "L'IA peut signaler une coïncidence à investiguer — jamais affirmer qu'un post a fait fuir des abonnés.",
   },
   {
     n: 4,
     question: "Peut-on connaître le jour ou la date exacte du désabonnement ?",
     status: "no",
-    statusNote: "Pas exactement, avec un export mensuel",
-    canMeasure: [
-      "Avec deux snapshots mensuels : une fenêtre (« entre le 1er et le 30 »), jamais un jour précis",
-      "Avec une collecte quotidienne via l'API : un jour où les pertes globales sont anormalement hautes",
-    ],
-    cannotKnow: ["La date exacte du départ d'une personne nommée — même l'API Meta ne fournit pas ce signal individuel"],
-    dataNeeded: ["Exports plus rapprochés pour affiner la fenêtre", "Collecte quotidienne API pour un signal agrégé par jour"],
-    takeaway: "On peut dire « le compte a perdu beaucoup plus de followers le 14 septembre » — jamais « @john est parti le 14 septembre ».",
+    statusNote: "Pas avec un export mensuel",
+    canMeasure: ["Une fenêtre de départ entre deux snapshots ; un jour de perte anormale, si l'API collecte au quotidien"],
+    cannotKnow: ["La date exacte du départ d'une personne nommée"],
+    dataNeeded: ["Exports rapprochés", "Collecte quotidienne API"],
+    takeaway: "On peut dire « le compte a perdu beaucoup de followers le 14 septembre », jamais « @john est parti ce jour-là ».",
+    aiNote: "L'IA peut repérer ce type de journée anormale dans la série de chiffres — jamais en déduire l'identité de la personne partie.",
   },
   {
     n: 5,
     question: "Les unfollows sont-ils liés à un contenu feed, une publicité, ou du contenu géolocalisé ?",
     status: "partial",
-    statusNote: "Analysable en corrélation, jamais comme preuve individuelle",
-    canMeasure: [
-      "Feed organique : croiser date de publication, reach, engagement et variation du churn dans les jours qui suivent",
-      "Publicité (dark posts, campagnes) : possible en ajoutant la Marketing API — dépenses, audience, dates",
-      "Drive-to-web / e-commerce : possible en ajoutant des données analytics (sessions, ventes, UTM)",
-    ],
-    cannotKnow: ["Qu'une campagne précise a « causé » des départs — seulement qu'une coïncidence mérite d'être creusée"],
-    dataNeeded: ["Export mensuel + Graph API (organique)", "Marketing API (paid, si accès autorisé)", "Analytics e-commerce (GA4 ou équivalent)"],
-    takeaway:
-      "Exemple fictif : une campagne e-commerce avec +38 % de sessions et +22 % de ventes, mais un churn Instagram multiplié par 1,8 sur la même période — un signal à investiguer, jamais une preuve de cause à effet.",
+    statusNote: "En corrélation, jamais en preuve",
+    canMeasure: ["Feed organique : reach, engagement et churn autour d'une publication", "Paid / e-commerce : possible en ajoutant Marketing API et analytics"],
+    cannotKnow: ["Qu'une campagne a « causé » des départs"],
+    dataNeeded: ["Marketing API (si autorisée)", "Analytics e-commerce"],
+    takeaway: "Exemple fictif : +38 % de sessions et +22 % de ventes, mais un churn x1,8 sur la même période — un signal à investiguer, jamais une preuve.",
+    aiNote: "L'IA formule l'hypothèse à vérifier (« la campagne coïncide avec une hausse du churn ») — jamais la conclusion causale.",
   },
   {
     n: 7,
     question: "Peut-on analyser plus précisément les profils des abonnés et des personnes qui se désabonnent ?",
     status: "partial",
-    canMeasure: [
-      "Follower standard : nom d'utilisateur, lien du profil, date de follow",
-      "Follower qui interagit : commentaires, réponses story, DM, follow mutuel — et via l'API, dans les cas autorisés, s'il est vérifié, son nombre de followers, s'il suit la marque",
-      "Personne qui part : tout ce qu'on savait avant son départ (ancienneté, interactions, cohorte d'acquisition), pour comparer les profils de ceux qui partent",
-    ],
-    cannotKnow: ["Des attributs personnels non déclarés publiquement par la personne elle-même"],
-    dataNeeded: ["Exports mensuels", "Interactions capturées (commentaires, DM, stories)", "Graph API pour l'enrichissement des profils qui interagissent"],
-    takeaway:
-      "On peut par exemple voir si les personnes qui partent sont surtout des arrivées récentes, ou recrutées lors d'un pic particulier — un signal construit uniquement à partir de comportements observés.",
+    canMeasure: ["Ce qu'on savait avant un départ : ancienneté, interactions, cohorte d'acquisition", "Pour ceux qui interagissent : commentaires, DM, follow mutuel"],
+    cannotKnow: ["Des attributs personnels non déclarés publiquement"],
+    dataNeeded: ["Interactions captées", "Graph API pour l'enrichissement"],
+    takeaway: "On peut voir si les personnes qui partent sont surtout des arrivées récentes, ou recrutées lors d'un pic particulier.",
+    aiNote: "L'IA compare les profils de ceux qui partent à ceux qui restent, et résume les écarts significatifs.",
   },
   {
     n: 8,
     question: "Peut-on connaître les comptes suivis par nos followers ?",
     status: "no",
     canMeasure: [],
-    cannotKnow: ["La liste des comptes suivis par chaque follower — ni l'export Eden Park ni l'API Meta ne fournissent ce graphe pour l'ensemble de l'audience"],
+    cannotKnow: ["La liste des comptes suivis par chaque follower — ni l'export ni l'API Meta ne la fournissent pour toute l'audience"],
     dataNeeded: [],
-    takeaway: "À ne jamais proposer : « nous allons analyser toutes les marques que suivent les 100 000 followers » — ce n'est pas disponible officiellement.",
+    takeaway: "À ne jamais proposer : « nous allons analyser toutes les marques que suivent les 100 000 followers ».",
+    aiNote: "Aucune IA ne comble ce manque : elle ne devine pas une donnée que la source ne fournit pas.",
   },
   {
     n: 9,
     question: "Peut-on connaître les marques et contenus avec lesquels nos followers interagissent ailleurs sur Instagram ?",
     status: "no",
     canMeasure: ["Leurs interactions avec Eden Park elles-mêmes"],
-    cannotKnow: ["L'historique privé d'interactions d'un follower avec d'autres comptes — jamais affirmé sans donnée explicite"],
+    cannotKnow: ["L'historique privé d'interactions d'un follower avec d'autres comptes"],
     dataNeeded: [],
-    takeaway: "On ne pourra jamais écrire « @john aime Nike, Lacoste et Ralph Lauren » sans preuve directe.",
+    takeaway: "On ne pourra jamais écrire « @john aime Nike, Lacoste et Ralph Lauren » sans preuve directe.",
+    aiNote: "Même limite : l'IA ne complète pas une donnée absente par une supposition plausible.",
   },
   {
     n: 10,
     question: "Peut-on connaître leurs centres d'intérêt ?",
     status: "partial",
-    statusNote: "Par affinité observée, pas par centre d'intérêt certain",
-    canMeasure: [
-      "Des affinités observées avec les contenus Eden Park : rugby, produit, ambassadeurs, lifestyle, événements — selon ce à quoi les personnes réagissent réellement",
-    ],
-    cannotKnow: ["Les centres d'intérêt privés d'une personne, en dehors de son comportement avec Eden Park"],
+    statusNote: "Par affinité observée",
+    canMeasure: ["Des affinités observées avec les contenus Eden Park : rugby, produit, ambassadeurs, lifestyle"],
+    cannotKnow: ["Les centres d'intérêt privés, en dehors du comportement avec Eden Park"],
     dataNeeded: ["Exports mensuels avec interactions par contenu"],
-    takeaway: "On parle toujours d'« affinité observée aux contenus Eden Park », jamais de « centre d'intérêt Instagram certain ».",
+    takeaway: "On parle toujours d'« affinité observée », jamais de « centre d'intérêt certain ».",
+    aiNote: "L'IA peut regrouper ces affinités en segments lisibles (ex. fictif : « Rugby & Heritage », « Fashion discovery ») — des segments, jamais des portraits individuels.",
   },
 ];
 
