@@ -623,21 +623,24 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
     filesParsed++;
   }
 
-  // recompute_account (§4.10) ne considère que les imports au statut
-  // 'completed' : celui-ci doit donc l'atteindre AVANT le recalcul, sans
-  // quoi ses propres observations seraient ignorées.
+  // recompute_account (§4.10) est asynchrone (migration 0046) : sa durée
+  // croît avec l'historique cumulé du compte (~45 s par import déjà
+  // accumulé, mesuré sur Eden Park All), et l'exécuter ici la soumettrait
+  // au budget CPU de cette invocation ET au statement_timeout Postgres —
+  // panne garantie à date inconnue. On marque seulement 'computing' : le
+  // job pg_cron run_pending_recomputes() reprend tout import à ce statut,
+  // calcule ses analyses sans aucun budget de temps externe, puis bascule
+  // vers 'completed' ou 'failed'. recompute_account() traite 'computing'
+  // comme 'completed' pour la sélection des imports à considérer (ses
+  // fichiers sont déjà tous 'parsed' à ce stade).
   await admin
     .from("imports")
     .update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
+      status: "computing",
       files_parsed: filesParsed,
       parser_version: PARSER_VERSION,
     })
     .eq("id", importId);
-
-  const { error: recomputeError } = await admin.rpc("recompute_account", { p_account_id: accountId });
-  if (recomputeError) throw new Error(`Recalcul (§4.10) : ${recomputeError.message}`);
 
   // Compté en base plutôt qu'avec allFollowers/allFollowing.length : sur
   // une reprise où les fichiers followers_*.json étaient déjà 'parsed' et

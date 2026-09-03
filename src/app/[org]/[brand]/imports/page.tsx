@@ -5,6 +5,7 @@ import { ImportUploader } from "./import-uploader";
 import { StuckImport } from "./stuck-import";
 import { ResumeImport } from "./resume-import";
 import { RetryFailedFiles } from "./retry-failed-files";
+import { RetryRecompute } from "./retry-recompute";
 import { CADENCE_WEEKS, CADENCE_LABEL } from "@/lib/cadence";
 import { shortDate } from "@/lib/format";
 
@@ -55,7 +56,9 @@ export default async function ImportsPage({
   const { data: imports } = accountIds.length
     ? await supabase
         .from("imports")
-        .select("id, account_id, status, window_start, window_end, created_at, exported_at, error_message, started_at")
+        .select(
+          "id, account_id, status, window_start, window_end, created_at, exported_at, error_message, started_at, files_parsed, files_expected",
+        )
         .in("account_id", accountIds)
         .order("created_at", { ascending: false })
     : { data: [] };
@@ -118,6 +121,15 @@ export default async function ImportsPage({
                     // invocation a été tuée en cours de route.
                     const resumable = imp.status === "parsing" && imp.started_at !== null;
                     const canRetryFailed = imp.status !== "uploading" && allErroredCount > 0;
+                    // Échec après un parsing complet (tous les fichiers
+                    // 'parsed') : la faute est dans le recalcul asynchrone
+                    // (§4.10, migration 0046), pas dans un fichier — rien à
+                    // ré-uploader, juste à relancer le calcul.
+                    const recomputeFailed =
+                      imp.status === "failed" &&
+                      allErroredCount === 0 &&
+                      !!imp.files_expected &&
+                      imp.files_parsed === imp.files_expected;
                     return (
                       <div key={imp.id} style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 10 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
@@ -163,6 +175,7 @@ export default async function ImportsPage({
                         {canRetryFailed && (
                           <RetryFailedFiles accountId={account.id} importId={imp.id} failedCount={allErroredCount} />
                         )}
+                        {recomputeFailed && <RetryRecompute importId={imp.id} />}
                       </div>
                     );
                   })}

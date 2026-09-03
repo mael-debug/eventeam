@@ -3726,6 +3726,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      retry_recompute: { Args: { p_import_id: string }; Returns: undefined }
       reveal_usernames: {
         Args: { p_account: string; p_ids: number[] }
         Returns: {
@@ -3733,6 +3734,7 @@ export type Database = {
           username: string
         }[]
       }
+      run_pending_recomputes: { Args: never; Returns: undefined }
       set_brand_identity_access: {
         Args: { p_brand_id: string; p_enabled: boolean; p_user_id: string }
         Returns: undefined
