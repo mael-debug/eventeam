@@ -204,30 +204,47 @@ export default async function BrandOverviewPage({
         />
       </div>
 
-      {alerts.length > 0 && (
-        <div style={{ background: "var(--bleu-bg)", border: "1px solid #D3DEF4", borderRadius: 18, padding: 24, display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>Ce que les compteurs ne disent pas</h2>
-            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              {alerts.length} constat{alerts.length > 1 ? "s" : ""} généré{alerts.length > 1 ? "s" : ""} à partir du dernier import
+      <div style={{ background: "var(--bleu-bg)", border: "1px solid #D3DEF4", borderRadius: 18, padding: 24, display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "var(--bleu)" }}>
+              {fr(overview?.followers_gained ?? null)}
             </span>
+            <span style={{ fontSize: 14, color: "var(--encre)" }}>nouveaux abonnés sur la période</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
-            {alerts.map((a, i) => (
-              <a key={i} href={a.href} style={{ textDecoration: "none", color: "inherit" }}>
-                <Card variant="claire">
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, cursor: "pointer", minWidth: 0 }}>
-                    <Badge variant="cadrage">{a.badge}</Badge>
-                    <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.3, textWrap: "pretty" }}>{a.title}</div>
-                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{a.detail}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--bleu)", marginTop: 2 }}>{a.cta}</div>
-                  </div>
-                </Card>
-              </a>
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "var(--bleu)" }}>
+              {fr(overview?.followers_lost ?? null)}
+            </span>
+            <span style={{ fontSize: 14, color: "var(--encre)" }}>abonnés partis sur la période</span>
           </div>
         </div>
-      )}
+
+        {alerts.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18, borderTop: "1px solid #D3DEF4", paddingTop: 18 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>Ce que les compteurs ne disent pas</h2>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                {alerts.length} constat{alerts.length > 1 ? "s" : ""} généré{alerts.length > 1 ? "s" : ""} à partir du dernier import
+              </span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
+              {alerts.map((a, i) => (
+                <a key={i} href={a.href} style={{ textDecoration: "none", color: "inherit" }}>
+                  <Card variant="claire">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, cursor: "pointer", minWidth: 0 }}>
+                      <Badge variant="cadrage">{a.badge}</Badge>
+                      <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.3, textWrap: "pretty" }}>{a.title}</div>
+                      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{a.detail}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--bleu)", marginTop: 2 }}>{a.cta}</div>
+                    </div>
+                  </Card>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </main>
   );
 }

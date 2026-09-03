@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Card } from "@/components/ds";
 import { fr, pct, shortDate } from "@/lib/format";
 
-const CONFIDENCE_LABEL: Record<string, string> = { robuste: "robuste", indicatif: "indicatif", insuffisant: "insuffisant" };
+const CONFIDENCE_LABEL: Record<string, string> = { robuste: "Fiabilité élevée", indicatif: "Fiabilité indicative", insuffisant: "Fiabilité faible" };
 const CONFIDENCE_BG: Record<string, string> = {
   robuste: "var(--vert-pastel)",
   indicatif: "var(--pastel-jaune)",
@@ -48,18 +48,20 @@ function ContentCard({ item }: { item: ContentItem }) {
           {item.caption || "Sans légende"}
         </p>
 
-        {item.reach != null || item.followConversionRate != null ? (
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+        {item.followsGained != null ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Conversion</span>
-              <span style={{ fontSize: "clamp(22px, 2.4vw, 30px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>
-                {pct(item.followConversionRate != null ? item.followConversionRate * 100 : null)}
+              <span style={{ fontSize: "clamp(24px, 2.6vw, 32px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                {fr(item.followsGained)} nouveaux abonnés
               </span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Instagram attribue directement ces abonnements à ce post.</span>
             </div>
-            <div style={{ textAlign: "right", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
-              <div>{fr(item.reach)} de portée</div>
-              <div>{fr(item.followsGained)} abonnés gagnés</div>
-            </div>
+            {(item.followConversionRate != null || item.reach != null) && (
+              <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                {item.followConversionRate != null && <div>{pct(item.followConversionRate * 100)} des personnes touchées se sont abonnées</div>}
+                {item.reach != null && <div>{fr(item.reach)} personnes touchées</div>}
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
@@ -67,25 +69,44 @@ function ContentCard({ item }: { item: ContentItem }) {
           </div>
         )}
 
-        <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-            <span
-              style={{ color: "var(--text-muted)", textDecoration: "underline dotted", textUnderlineOffset: 3 }}
-              title="Arrivées observées dans les 48 heures suivant la publication, au-delà de la ligne de base. Une corrélation temporelle n'est pas une attribution."
-            >
-              Arrivées excédentaires 48 h
-            </span>
-            <span style={{ fontWeight: 700 }}>{item.excessArrivals != null ? fr(item.excessArrivals) : "—"}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-            <span style={{ color: "var(--text-muted)" }}>Rétention de ces arrivées</span>
-            <span style={{ fontWeight: 700 }}>{item.retentionRate != null ? pct(item.retentionRate * 100) : "non calculé"}</span>
-          </div>
-          {item.confidence && (
+        <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12, fontSize: 13 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-              <span style={{ color: "var(--text-muted)" }}>Confiance</span>
-              <span style={{ borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 700, background: CONFIDENCE_BG[item.confidence] ?? "var(--creme-fonce)" }}>
-                {CONFIDENCE_LABEL[item.confidence] ?? item.confidence}
+              <span style={{ color: "var(--text-muted)" }}>Pic d&apos;abonnements dans les 48 h</span>
+              <span style={{ fontWeight: 700 }}>{item.excessArrivals != null ? `+${fr(item.excessArrivals)} vs habituel` : "—"}</span>
+            </div>
+            {item.excessArrivals != null && (
+              <span style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                Dans les 48 h suivant la publication, le compte a gagné {fr(item.excessArrivals)} abonnés de plus que son rythme
+                habituel. Signal temporel, pas attribution certaine.
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+              <span style={{ color: "var(--text-muted)" }}>Encore abonnés aujourd&apos;hui</span>
+              <span style={{ fontWeight: 700 }}>{item.retentionRate != null ? pct(item.retentionRate * 100) : "non calculé"}</span>
+            </div>
+            {item.retentionRate != null && (
+              <span style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                Parmi les personnes qui se sont abonnées pendant ces 48 h, {pct(item.retentionRate * 100)} suivent encore le
+                compte au dernier point de mesure.
+              </span>
+            )}
+          </div>
+
+          {item.confidence && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <span style={{ color: "var(--text-muted)" }}>Fiabilité de l&apos;analyse</span>
+                <span style={{ borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 700, background: CONFIDENCE_BG[item.confidence] ?? "var(--creme-fonce)" }}>
+                  {CONFIDENCE_LABEL[item.confidence] ?? item.confidence}
+                </span>
+              </div>
+              <span style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                Le pic est une corrélation temporelle : il peut être lié au post, à une campagne, à un événement ou à une autre
+                source d&apos;acquisition.
               </span>
             </div>
           )}
@@ -108,6 +129,11 @@ export function ContentFeed({ items }: { items: ContentItem[] }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, minWidth: 0 }}>
+      <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 720, textWrap: "pretty" }}>
+        Pour chaque publication, Community Intelligence distingue ce qu&apos;Instagram attribue directement au contenu et ce
+        qui est simplement observé autour de sa publication.
+      </p>
+
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {(["all", "post", "reel", "story"] as const).map((type) => {
           const active = filter === type;
