@@ -218,6 +218,50 @@ export function mockCompetitors(accountId: string): CompetitorProfile[] {
   ];
 }
 
+export interface TopCommenter {
+  username: string;
+  verified: boolean;
+  commentCount: number;
+  lastCommentDate: string;
+}
+
+const HANDLE_PREFIXES = [
+  "sophie", "marc", "clara", "julien", "amandine", "romain", "lea", "thibault", "camille", "pierre",
+  "manon", "hugo", "chloe", "antoine", "laura", "maxime", "eva", "nicolas", "sarah", "vincent",
+  "juliette", "alexandre", "emma", "florian", "pauline", "kevin", "margaux", "yanis", "lucie", "baptiste",
+  "ines", "theo", "louise", "gabriel", "zoe", "mathis", "anna", "leo", "nina", "raphael",
+  "eloise", "adrien", "celia", "quentin", "victoria", "simon", "alicia", "benjamin", "oceane", "arthur",
+];
+const HANDLE_SUFFIXES = ["", ".paris", "92", "_rugby", ".fr", "75", "_official", ".eden", "13", "_style"];
+
+// Puisqu'on va stocker chaque commentaire reçu (§3.F), on pourra à terme
+// construire ce classement pour de vrai — ce qui suit illustre la forme que
+// prendra ce classement une fois assez d'historique accumulé.
+export function mockTopCommenters(accountId: string, count = 50): TopCommenter[] {
+  const r = rng(`${accountId}:top-commenters`);
+  const used = new Set<string>();
+  const rows: TopCommenter[] = [];
+  for (let i = 0; i < count; i++) {
+    let handle = "";
+    do {
+      const prefix = HANDLE_PREFIXES[Math.floor(r() * HANDLE_PREFIXES.length)];
+      const suffix = HANDLE_SUFFIXES[Math.floor(r() * HANDLE_SUFFIXES.length)];
+      handle = `${prefix}${suffix}`;
+    } while (used.has(handle));
+    used.add(handle);
+    // Décroissance en loi de puissance : quelques abonnés très actifs, puis
+    // une longue traîne — cohérent avec ce qu'on observe sur un vrai compte.
+    const commentCount = Math.max(3, Math.round(65 / Math.pow(i + 1, 0.55) + between(r, -2, 2)));
+    rows.push({
+      username: handle,
+      verified: r() < 0.04,
+      commentCount,
+      lastCommentDate: `2026-08-${String(between(r, 1, 28)).padStart(2, "0")}`,
+    });
+  }
+  return rows.sort((a, b) => b.commentCount - a.commentCount);
+}
+
 export interface LiveCommentSeed {
   author: string;
   text: string;

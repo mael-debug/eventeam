@@ -9,6 +9,7 @@ import {
   mockAudienceDemographics,
   mockMentions,
   mockCompetitors,
+  mockTopCommenters,
   type MediaType,
 } from "@/lib/analyse-mock";
 import { CadenceChip } from "./cadence-chip";
@@ -110,6 +111,7 @@ export default async function AnalysePage({
   const demographics = mockAudienceDemographics(account.id, followersTotal);
   const mentions = mockMentions(account.id);
   const competitors = mockCompetitors(account.id);
+  const topCommenters = mockTopCommenters(account.id);
   const postLabels = (posts ?? []).map((p) => (p.caption ?? "").slice(0, 40));
 
   return (
@@ -258,10 +260,42 @@ export default async function AnalysePage({
         </Card>
       </div>
 
-      {/* 5. Stories */}
+      {/* 5. Top commentateurs */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={5}
+          title="Top 50 des commentateurs"
+          cadence={<CadenceChip cadence="FIGE" />}
+          subtitle="En stockant chaque commentaire reçu au fil du temps (§4 ci-dessus), on peut reconstituer qui commente le plus souvent — un classement qui s'affine mois après mois, à mesure que l'historique s'accumule."
+        />
+        <Card variant="claire" interactive={false}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Classement illustratif — le vrai classement se construira à partir des commentaires réellement reçus.
+              </span>
+              <SimTag />
+            </div>
+            <div style={{ maxHeight: 480, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "2px 16px", alignContent: "start" }}>
+              {topCommenters.map((c, i) => (
+                <div key={c.username} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid var(--bordure-carte)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", width: 22, flex: "0 0 22px" }}>{i + 1}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--bleu)", flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    @{c.username}
+                    {c.verified && <span aria-label="Compte vérifié" title="Compte vérifié" style={{ marginLeft: 4, color: "var(--vert-logo)" }}>✓</span>}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 800, flex: "0 0 auto" }}>{fr(c.commentCount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* 6. Stories */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <SectionTitle
+          n={6}
           title="Stories"
           cadence={<CadenceChip cadence="STORY-END" />}
           subtitle="Les chiffres d'une story disparaissent 24 h après sa publication : seul le webhook, capté au bon moment, permet de les garder."
@@ -315,9 +349,9 @@ export default async function AnalysePage({
         </div>
       </div>
 
-      {/* 6. Audience */}
+      {/* 7. Audience */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <SectionTitle n={6} title="Audience" cadence={<CadenceChip cadence="S" />} subtitle="Profil agrégé des abonnés — jamais attribué à une personne. Classement limité au top 45 par Meta." />
+        <SectionTitle n={7} title="Audience" cadence={<CadenceChip cadence="S" />} subtitle="Profil agrégé des abonnés — jamais attribué à une personne. Classement limité au top 45 par Meta." />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -372,9 +406,9 @@ export default async function AnalysePage({
         </div>
       </div>
 
-      {/* 7. Mentions et veille */}
+      {/* 8. Mentions et veille */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <SectionTitle n={7} title="Mentions et veille" subtitle="Ce qui se dit autour de la marque, et où elle se situe face à ses concurrents." />
+        <SectionTitle n={8} title="Mentions et veille" subtitle="Ce qui se dit autour de la marque, et où elle se situe face à ses concurrents." />
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -414,9 +448,9 @@ export default async function AnalysePage({
         </div>
       </div>
 
-      {/* 8. Ce qu'on ne peut pas récupérer */}
+      {/* 9. Ce qu'on ne peut pas récupérer */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <SectionTitle n={8} title="Ce qu'on ne peut pas récupérer" subtitle="Pour que le périmètre soit clair dans les deux sens." />
+        <SectionTitle n={9} title="Ce qu'on ne peut pas récupérer" subtitle="Pour que le périmètre soit clair dans les deux sens." />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
           {[
             ["Qui a mis un « j'aime »", "Cette liste n'existe plus côté Meta depuis 2016."],

@@ -55,7 +55,7 @@ export function LiveComments({ postLabels }: { postLabels: string[] }) {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13, fontWeight: 700 }}>@{e.author}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "var(--bleu)" }}>@{e.author}</span>
               <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{e.time}</span>
             </div>
             <span style={{ fontSize: 13, color: "var(--encre)", textWrap: "pretty" }}>{e.text}</span>
