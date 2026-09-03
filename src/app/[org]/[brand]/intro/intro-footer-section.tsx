@@ -42,11 +42,8 @@ export function IntroFooterSection() {
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>Vigilance sur l&apos;Export All Time</h3>
           <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55, textWrap: "pretty" }}>
             L&apos;essentiel de la valeur du produit vient des exports mensuels réguliers. Mais un export
-            « All Time » n&apos;est jamais automatiquement considéré comme complet à 100 % sans validation de sa
-            couverture — l&apos;idée directrice pour le moteur est de comparer, à terme, le nombre de profils
-            listés dans les fichiers <code>followers_*.json</code> au total <code>followers_total</code> fourni
-            par les Insights. Le vocabulaire produit dit « snapshot complet validé », jamais « All Time = forcément
-            complet ».
+            « All Time » n&apos;est jamais automatiquement considéré comme complet à 100 % : sa couverture doit
+            être vérifiée avant d&apos;être traité comme une photo fiable de toute la communauté.
           </p>
         </div>
       </Card>
