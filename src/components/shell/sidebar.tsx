@@ -12,6 +12,7 @@ const NAV_ITEMS: { key: string; label: string; href: (base: string) => string }[
   { key: "contenu", label: "Contenu", href: (b) => `${b}/contenu` },
   { key: "ecosysteme", label: "Écosystème", href: (b) => `${b}/ecosysteme` },
   { key: "ia", label: "Showroom IA", href: (b) => `${b}/ia` },
+  { key: "analyse", label: "Analyse", href: (b) => `${b}/analyse` },
   { key: "listes", label: "Listes", href: (b) => `${b}/listes` },
   { key: "catalogue", label: "Catalogue", href: (b) => `${b}/catalogue` },
   { key: "imports", label: "Imports", href: (b) => `${b}/imports` },
