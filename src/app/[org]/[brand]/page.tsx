@@ -91,9 +91,8 @@ export default async function BrandOverviewPage({
     );
   }
 
-  const [{ data: overview }, { data: reach }, { data: cohorts }] = await Promise.all([
+  const [{ data: overview }, { data: cohorts }] = await Promise.all([
     supabase.from("v_overview").select("*").eq("account_id", account.id).maybeSingle(),
-    supabase.from("reach_insights").select("*").eq("import_id", comparability.latest_import_id!).maybeSingle(),
     supabase
       .from("cohort_survival")
       .select("cohort_week, remaining, departed")
@@ -109,27 +108,6 @@ export default async function BrandOverviewPage({
       : "—";
 
   const alerts: Alert[] = [];
-
-  if (
-    reach?.impressions_delta_pct != null &&
-    reach?.profile_visits_delta_pct != null &&
-    reach.impressions_delta_pct > 0 &&
-    reach.profile_visits_delta_pct < 0
-  ) {
-    const tapsNote =
-      reach.external_taps_delta_pct != null && reach.external_taps_delta_pct < 0
-        ? ` et les clics externes de ${pct(Math.abs(reach.external_taps_delta_pct))}`
-        : "";
-    alerts.push({
-      badge: "Impressions sans effet",
-      title: `Les impressions augmentent de ${pct(reach.impressions_delta_pct)} mais les visites de profil reculent de ${pct(Math.abs(reach.profile_visits_delta_pct))}${tapsNote}.`,
-      detail: `${fr(reach.impressions)} impressions, ${fr(reach.accounts_reached)} comptes touchés${
-        reach.non_follower_reach_pct != null ? ` dont ${pct(reach.non_follower_reach_pct, 0)} de non-abonnés` : ""
-      }.`,
-      cta: "Ouvrir Diagnostic →",
-      href: `${base}/diagnostic`,
-    });
-  }
 
   const cohortRows = cohorts ?? [];
   if (cohortRows.length >= 2) {
@@ -150,8 +128,8 @@ export default async function BrandOverviewPage({
           badge: "Rupture de cohorte",
           title: `Les abonnés recrutés depuis le ${shortDate(worst.cohort_week)} partent ${multiple} fois plus que ceux du ${shortDate(best.cohort_week)}.`,
           detail: `${pct(best.rate * 100)} de départs pour la cohorte du ${shortDate(best.cohort_week)}, ${pct(worst.rate * 100)} pour celle du ${shortDate(worst.cohort_week)}.`,
-          cta: "Ouvrir Acquisition →",
-          href: `${base}/acquisition`,
+          cta: "Ouvrir Croissance →",
+          href: `${base}/croissance`,
         });
       }
     }
@@ -168,8 +146,8 @@ export default async function BrandOverviewPage({
       badge: "Origine de l'acquisition",
       title: `${fr(overview.organic_gained)} abonnements sont explicitement attribués aux publications statiques analysées sur cette période.`,
       detail: "Les autres acquisitions peuvent provenir de Reels, du profil, d'Explore, de recherches, de partages, de campagnes paid ou d'autres sources que les données actuellement importées ne permettent pas d'attribuer.",
-      cta: "Ouvrir Acquisition →",
-      href: `${base}/acquisition`,
+      cta: "Ouvrir Contenu →",
+      href: `${base}/contenu`,
     });
   }
 

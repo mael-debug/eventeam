@@ -7,12 +7,8 @@ import { Logo } from "@/components/ds";
 const NAV_ITEMS: { key: string; label: string; href: (base: string) => string }[] = [
   { key: "intro", label: "Intro", href: (b) => `${b}/intro` },
   { key: "overview", label: "Vue d'ensemble", href: (b) => `${b}` },
-  { key: "evolution", label: "Évolution", href: (b) => `${b}/evolution` },
   { key: "audience", label: "Audience", href: (b) => `${b}/audience` },
   { key: "croissance", label: "Croissance", href: (b) => `${b}/croissance` },
-  { key: "acquisition", label: "Acquisition", href: (b) => `${b}/acquisition` },
-  { key: "diagnostic", label: "Diagnostic", href: (b) => `${b}/diagnostic` },
-  { key: "segments", label: "Segments", href: (b) => `${b}/segments` },
   { key: "contenu", label: "Contenu", href: (b) => `${b}/contenu` },
   { key: "ecosysteme", label: "Écosystème", href: (b) => `${b}/ecosysteme` },
   { key: "ia", label: "Showroom IA", href: (b) => `${b}/ia` },
