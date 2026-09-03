@@ -47,12 +47,32 @@ export function Sidebar({
         overflowY: "auto",
       }}
     >
-      <div style={{ padding: "0 20px 22px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <Link
+        href={`/${orgSlug}`}
+        title="Changer de compte"
+        style={{ padding: "0 20px 22px", display: "flex", flexDirection: "column", gap: 8, textDecoration: "none", color: "inherit" }}
+      >
         <Logo color="creme" size={30} />
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <div style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-0.01em" }}>Community Intelligence</div>
           <div style={{ fontSize: 12, color: "rgba(250,248,243,0.5)" }}>{orgName} · analyse d&apos;audience</div>
         </div>
+      </Link>
+      <div style={{ padding: "0 20px 14px" }}>
+        <Link
+          href={`/${orgSlug}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 12,
+            fontWeight: 600,
+            color: "rgba(250,248,243,0.62)",
+            textDecoration: "none",
+          }}
+        >
+          ← Tous les comptes
+        </Link>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px" }}>
