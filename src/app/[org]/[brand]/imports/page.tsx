@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, Badge } from "@/components/ds";
 import { ImportUploader } from "./import-uploader";
 import { StuckImport } from "./stuck-import";
+import { ResumeImport } from "./resume-import";
 import { RetryFailedFiles } from "./retry-failed-files";
 import { CADENCE_WEEKS, CADENCE_LABEL } from "@/lib/cadence";
 import { shortDate } from "@/lib/format";
@@ -111,6 +112,11 @@ export default async function ImportsPage({
                     const pending = impFiles.filter((f) => f.status === "pending");
                     const inProgress = imp.status === "parsing" || imp.status === "computing" || imp.status === "uploaded";
                     const stuck = imp.status === "uploading" && imp.started_at === null;
+                    // 'parsing' + started_at posé : le serveur a bien pris la
+                    // main un jour, donc jamais "quitté avant d'atteindre le
+                    // serveur" (cas de StuckImport ci-dessus) — une
+                    // invocation a été tuée en cours de route.
+                    const resumable = imp.status === "parsing" && imp.started_at !== null;
                     const canRetryFailed = imp.status !== "uploading" && allErroredCount > 0;
                     return (
                       <div key={imp.id} style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 10 }}>
@@ -127,6 +133,7 @@ export default async function ImportsPage({
                           <div style={{ fontSize: 12, color: "#7A2E22", marginTop: 4 }}>{imp.error_message}</div>
                         )}
                         {stuck && <StuckImport importId={imp.id} />}
+                        {resumable && <ResumeImport importId={imp.id} />}
                         {inProgress && impFiles.length > 0 && (
                           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
                             {impFiles.map((f) => (

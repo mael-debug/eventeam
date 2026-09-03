@@ -112,6 +112,15 @@ interface ImportRow {
   exported_at: string | null;
 }
 
+// Reprise (§ci-dessous, Deno.serve) : chaque phase saute les fichiers déjà
+// 'parsed' par une invocation précédente — un budget CPU par invocation est
+// fixe, et sur un gros compte (ex. Eden Park All : ~95k followers, des
+// milliers de reels/stories/labels) une seule invocation peut ne pas
+// suffire pour tout traiter, même en écrivant par lots (migrations 0040,
+// 0041). Sans cette reprise, une invocation tuée en cours de route (« CPU
+// Time exceeded », le processus s'arrête AVANT son propre catch — status
+// reste à 'parsing', error_message reste null) forçait à tout recommencer
+// depuis zéro à chaque tentative.
 async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const { id: importId, account_id: accountId } = importRow;
 
@@ -146,11 +155,13 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const followerFiles = fileRows.filter((f) => /^followers(_\d+)?\.json$/.test(basename(f.source_path)));
   const allFollowers: ParsedFollower[] = [];
   for (const f of followerFiles) {
-    await withFileTracking(admin, f, async () => {
-      const parsed = parseFollowersFile(await downloadJson(admin, f.storage_path));
-      allFollowers.push(...parsed);
-      return parsed.length;
-    });
+    if (f.status !== "parsed") {
+      await withFileTracking(admin, f, async () => {
+        const parsed = parseFollowersFile(await downloadJson(admin, f.storage_path));
+        allFollowers.push(...parsed);
+        return parsed.length;
+      });
+    }
     filesParsed++;
   }
 
@@ -158,10 +169,12 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const followingFile = fileRows.find((f) => basename(f.source_path) === "following.json");
   let allFollowing: ParsedFollower[] = [];
   if (followingFile) {
-    await withFileTracking(admin, followingFile, async () => {
-      allFollowing = parseFollowingFile(await downloadJson(admin, followingFile.storage_path));
-      return allFollowing.length;
-    });
+    if (followingFile.status !== "parsed") {
+      await withFileTracking(admin, followingFile, async () => {
+        allFollowing = parseFollowingFile(await downloadJson(admin, followingFile.storage_path));
+        return allFollowing.length;
+      });
+    }
     filesParsed++;
   }
 
@@ -205,13 +218,20 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const exportedAt = importRow.exported_at ? new Date(importRow.exported_at) : new Date();
   const fallbackPeriod = { start: windowStart ?? exportedAt, end: windowEnd ?? exportedAt };
 
-  await admin
-    .from("imports")
-    .update({
-      window_start: windowStart?.toISOString() ?? null,
-      window_end: windowEnd?.toISOString() ?? null,
-    })
-    .eq("id", importId);
+  // Écrit seulement s'il y a des observations CETTE invocation — sur une
+  // reprise où les fichiers followers_*.json sont déjà 'parsed' (donc
+  // sautés ci-dessus), timestamps est vide alors que la fenêtre a déjà été
+  // correctement posée par l'invocation précédente ; l'écraser à null ici
+  // la perdrait pour rien.
+  if (timestamps.length > 0) {
+    await admin
+      .from("imports")
+      .update({
+        window_start: windowStart!.toISOString(),
+        window_end: windowEnd!.toISOString(),
+      })
+      .eq("id", importId);
+  }
 
   // ---- insights (§7.4, best-effort — voir avertissement en tête de
   // supabase/functions/_shared/parse-insights.ts) ----
@@ -226,6 +246,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
 
   const audienceFile = findFile("audience_insights.json", "insights");
   if (audienceFile) {
+   if (audienceFile.status !== "parsed") {
     await withFileTracking(admin, audienceFile, async () => {
       const audienceJson = await downloadJson(admin, audienceFile.storage_path);
       const parsed = parseAudienceInsights(audienceJson, exportedAt, fallbackPeriod);
@@ -296,11 +317,13 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
 
       return parsed.usedFallbackPeriod ? "période non trouvée : repli sur la fenêtre de l'import" : 1;
     });
+   }
     filesParsed++;
   }
 
   const reachFile = findFile("profiles_reached.json", "insights");
   if (reachFile) {
+   if (reachFile.status !== "parsed") {
     await withFileTracking(admin, reachFile, async () => {
       const reachJson = await downloadJson(admin, reachFile.storage_path);
       const parsed = parseReachInsights(reachJson, exportedAt, fallbackPeriod);
@@ -329,11 +352,13 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       if (error) throw new Error(error.message);
       return parsed.usedFallbackPeriod ? "période non trouvée : repli sur la fenêtre de l'import" : 1;
     });
+   }
     filesParsed++;
   }
 
   const interactionsFile = findFile("content_interactions.json", "insights");
   if (interactionsFile) {
+   if (interactionsFile.status !== "parsed") {
     await withFileTracking(admin, interactionsFile, async () => {
       const interactionsJson = await downloadJson(admin, interactionsFile.storage_path);
       const parsed = parseInteractionInsights(interactionsJson);
@@ -365,11 +390,13 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       if (error) throw new Error(error.message);
       return parsed.length;
     });
+   }
     filesParsed++;
   }
 
   const postsFile = findFile("posts.json", "insights");
   if (postsFile) {
+   if (postsFile.status !== "parsed") {
     await withFileTracking(admin, postsFile, async () => {
       const postsJson = await downloadJson(admin, postsFile.storage_path);
       const parsed = parsePostsFile(postsJson);
@@ -433,6 +460,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       }
       return rows.length;
     });
+   }
     filesParsed++;
   }
 
@@ -468,19 +496,23 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
 
   const reelsFile = fileRows.find((f) => basename(f.source_path) === "reels.json");
   if (reelsFile) {
-    await withFileTracking(admin, reelsFile, async () => {
-      const parsed = parseReelsFile(await downloadJson(admin, reelsFile.storage_path));
-      return await upsertActivityContent("reel", parsed);
-    });
+    if (reelsFile.status !== "parsed") {
+      await withFileTracking(admin, reelsFile, async () => {
+        const parsed = parseReelsFile(await downloadJson(admin, reelsFile.storage_path));
+        return await upsertActivityContent("reel", parsed);
+      });
+    }
     filesParsed++;
   }
 
   const storiesFile = fileRows.find((f) => basename(f.source_path) === "stories.json");
   if (storiesFile) {
-    await withFileTracking(admin, storiesFile, async () => {
-      const parsed = parseStoriesFile(await downloadJson(admin, storiesFile.storage_path));
-      return await upsertActivityContent("story", parsed);
-    });
+    if (storiesFile.status !== "parsed") {
+      await withFileTracking(admin, storiesFile, async () => {
+        const parsed = parseStoriesFile(await downloadJson(admin, storiesFile.storage_path));
+        return await upsertActivityContent("story", parsed);
+      });
+    }
     filesParsed++;
   }
 
@@ -495,26 +527,28 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const activityPostFiles = fileRows.filter((f) => /^posts_\d+\.json$/.test(basename(f.source_path)) && f.category === "content");
   if (activityPostFiles.length > 0) {
     for (const f of activityPostFiles) {
-      await withFileTracking(admin, f, async () => {
-        const captions = parseActivityPostCaptions(await downloadJson(admin, f.storage_path));
-        const { data: existingPosts, error: postsError } = await admin
-          .from("content")
-          .select("id, media_key, caption")
-          .eq("account_id", accountId)
-          .eq("media_type", "post");
-        if (postsError) throw new Error(`content (lecture légendes) : ${postsError.message}`);
+      if (f.status !== "parsed") {
+        await withFileTracking(admin, f, async () => {
+          const captions = parseActivityPostCaptions(await downloadJson(admin, f.storage_path));
+          const { data: existingPosts, error: postsError } = await admin
+            .from("content")
+            .select("id, media_key, caption")
+            .eq("account_id", accountId)
+            .eq("media_type", "post");
+          if (postsError) throw new Error(`content (lecture légendes) : ${postsError.message}`);
 
-        let updated = 0;
-        for (const row of existingPosts ?? []) {
-          if (row.caption) continue;
-          const caption = captions.get(row.media_key);
-          if (!caption) continue;
-          const { error: updateError } = await admin.from("content").update({ caption }).eq("id", row.id);
-          if (updateError) throw new Error(`content (complément légende) : ${updateError.message}`);
-          updated++;
-        }
-        return updated;
-      });
+          let updated = 0;
+          for (const row of existingPosts ?? []) {
+            if (row.caption) continue;
+            const caption = captions.get(row.media_key);
+            if (!caption) continue;
+            const { error: updateError } = await admin.from("content").update({ caption }).eq("id", row.id);
+            if (updateError) throw new Error(`content (complément légende) : ${updateError.message}`);
+            updated++;
+          }
+          return updated;
+        });
+      }
       filesParsed++;
     }
   }
@@ -526,6 +560,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   // INSERT — même motif CPU que posts_N.json/reels/stories ci-dessus.
   const postLabelsFile = findFile("posts.json", "content");
   if (postLabelsFile) {
+   if (postLabelsFile.status !== "parsed") {
     await withFileTracking(admin, postLabelsFile, async () => {
       const parsed = parsePostLabelsFile(await downloadJson(admin, postLabelsFile.storage_path));
       const rows = parsed.map((p) => ({
@@ -551,6 +586,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       }
       return rows.length;
     });
+   }
     filesParsed++;
   }
 
@@ -559,6 +595,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   // avec un pseudo Instagram, jamais de jointure vers ecosystem_profiles.
   const chatFile = findFile("your_chat_information.json", "chat");
   if (chatFile) {
+   if (chatFile.status !== "parsed") {
     await withFileTracking(admin, chatFile, async () => {
       const chatJson = await downloadJson(admin, chatFile.storage_path);
       const parsed = parseChatFile(chatJson);
@@ -582,6 +619,7 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       }
       return parsed.length;
     });
+   }
     filesParsed++;
   }
 
@@ -601,9 +639,20 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   const { error: recomputeError } = await admin.rpc("recompute_account", { p_account_id: accountId });
   if (recomputeError) throw new Error(`Recalcul (§4.10) : ${recomputeError.message}`);
 
+  // Compté en base plutôt qu'avec allFollowers/allFollowing.length : sur
+  // une reprise où les fichiers followers_*.json étaient déjà 'parsed' et
+  // donc sautés (cf. plus haut), ces tableaux en mémoire sont vides pour
+  // CETTE invocation alors que les lignes existent bien, depuis la
+  // précédente — le compte rendu à l'écran doit refléter l'état réel, pas
+  // seulement ce que cette invocation a traité.
+  const [{ count: followersCount }, { count: followingCount }] = await Promise.all([
+    admin.from("follower_observations").select("*", { count: "exact", head: true }).eq("import_id", importId),
+    admin.from("following_observations").select("*", { count: "exact", head: true }).eq("import_id", importId),
+  ]);
+
   return {
-    followers: allFollowers.length,
-    following: allFollowing.length,
+    followers: followersCount ?? 0,
+    following: followingCount ?? 0,
     windowStart: windowStart?.toISOString() ?? null,
     windowEnd: windowEnd?.toISOString() ?? null,
     filesParsed,
@@ -652,7 +701,14 @@ Deno.serve(async (req) => {
     return json({ error: "Accès en écriture refusé sur ce compte" }, 403);
   }
 
-  if (importRow.status !== "uploaded") {
+  // Rejeté seulement pour 'uploading' (upload navigateur pas encore
+  // terminé, rien à traiter). Tout le reste peut être (re)traité en
+  // sécurité, chaque phase de processImport sautant ce qui est déjà
+  // 'parsed' : 'uploaded' (premier passage), 'parsing' (reprise après une
+  // invocation tuée en cours de route — cf. en-tête de processImport),
+  // 'completed'/'failed' (nouvel appel après correction de fichiers en
+  // échec, cf. retryFailedImportFiles côté navigateur).
+  if (importRow.status === "uploading") {
     return json({ error: `Statut inattendu : ${importRow.status}` }, 409);
   }
 

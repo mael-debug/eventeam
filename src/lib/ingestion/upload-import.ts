@@ -178,14 +178,43 @@ export async function uploadImport(
 
   onProgress?.({ phase: "invoking", uploaded: totalFiles, total: totalFiles });
 
-  const { data: functionResult, error: fnError } = await supabase.functions.invoke("process-import", {
-    body: { import_id: importId },
-  });
-  if (fnError) throw new Error(`Traitement de l'import : ${fnError.message}`);
+  const functionResult = await invokeProcessImport(supabase, importId, onProgress, totalFiles);
 
   onProgress?.({ phase: "done", uploaded: totalFiles, total: totalFiles });
 
   return { importId, functionResult };
+}
+
+// Sur un gros compte, process-import peut se faire tuer par la plateforme
+// en cours de route (budget CPU par invocation dépassé — « CPU Time
+// exceeded », jamais un échec applicatif : l'import reste au statut
+// 'parsing', jamais 'failed'). L'Edge Function accepte de reprendre un
+// import 'parsing' en sautant les fichiers déjà traités (cf. process-import/
+// index.ts) — un ré-appel identique sur le même import_id, sans réenvoyer
+// aucun fichier, suffit donc à finir le travail sous un budget neuf.
+async function invokeProcessImport(
+  supabase: SupabaseClient<Database>,
+  importId: string,
+  onProgress: ((p: UploadProgress) => void) | undefined,
+  totalFiles: number,
+): Promise<unknown> {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= MAX_RETRY_PASSES; attempt++) {
+    const { data, error: fnError } = await supabase.functions.invoke("process-import", {
+      body: { import_id: importId },
+    });
+    if (!fnError) return data;
+    lastError = new Error(`Traitement de l'import : ${fnError.message}`);
+    if (attempt < MAX_RETRY_PASSES) {
+      onProgress?.({
+        phase: "retrying",
+        uploaded: totalFiles,
+        total: totalFiles,
+        message: `traitement interrompu côté serveur, reprise (tentative ${attempt + 1}/${MAX_RETRY_PASSES})`,
+      });
+    }
+  }
+  throw lastError;
 }
 
 export interface RetryFailedResult {
@@ -253,8 +282,7 @@ export async function retryFailedImportFiles(
   // ingéré — sans quoi ses lignes restent absentes des tables de calcul.
   if (fixedNonMediaPaths.size > 0) {
     onProgress?.({ phase: "invoking", uploaded: totalToRetry, total: totalToRetry });
-    const { error: fnError } = await supabase.functions.invoke("process-import", { body: { import_id: importId } });
-    if (fnError) throw new Error(`Traitement de l'import : ${fnError.message}`);
+    await invokeProcessImport(supabase, importId, onProgress, totalToRetry);
     reprocessed = true;
   }
 
