@@ -381,78 +381,49 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
       // identifiant fiable partagé, le media_key numérique Instagram
       // (présent dans les deux chemins), via thumbByMediaKey (hoisté plus
       // haut, réutilisé aussi par stories.json plus bas).
-      let inserted = 0;
-      for (const p of parsed) {
-        const realThumbPath = thumbByMediaKey.get(p.mediaKey) ?? null;
-        // Un post réapparaît dans chaque export ultérieur (posts.json liste
-        // l'historique, pas seulement les nouveautés) : first_import_id ne
-        // doit être posé qu'à la toute première apparition, jamais réécrit
-        // par un import plus récent — d'où la lecture préalable plutôt
-        // qu'un upsert qui écraserait la colonne à chaque passage.
-        const { data: existing, error: lookupError } = await admin
-          .from("content")
-          .select("id")
-          .eq("account_id", accountId)
-          .eq("media_key", p.mediaKey)
-          .maybeSingle();
-        if (lookupError) throw new Error(`content (lecture) : ${lookupError.message}`);
-
-        let contentId: string;
-        if (existing) {
-          contentId = existing.id;
-          const { error: updateError } = await admin
-            .from("content")
-            .update({ permalink: p.permalink, caption: p.caption, thumb_path: realThumbPath })
-            .eq("id", contentId);
-          if (updateError) throw new Error(`content (mise à jour) : ${updateError.message}`);
-        } else {
-          const { data: created, error: insertError } = await admin
-            .from("content")
-            .insert({
-              account_id: accountId,
-              media_key: p.mediaKey,
-              permalink: p.permalink,
-              media_type: "post",
-              published_at: p.publishedAt.toISOString(),
-              caption: p.caption,
-              thumb_path: realThumbPath,
-              first_import_id: importId,
-            })
-            .select("id")
-            .single();
-          if (insertError) throw new Error(`content (création) : ${insertError.message}`);
-          contentId = created.id;
-        }
-
+      //
+      // Un aller-retour SELECT puis INSERT/UPDATE par publication (ancienne
+      // version) coûtait assez de temps CPU, sur un compte à plusieurs
+      // centaines de posts, pour dépasser la limite d'exécution de l'Edge
+      // Function — tuée par la plateforme avant même d'atteindre son propre
+      // catch (imports.status restait bloqué à 'parsing'). upsert_post_
+      // content_batch (migration 0040) fait tout ça en un aller-retour par
+      // lot, côté Postgres.
+      const rows = parsed.map((p) => {
         const followConversionRate = p.followsGained !== null && p.reach ? p.followsGained / p.reach : null;
         const engagementRate =
           p.reach && (p.likes !== null || p.comments !== null || p.shares !== null || p.saves !== null)
             ? ((p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saves ?? 0)) / p.reach
             : null;
+        return {
+          media_key: p.mediaKey,
+          permalink: p.permalink,
+          published_at: p.publishedAt.toISOString(),
+          caption: p.caption,
+          thumb_path: thumbByMediaKey.get(p.mediaKey) ?? null,
+          reach: p.reach,
+          impressions: p.impressions,
+          likes: p.likes,
+          comments: p.comments,
+          shares: p.shares,
+          saves: p.saves,
+          profile_visits: p.profileVisits,
+          follows_gained: p.followsGained,
+          external_taps: p.externalTaps,
+          follow_conversion_rate: followConversionRate,
+          engagement_rate: engagementRate,
+        };
+      });
 
-        const { error: metricsError } = await admin.from("content_metrics").upsert(
-          {
-            content_id: contentId,
-            import_id: importId,
-            account_id: accountId,
-            reach: p.reach,
-            impressions: p.impressions,
-            likes: p.likes,
-            comments: p.comments,
-            shares: p.shares,
-            saves: p.saves,
-            profile_visits: p.profileVisits,
-            follows_gained: p.followsGained,
-            external_taps: p.externalTaps,
-            follow_conversion_rate: followConversionRate,
-            engagement_rate: engagementRate,
-          },
-          { onConflict: "content_id,import_id" },
-        );
-        if (metricsError) throw new Error(`content_metrics : ${metricsError.message}`);
-        inserted++;
+      for (const batch of chunk(rows, 500)) {
+        const { error } = await admin.rpc("upsert_post_content_batch", {
+          p_account_id: accountId,
+          p_import_id: importId,
+          p_rows: batch,
+        });
+        if (error) throw new Error(`content/content_metrics (lot) : ${error.message}`);
       }
-      return inserted;
+      return rows.length;
     });
     filesParsed++;
   }
@@ -464,40 +435,27 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
   // reçoit donc une ligne (légende, date, vignette si photo) mais jamais de
   // content_metrics — Contenu ne les mélange jamais à la grille classée par
   // conversion, qui exige une métrique.
+  // Même correctif que posts.json ci-dessus (migration 0040) : un lot par
+  // aller-retour plutôt qu'un SELECT+INSERT/UPDATE par entrée — sur un
+  // compte à plusieurs centaines de reels/stories, la boucle ligne à ligne
+  // dépassait la limite de temps CPU de l'Edge Function.
   async function upsertActivityContent(mediaType: "reel" | "story", entries: ParsedActivityMedia[]): Promise<number> {
-    let count = 0;
-    for (const e of entries) {
-      const { data: existing, error: lookupError } = await admin
-        .from("content")
-        .select("id")
-        .eq("account_id", accountId)
-        .eq("media_key", e.mediaKey)
-        .maybeSingle();
-      if (lookupError) throw new Error(`content (lecture ${mediaType}) : ${lookupError.message}`);
-
-      const thumbPath = thumbByMediaKey.get(e.mediaKey) ?? null;
-      if (existing) {
-        const { error: updateError } = await admin
-          .from("content")
-          .update({ caption: e.caption, thumb_path: thumbPath })
-          .eq("id", existing.id);
-        if (updateError) throw new Error(`content (mise à jour ${mediaType}) : ${updateError.message}`);
-      } else {
-        const { error: insertError } = await admin.from("content").insert({
-          account_id: accountId,
-          media_key: e.mediaKey,
-          permalink: null,
-          media_type: mediaType,
-          published_at: e.publishedAt.toISOString(),
-          caption: e.caption,
-          thumb_path: thumbPath,
-          first_import_id: importId,
-        });
-        if (insertError) throw new Error(`content (création ${mediaType}) : ${insertError.message}`);
-      }
-      count++;
+    const rows = entries.map((e) => ({
+      media_key: e.mediaKey,
+      published_at: e.publishedAt.toISOString(),
+      caption: e.caption,
+      thumb_path: thumbByMediaKey.get(e.mediaKey) ?? null,
+    }));
+    for (const batch of chunk(rows, 500)) {
+      const { error } = await admin.rpc("upsert_activity_content_batch", {
+        p_account_id: accountId,
+        p_import_id: importId,
+        p_media_type: mediaType,
+        p_rows: batch,
+      });
+      if (error) throw new Error(`content (${mediaType}, lot) : ${error.message}`);
     }
-    return count;
+    return rows.length;
   }
 
   const reelsFile = fileRows.find((f) => basename(f.source_path) === "reels.json");
@@ -518,12 +476,18 @@ async function processImport(admin: SupabaseClient, importRow: ImportRow) {
     filesParsed++;
   }
 
-  // ---- posts_N.json (your_instagram_activity/media/, Lot 5) — jamais une
-  // source de nouvelles publications (seul posts.json à métriques fait foi
-  // sur QUELLES publications existent, cf. parsePostsFile) : sert
-  // uniquement à compléter une légende vide, avec les vraies images du
-  // carrousel le cas échéant (le fichier à métriques n'en garde qu'une).
-  const activityPostFiles = fileRows.filter((f) => /^posts_\d+\.json$/.test(basename(f.source_path)));
+  // ---- posts_N.json / posts.json (your_instagram_activity/media/, Lot 5)
+  // — jamais une source de nouvelles publications (seul posts.json à
+  // métriques fait foi sur QUELLES publications existent, cf.
+  // parsePostsFile) : sert uniquement à compléter une légende vide, avec
+  // les vraies images du carrousel le cas échéant (le fichier à métriques
+  // n'en garde qu'une). posts.json (sans suffixe, whitelist élargie —
+  // migration/commit précédent) est inclus au même titre que posts_N.json :
+  // structure non revérifiée sur un export réel pour ce nom précis, mais
+  // parseActivityPostCaptions() est déjà défensif (renvoie une map vide
+  // sans lever si la racine n'est pas un tableau), donc sans risque au pire
+  // un no-op si la forme diffère.
+  const activityPostFiles = fileRows.filter((f) => /^posts(_\d+)?\.json$/.test(basename(f.source_path)));
   if (activityPostFiles.length > 0) {
     for (const f of activityPostFiles) {
       await withFileTracking(admin, f, async () => {
