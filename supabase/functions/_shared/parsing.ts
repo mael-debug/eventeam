@@ -20,25 +20,15 @@ export function extractMediaKey(pathOrUri: string | undefined | null): string | 
   return match ? match[1] : null;
 }
 
-// Encodage (non documenté par Meta, mais stable et public depuis des années,
-// utilisé par de nombreux outils tiers) qui transforme le media_key numérique
-// en shortcode Instagram : base64 avec l'alphabet propre à Instagram,
-// chiffres de poids fort en premier. BigInt obligatoire — le media_key réel
-// (ex. 18117474704481294, 17 chiffres) dépasse Number.MAX_SAFE_INTEGER.
-// Sert à reconstruire un lien https://www.instagram.com/p/<shortcode>/ :
-// posts.json (export Meta) ne contient aucun permalink direct.
-const SHORTCODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-export function mediaKeyToShortcode(mediaKey: string): string | null {
-  if (!/^\d+$/.test(mediaKey)) return null;
-  let id = BigInt(mediaKey);
-  if (id <= 0n) return null;
-  let shortcode = "";
-  while (id > 0n) {
-    shortcode = SHORTCODE_ALPHABET[Number(id % 64n)] + shortcode;
-    id /= 64n;
-  }
-  return shortcode;
-}
+// Tentative abandonnée (2026-09-04) : un encodage base64 "shortcode
+// Instagram" existe bien pour certains identifiants Instagram, mais
+// appliqué au media_key extrait ici (premier nombre à 6+ chiffres dans le
+// nom de fichier de l'export, cf. extractMediaKey) il produit des liens
+// invalides — vérifié en production (ex. .../p/_k2550sfa/, ne correspond à
+// aucune publication réelle). Rien n'indique que ce media_key soit le vrai
+// media PK Instagram attendu par cet algorithme. Ne pas réintroduire cette
+// conversion sans une confirmation externe fiable — mieux vaut ne pas
+// afficher de lien qu'en afficher un faux (cf. parse-posts.ts, permalink).
 
 export function normalizeKey(s: string): string {
   return s

@@ -36,7 +36,7 @@
 // jour (le PRD v1.0 §6.8 prévoit 'reel'/'story'/'live'/'carousel' aussi).
 
 import { fixMojibake } from "./mojibake.ts";
-import { extractMediaKey, findExact, mediaKeyToShortcode, normalizeKey, parseFormattedInt, type StringMap } from "./parsing.ts";
+import { extractMediaKey, findExact, normalizeKey, parseFormattedInt, type StringMap } from "./parsing.ts";
 
 interface RawMediaEntry {
   uri?: string;
@@ -101,26 +101,21 @@ export function parsePostsFile(json: unknown): ParsedPost[] {
       Object.entries(map).find(([k]) => k.toLowerCase().startsWith("timestamp de la cr"))?.[1]?.timestamp
       ?? media?.creation_timestamp;
     if (!timestampSeconds) continue;
-    // rawMediaId : seulement quand extrait du fichier média (l'identifiant
-    // Instagram réel) — jamais le repli `ts-${timestampSeconds}` (0 media
-    // sans miniature dans string_map_data, cf. piège documenté plus haut),
-    // qui ne correspond à aucun media_key Instagram et ne doit jamais servir
-    // à construire un lien.
-    const rawMediaId = extractMediaKey(media?.uri);
-    const mediaKey = rawMediaId ?? `ts-${timestampSeconds}`;
-    const shortcode = rawMediaId ? mediaKeyToShortcode(rawMediaId) : null;
+    const mediaKey = extractMediaKey(media?.uri) ?? `ts-${timestampSeconds}`;
 
     out.push({
       mediaKey,
-      // Reconstruit (2026-09-04) : posts.json ne contient aucun permalink
-      // direct, seulement media.uri (chemin d'export local, jamais une URL —
-      // l'ancien code l'utilisait tel quel comme href, lien mort). Le
-      // media_key réel encode le shortcode Instagram via un base64 propre à
-      // Instagram (mediaKeyToShortcode, non documenté officiellement mais
-      // stable publiquement depuis des années) ; null si l'ID n'est pas
-      // extractible (repli ts-, cf. rawMediaId ci-dessus) plutôt qu'un lien
-      // potentiellement faux.
-      permalink: shortcode ? `https://www.instagram.com/p/${shortcode}/` : null,
+      // Forcé à null (2026-09-04, deux tentatives) : media?.uri est le
+      // chemin brut de l'export ("media/posts/xxxx.jpg"), pas une URL —
+      // l'utiliser tel quel produisait un lien mort. Une reconstruction via
+      // le shortcode Instagram (base64 du media_key) a été essayée puis
+      // abandonnée : vérifiée en production, elle produit des liens qui ne
+      // correspondent à aucune publication réelle (cf. parsing.ts, note
+      // dans le bloc où mediaKeyToShortcode a été retiré) — rien ne garantit
+      // que media_key soit le vrai media PK Instagram attendu par cet
+      // algorithme. posts.json ne contient aucun permalink exploitable ;
+      // mieux vaut ne pas afficher de lien que d'en afficher un faux.
+      permalink: null,
       publishedAt: new Date(timestampSeconds * 1000),
       caption: media?.title ? fixMojibake(media.title) : null,
       // Forcé à null (2026-09-03) : media?.uri est le chemin brut de l'export
