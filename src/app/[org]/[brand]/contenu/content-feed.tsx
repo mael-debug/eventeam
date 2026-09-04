@@ -140,15 +140,39 @@ function ContentCard({ item }: { item: ContentItem }) {
   );
 }
 
+type SortKey = "date" | "reach" | "followsGained" | "followConversionRate";
+const SORT_LABEL: Record<SortKey, string> = {
+  date: "Plus récent",
+  reach: "+ de vues",
+  followsGained: "+ d'abonnés générés",
+  followConversionRate: "Meilleure conversion",
+};
+
+// Publications sans valeur pour la métrique triée (format qui n'expose pas
+// la portée, ex. reels) : reléguées en fin de liste plutôt qu'au hasard,
+// pour ne pas laisser croire à un score de zéro.
+function sortItems(items: ContentItem[], sort: SortKey): ContentItem[] {
+  if (sort === "date") return items;
+  return [...items].sort((a, b) => {
+    const av = a[sort];
+    const bv = b[sort];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return bv - av;
+  });
+}
+
 export function ContentFeed({ items }: { items: ContentItem[] }) {
   const [filter, setFilter] = useState<"all" | "post" | "reel" | "story">("all");
+  const [sort, setSort] = useState<SortKey>("date");
 
   const counts = { post: 0, reel: 0, story: 0 } as Record<string, number>;
   for (const item of items) counts[item.mediaType] = (counts[item.mediaType] ?? 0) + 1;
 
   const groups = (["post", "reel", "story"] as const)
     .filter((type) => filter === "all" || filter === type)
-    .map((type) => ({ type, items: items.filter((i) => i.mediaType === type) }))
+    .map((type) => ({ type, items: sortItems(items.filter((i) => i.mediaType === type), sort) }))
     .filter((g) => g.items.length > 0);
 
   return (
@@ -158,30 +182,56 @@ export function ContentFeed({ items }: { items: ContentItem[] }) {
         qui est simplement observé autour de sa publication.
       </p>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {(["all", "post", "reel", "story"] as const).map((type) => {
-          const active = filter === type;
-          const label = type === "all" ? "Tous" : FORMAT_LABEL[type];
-          const count = type === "all" ? items.length : counts[type] ?? 0;
-          return (
-            <button
-              key={type}
-              onClick={() => setFilter(type)}
-              style={{
-                cursor: "pointer",
-                borderRadius: 999,
-                padding: "8px 16px",
-                fontSize: 13,
-                fontWeight: 600,
-                border: active ? "1px solid transparent" : "1px solid var(--bordure)",
-                background: active ? "var(--encre)" : "transparent",
-                color: active ? "#FAF8F3" : "var(--text-muted)",
-              }}
-            >
-              {label} · {fr(count)}
-            </button>
-          );
-        })}
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {(["all", "post", "reel", "story"] as const).map((type) => {
+            const active = filter === type;
+            const label = type === "all" ? "Tous" : FORMAT_LABEL[type];
+            const count = type === "all" ? items.length : counts[type] ?? 0;
+            return (
+              <button
+                key={type}
+                onClick={() => setFilter(type)}
+                style={{
+                  cursor: "pointer",
+                  borderRadius: 999,
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  border: active ? "1px solid transparent" : "1px solid var(--bordure)",
+                  background: active ? "var(--encre)" : "transparent",
+                  color: active ? "#FAF8F3" : "var(--text-muted)",
+                }}
+              >
+                {label} · {fr(count)}
+              </button>
+            );
+          })}
+        </div>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-muted)" }}>
+          Trier par
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            style={{
+              cursor: "pointer",
+              borderRadius: 10,
+              padding: "8px 12px",
+              fontSize: 13,
+              fontWeight: 600,
+              border: "1px solid var(--bordure)",
+              background: "transparent",
+              color: "var(--encre)",
+            }}
+          >
+            {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
+              <option key={key} value={key}>
+                {SORT_LABEL[key]}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {groups.length === 0 ? (
