@@ -25,7 +25,7 @@ export function signedPct(n: number | null | undefined, decimals = 1): string {
 }
 
 export function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export function longDate(iso: string): string {
