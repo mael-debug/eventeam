@@ -91,13 +91,22 @@ export default async function BrandOverviewPage({
     );
   }
 
-  const [{ data: overview }, { data: cohorts }] = await Promise.all([
+  const [{ data: overview }, { data: cohorts }, { count: identifiedCount }] = await Promise.all([
     supabase.from("v_overview").select("*").eq("account_id", account.id).maybeSingle(),
     supabase
       .from("cohort_survival")
       .select("cohort_week, remaining, departed")
       .eq("account_id", account.id)
       .eq("measured_import_id", comparability.latest_import_id!),
+    // overview.followers_total (audience_insights) est le compteur Meta,
+    // généré séparément de la liste de connexions exportée — les deux
+    // peuvent diverger de plusieurs milliers (cf. reconciliation,
+    // unobservable_reason). identifiedCount est le nombre de comptes
+    // effectivement nommés dans follower_states : la seule base sur
+    // laquelle l'app peut calculer quoi que ce soit par personne
+    // (cohortes, départs, ancienneté) — à afficher à côté du total Meta,
+    // jamais à sa place.
+    supabase.from("follower_states").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("status", "present"),
   ]);
 
   const windowLabel =
@@ -181,7 +190,7 @@ export default async function BrandOverviewPage({
         <KpiCard
           label="Abonnés"
           value={fr(overview?.followers_total ?? null)}
-          sub={`${signedPct(overview?.growth_pct ?? null)} · abonnés ${windowLabel}`}
+          sub={`${signedPct(overview?.growth_pct ?? null)} · abonnés ${windowLabel} · ${fr(identifiedCount ?? null)} identifiés individuellement`}
         />
         <KpiCard
           label="Croissance nette"
