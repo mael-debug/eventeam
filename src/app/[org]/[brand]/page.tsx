@@ -1,7 +1,7 @@
 import { Card, Badge, Button } from "@/components/ds";
 import { Input } from "@/components/ui/input";
 import { resolveBrandContext } from "@/lib/context/brand-context";
-import { fr, signedFr, pct, signedPct, shortDate } from "@/lib/format";
+import { fr, signedFr, pct, shortDate } from "@/lib/format";
 import { createInstagramAccountAction } from "./actions";
 
 function KpiCard({ label, value, sub }: { label: string; value: string; sub: string }) {
@@ -91,7 +91,7 @@ export default async function BrandOverviewPage({
     );
   }
 
-  const [{ data: overview }, { data: cohorts }, { count: identifiedCount }] = await Promise.all([
+  const [{ data: overview }, { data: cohorts }, { count: identifiedCount }, { data: reconciliation }] = await Promise.all([
     supabase.from("v_overview").select("*").eq("account_id", account.id).maybeSingle(),
     supabase
       .from("cohort_survival")
@@ -99,15 +99,30 @@ export default async function BrandOverviewPage({
       .eq("account_id", account.id)
       .eq("measured_import_id", comparability.latest_import_id!),
     // overview.followers_total (audience_insights) est le compteur Meta,
-    // généré séparément de la liste de connexions exportée — les deux
-    // peuvent diverger de plusieurs milliers (cf. reconciliation,
-    // unobservable_reason). identifiedCount est le nombre de comptes
-    // effectivement nommés dans follower_states : la seule base sur
-    // laquelle l'app peut calculer quoi que ce soit par personne
-    // (cohortes, départs, ancienneté) — à afficher à côté du total Meta,
-    // jamais à sa place.
+    // généré séparément de la liste de connexions exportée — devenu la
+    // seule métrique fiable à afficher en primaire (cas Ultime/
+    // @edenparkparis2, 2026-09-04 : audience_insights.json est resté sur
+    // la même période à deux exports consécutifs, alors que la liste
+    // d'abonnés, elle, avait bien été régénérée).
     supabase.from("follower_states").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("status", "present"),
+    // reconciliation.observed_arrivals/observed_departures : comparaison
+    // directe des deux derniers exports de follower_observations (qui est
+    // nouveau / qui n'y est plus, avec leur followed_at) — déjà calculée
+    // par recompute_account(), jamais dérivée du rapport Meta. Contrairement
+    // à ce qu'on pensait initialement, ce n'est pas "quasi inobservable" :
+    // vérifié en direct sur Ultime, 5082 nouveaux / 1 parti entre juillet et
+    // août, identique à une simple différence d'ensembles sur les deux
+    // imports. C'est le nombre Meta (gagnés/perdus) qui n'a rien de fiable
+    // à quoi se comparer ici, pas notre mesure.
+    supabase.from("reconciliation").select("observed_arrivals, observed_departures, unobservable_reason").eq("import_id", comparability.latest_import_id!).maybeSingle(),
   ]);
+
+  // Dès qu'il y a un import précédent, nos propres arrivées/départs
+  // (comparaison directe des deux exports) sont plus fiables que le
+  // rapport Meta (dont la fraîcheur n'est pas garantie) — jamais l'inverse.
+  const hasComparison = !comparability.is_single_import;
+  const ownNet =
+    hasComparison && reconciliation ? (reconciliation.observed_arrivals ?? 0) - (reconciliation.observed_departures ?? 0) : null;
 
   const windowLabel =
     overview?.window_start && overview?.window_end ? `${shortDate(overview.window_start)} → ${shortDate(overview.window_end)}` : "—";
@@ -188,14 +203,22 @@ export default async function BrandOverviewPage({
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16 }}>
         <KpiCard
-          label="Abonnés"
-          value={fr(overview?.followers_total ?? null)}
-          sub={`${signedPct(overview?.growth_pct ?? null)} · abonnés ${windowLabel} · ${fr(identifiedCount ?? null)} identifiés individuellement`}
+          label="Abonnés identifiés"
+          value={fr(identifiedCount ?? null)}
+          sub={
+            hasComparison && reconciliation?.observed_arrivals != null
+              ? `+${fr(reconciliation.observed_arrivals)} depuis le dernier import · ${windowLabel}`
+              : `abonnés ${windowLabel} · ${fr(overview?.followers_total ?? null)} au compteur Meta`
+          }
         />
         <KpiCard
           label="Croissance nette"
-          value={signedFr(overview?.followers_net ?? null)}
-          sub={`${fr(overview?.followers_gained ?? null)} gagnés · ${fr(overview?.followers_lost ?? null)} perdus · Insights ${insightsLabel}`}
+          value={hasComparison ? signedFr(ownNet) : signedFr(overview?.followers_net ?? null)}
+          sub={
+            hasComparison
+              ? `${fr(reconciliation?.observed_arrivals ?? null)} identifiés en plus · ${fr(reconciliation?.observed_departures ?? null)} identifiés partis · depuis le dernier import`
+              : `${fr(overview?.followers_gained ?? null)} gagnés · ${fr(overview?.followers_lost ?? null)} perdus (rapport Meta) · Insights ${insightsLabel}`
+          }
         />
         <KpiCard
           label="Taux de départ mesuré"
@@ -217,15 +240,19 @@ export default async function BrandOverviewPage({
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "var(--bleu)" }}>
-              {fr(overview?.followers_gained ?? null)}
+              {fr(hasComparison ? (reconciliation?.observed_arrivals ?? null) : (overview?.followers_gained ?? null))}
             </span>
-            <span style={{ fontSize: 14, color: "var(--encre)" }}>nouveaux abonnés sur la période</span>
+            <span style={{ fontSize: 14, color: "var(--encre)" }}>
+              {hasComparison ? "nouveaux abonnés identifiés depuis le dernier import" : "nouveaux abonnés sur la période (rapport Meta)"}
+            </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "var(--bleu)" }}>
-              {fr(overview?.followers_lost ?? null)}
+              {fr(hasComparison ? (reconciliation?.observed_departures ?? null) : (overview?.followers_lost ?? null))}
             </span>
-            <span style={{ fontSize: 14, color: "var(--encre)" }}>abonnés partis sur la période</span>
+            <span style={{ fontSize: 14, color: "var(--encre)" }}>
+              {hasComparison ? "abonnés identifiés partis depuis le dernier import" : "abonnés partis sur la période (rapport Meta)"}
+            </span>
           </div>
         </div>
 
