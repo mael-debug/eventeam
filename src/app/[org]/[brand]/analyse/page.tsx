@@ -150,6 +150,102 @@ function LiveSourceTag({ source, reason }: { source: "live" | "mock"; reason: st
   );
 }
 
+// Composition radiale "Aller plus loin" — un noyau (Community Intelligence),
+// un satellite connecté (Instagram, plein, trait plein) et six satellites à
+// venir (pointillés) répartis sur le reste du cercle. Géométrie calculée en
+// pixels (viewBox fixe, pas de mise à l'échelle fluide) : le cercle de
+// guidage et les traits de liaison sont un <svg> superposé, le noyau et
+// chaque satellite sont des <div> positionnés en absolute aux mêmes
+// coordonnées — plus simple à centrer (logo + libellé) que du texte SVG.
+// Logos en <img> vers public/logos/ (pas d'inline SVG) : plus simple, mais
+// leur fill="currentColor" ne s'applique alors qu'au contexte du document
+// SVG chargé isolément (donc noir), jamais à la couleur du satellite —
+// attendu, pas un bug.
+const RADIAL_SIZE = 480;
+const RADIAL_CENTER = RADIAL_SIZE / 2;
+const RADIAL_ORBIT = 185;
+const RADIAL_CORE_R = 75;
+const RADIAL_SAT_R = 48;
+
+const RADIAL_SATELLITES: { angle: number; slug: string; label: string }[] = [
+  { angle: 51, slug: "shopify", label: "Shopify" },
+  { angle: 103, slug: "google-analytics", label: "Google Analytics" },
+  { angle: 154, slug: "brevo", label: "Brevo" },
+  { angle: 206, slug: "manychat", label: "ManyChat" },
+  { angle: 257, slug: "facebook", label: "Facebook" },
+  { angle: 309, slug: "database", label: "Base de données" },
+];
+
+function radialPolar(angleDeg: number, radius: number): { x: number; y: number } {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: RADIAL_CENTER + radius * Math.sin(rad), y: RADIAL_CENTER - radius * Math.cos(rad) };
+}
+
+function SourcesRadialDiagram() {
+  const igCenter = radialPolar(0, RADIAL_ORBIT);
+  const igLineStart = radialPolar(0, RADIAL_CORE_R);
+  const igLineEnd = radialPolar(0, RADIAL_ORBIT - RADIAL_SAT_R);
+  const igMid = radialPolar(0, (RADIAL_CORE_R + RADIAL_ORBIT - RADIAL_SAT_R) / 2);
+
+  return (
+    <div style={{ overflowX: "auto", minWidth: 0, padding: "8px 4px" }}>
+      <div style={{ position: "relative", width: RADIAL_SIZE, height: RADIAL_SIZE, margin: "0 auto" }}>
+        <svg viewBox={`0 0 ${RADIAL_SIZE} ${RADIAL_SIZE}`} width={RADIAL_SIZE} height={RADIAL_SIZE} style={{ position: "absolute", inset: 0 }}>
+          <circle cx={RADIAL_CENTER} cy={RADIAL_CENTER} r={RADIAL_ORBIT} fill="none" stroke="var(--bordure)" strokeWidth={1} strokeDasharray="2 7" opacity={0.6} />
+          {RADIAL_SATELLITES.map((s) => {
+            const from = radialPolar(s.angle, RADIAL_CORE_R);
+            const to = radialPolar(s.angle, RADIAL_ORBIT - RADIAL_SAT_R);
+            return <line key={s.slug} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="var(--bordure)" strokeWidth={1} strokeDasharray="3 5" />;
+          })}
+          <line x1={igLineStart.x} y1={igLineStart.y} x2={igLineEnd.x} y2={igLineEnd.y} stroke="var(--bleu)" strokeWidth={2} />
+          <circle cx={igMid.x} cy={igMid.y} r={4} fill="var(--bleu)" />
+        </svg>
+
+        <div
+          style={{
+            position: "absolute", left: RADIAL_CENTER - RADIAL_CORE_R, top: RADIAL_CENTER - RADIAL_CORE_R,
+            width: RADIAL_CORE_R * 2, height: RADIAL_CORE_R * 2, borderRadius: "50%", background: "var(--bleu)",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3, padding: 12,
+          }}
+        >
+          <span style={{ fontSize: 15, fontWeight: 800, color: "var(--surface-creme)", lineHeight: 1.25 }}>Community Intelligence</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(250,248,243,0.75)" }}>Le socle central</span>
+        </div>
+
+        <div
+          style={{
+            position: "absolute", left: igCenter.x - RADIAL_SAT_R, top: igCenter.y - RADIAL_SAT_R,
+            width: RADIAL_SAT_R * 2, height: RADIAL_SAT_R * 2, borderRadius: "50%", background: "var(--bleu-bg)",
+            border: "2px solid var(--bleu)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, padding: 6,
+          }}
+        >
+          <img src="/logos/instagram.svg" alt="" width={32} height={32} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--encre)" }}>Instagram</span>
+          <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--bleu)" }}>Connecté</span>
+        </div>
+
+        {RADIAL_SATELLITES.map((s) => {
+          const c = radialPolar(s.angle, RADIAL_ORBIT);
+          return (
+            <div
+              key={s.slug}
+              style={{
+                position: "absolute", left: c.x - RADIAL_SAT_R, top: c.y - RADIAL_SAT_R,
+                width: RADIAL_SAT_R * 2, height: RADIAL_SAT_R * 2, borderRadius: "50%", background: "var(--panneau)",
+                border: "1.5px dashed var(--bordure)", opacity: 0.85,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, padding: 6,
+              }}
+            >
+              <img src={`/logos/${s.slug}.svg`} alt="" width={32} height={32} />
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", textAlign: "center", lineHeight: 1.25 }}>{s.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TrendTile({ label, metric }: { label: string; metric: TrendMetric }) {
   const up = metric.deltaPct > 0;
   const flat = metric.deltaPct === 0;
@@ -1069,9 +1165,45 @@ export default async function AnalysePage({
         </div>
       </div>
 
-      {/* 10. Ce qu'on ne peut pas récupérer */}
+      {/* 10. Aller plus loin
+          Composition purement illustrative (aucune intégration réelle,
+          aucun logo cliquable) : le seul satellite "connecté" est
+          Instagram, parce que c'est la seule source déjà branchée sur ce
+          compte. Les six autres sont un horizon, pas une roadmap engagée —
+          rien ici ne dit quand ni si ils seront construits. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <SectionTitle
+          n={10}
+          title="Aller plus loin"
+          subtitle="Instagram est la brique qu'on construit en premier — le socle. D'autres sources peuvent s'y greffer ensuite, pour raconter une histoire qu'aucune ne raconte seule."
+        />
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 1, maxWidth: 420 }}>
+          {[
+            ["Shopify seul", "ce qui s'est vendu"],
+            ["Instagram seul", "ce qui a été vu"],
+          ].map(([source, insight]) => (
+            <div key={source} style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "9px 4px", fontSize: 14, color: "var(--text-muted)" }}>
+              <span>{source}</span>
+              <span>→ {insight}</span>
+            </div>
+          ))}
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "10px 14px", borderRadius: 12, background: "var(--bleu-bg)", fontSize: 14, fontWeight: 700, color: "var(--encre)" }}>
+            <span>Les deux</span>
+            <span style={{ color: "var(--bleu)" }}>→ quel contenu a vendu</span>
+          </div>
+        </div>
+
+        <SourcesRadialDiagram />
+
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", textAlign: "center" }}>
+          Instagram déjà connecté. Les autres sources : un horizon, pas un calendrier.
+        </p>
+      </div>
+
+      {/* 11. Ce qu'on ne peut pas récupérer */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <SectionTitle n={10} title="Ce qu'on ne peut pas récupérer" subtitle="Pour que le périmètre soit clair dans les deux sens." />
+        <SectionTitle n={11} title="Ce qu'on ne peut pas récupérer" subtitle="Pour que le périmètre soit clair dans les deux sens." />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
           {[
             ["Qui a mis un « j'aime »", "Cette liste n'est fournie ni par l'API ni par l'application Instagram."],
