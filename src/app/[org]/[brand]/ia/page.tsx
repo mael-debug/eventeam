@@ -1,41 +1,41 @@
-import { Card, Badge } from "@/components/ds";
+import { Badge } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
-import { fr, pct, shortDate } from "@/lib/format";
-import { MOCK_AUDIENCE_INTELLIGENCE } from "./mock-audience-intelligence";
-import { AudienceAISummary } from "./audience-ai-summary";
-import { AudiencePersonaCard } from "./audience-persona-card";
-import { AudienceAffinityChart } from "./audience-affinity-chart";
-import { AudienceBrandFit } from "./audience-brand-fit";
-import { AudienceSignals } from "./audience-signals";
-import { AudienceRecommendations } from "./audience-recommendations";
-import { AudiencePrivacyNotice } from "./audience-privacy-notice";
-
-// Portée minimale pour qu'un post entre dans un classement ou une moyenne
-// basé sur follow_conversion_rate/engagement_rate — sous ce seuil, un ratio
-// est un artefact d'échantillon quasi nul (ex. 3 comptes touchés, 2
-// abonnés gagnés = 66 % de conversion), pas un signal de performance. Ne
-// change rien à la donnée stockée (colonne non bornée depuis la migration
-// 0040), seulement à ce qui est mis en avant côté rendu.
-const MIN_RELIABLE_REACH = 50;
 
 // Showroom IA — page volontairement statique (aucune génération en direct
-// ici) : elle illustre ce qu'un module IA pourrait produire à partir des
-// données déjà réelles de ce compte. Chaque section sépare strictement ce
-// qui est mesuré (carte claire, chiffres réels) de ce qui est un exemple
-// de sortie IA (carte en pointillés, étiquetée "exemple illustratif") —
-// même doctrine que le reste de l'app : ne jamais laisser un exemple se
-// faire passer pour une donnée mesurée.
+// ici) : elle illustre ce qu'un module IA pourrait produire une fois
+// branché. Contrairement au reste de l'app, aucune section ne s'appuie sur
+// une requête réelle — le seul rôle de resolveBrandContext ici est de
+// vérifier qu'un compte est rattaché (cohérence de navigation) et de
+// personnaliser le bandeau d'intro avec le handle. Chaque section reste
+// séparée en deux : "Ce qu'on lit" (sources de données réelles, déjà
+// disponibles) puis une MockCard (exemple de sortie IA, chiffres fictifs,
+// toujours marquée "exemple illustratif") — même doctrine que le reste de
+// l'app : ne jamais laisser un exemple se faire passer pour une donnée
+// mesurée.
+//
+// Dépendances réelles de chaque section (non affichées ici — showroom
+// commercial, pas document technique — mais à respecter si un jour ces
+// sections sont branchées) :
+//   §1, §4, §5, §8 — disponibles dès le branchement de l'API (légendes/
+//     métriques de publication, démographie + engagement, publications
+//     publiques des concurrents suivis, portée quotidienne + contenu déjà
+//     importé). Rien à accumuler.
+//   §2, §3, §7 — nécessitent un HISTORIQUE de commentaires accumulé par
+//     nos soins : l'API Instagram ne fournit aucun rétroactif exploitable
+//     sur les commentaires. Compter 4 à 8 semaines après le branchement du
+//     webhook avant que ces sections aient de la matière.
+//   §6 — dépend de la sortie des sept autres sections (synthèse).
 
 function MockCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ border: "1.5px dashed var(--bleu)", borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 10, background: "var(--bleu-bg)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+    <div style={{ border: "1.5px dashed var(--bleu)", borderRadius: 16, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12, background: "var(--bleu-bg)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <span style={{ fontSize: 14, fontWeight: 700 }}>{title}</span>
-        <span style={{ fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 700, color: "var(--bleu)", background: "#FFFFFF", borderRadius: 999, padding: "3px 9px" }}>
+        <span style={{ fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 700, color: "var(--bleu)", background: "var(--surface-creme)", borderRadius: 999, padding: "3px 9px" }}>
           Exemple illustratif
         </span>
       </div>
-      <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--encre)" }}>{children}</div>
+      <div style={{ fontSize: 15, lineHeight: 1.75, color: "var(--encre)", display: "flex", flexDirection: "column", gap: 10 }}>{children}</div>
     </div>
   );
 }
@@ -46,12 +46,42 @@ function SectionHeader({ n, title, subtitle }: { n: number; title: string; subti
       <div style={{ flex: "0 0 auto", width: 34, height: 34, borderRadius: 999, background: "var(--encre)", color: "var(--surface-creme)", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 15 }}>
         {n}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-        <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: "-0.01em" }}>{title}</h2>
-        <span style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5 }}>{subtitle}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+        <h2 style={{ margin: 0, fontSize: 23, fontWeight: 800, letterSpacing: "-0.01em" }}>{title}</h2>
+        <span style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 680 }}>{subtitle}</span>
       </div>
     </div>
   );
+}
+
+// Encadré "Ce qu'on lit" — discret par nature (c'est la preuve de crédibilité
+// de l'exemple, pas l'élément qu'on veut mettre en avant visuellement).
+function WhatWeRead({ items }: { items: string[] }) {
+  return (
+    <div style={{ border: "1px solid var(--bordure)", borderRadius: 10, padding: "9px 14px", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
+      <span style={{ fontWeight: 700 }}>Ce qu&apos;on lit —</span> {items.join(" · ")}
+    </div>
+  );
+}
+
+// Ligne de conclusion, traitement distinct (liseré) pour marquer que c'est
+// la décision permise par la section, pas une phrase de plus.
+function SectionDecision({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ borderLeft: "3px solid var(--vert-logo)", paddingLeft: 14, fontSize: 14, color: "var(--encre)", lineHeight: 1.5 }}>
+      <span style={{ fontWeight: 800 }}>Décision : </span>
+      {children}
+    </div>
+  );
+}
+
+// Chiffre mis en avant au sein d'un paragraphe d'exemple.
+function Stat({ children }: { children: React.ReactNode }) {
+  return <strong style={{ fontSize: "1.1em", fontWeight: 800, color: "var(--bleu)" }}>{children}</strong>;
+}
+
+function Section({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>{children}</div>;
 }
 
 export default async function IaShowroomPage({
@@ -60,307 +90,311 @@ export default async function IaShowroomPage({
   params: Promise<{ org: string; brand: string }>;
 }) {
   const { org: orgSlug, brand: brandSlug } = await params;
-  const { supabase, accounts } = await resolveBrandContext(orgSlug, brandSlug);
+  const { accounts } = await resolveBrandContext(orgSlug, brandSlug);
 
   if (accounts.length === 0) {
     return <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucun compte Instagram rattaché.</p>;
   }
   const account = accounts[0];
 
-  const { data: latestImport } = await supabase
-    .from("latest_completed_import")
-    .select("import_id, window_start, window_end")
-    .eq("account_id", account.id)
-    .maybeSingle();
-
-  if (!latestImport) {
-    return (
-      <Card variant="claire" interactive={false}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 19, fontWeight: 800 }}>Aucun import traité</div>
-          <div style={{ fontSize: 14, color: "var(--text-muted)" }}>Le showroom s&apos;appuie sur les données du premier import.</div>
-        </div>
-      </Card>
-    );
-  }
-
-  const [
-    { data: postsContent },
-    { data: postsMetrics },
-    { data: interactions },
-    { data: ecoSummary },
-    { data: geo },
-    { data: captionStats },
-  ] = await Promise.all([
-    supabase.from("content").select("id, media_type, published_at, caption").eq("account_id", account.id).eq("media_type", "post"),
-    supabase.from("content_metrics").select("content_id, reach, impressions, profile_visits, likes, comments, saves, shares, follows_gained, follow_conversion_rate").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
-    supabase.from("interaction_insights").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!).in("format", ["reels", "posts", "stories"]),
-    supabase.from("v_ecosystem_chat_summary").select("*").eq("account_id", account.id).maybeSingle(),
-    supabase.from("audience_geo").select("name, pct").eq("account_id", account.id).eq("import_id", latestImport.import_id!).eq("kind", "country").order("pct", { ascending: false }).limit(3),
-    supabase.from("content").select("id, caption").eq("account_id", account.id).not("caption", "is", null),
-  ]);
-
-  const metricsByContent = new Map((postsMetrics ?? []).map((m) => [m.content_id, m]));
-  const withMetrics = (postsContent ?? [])
-    .map((c) => ({ ...c, m: metricsByContent.get(c.id) ?? null }))
-    .filter((c) => c.m && c.m.follow_conversion_rate != null && (c.m.reach ?? 0) >= MIN_RELIABLE_REACH)
-    .sort((a, b) => (b.m!.follow_conversion_rate ?? 0) - (a.m!.follow_conversion_rate ?? 0))
-    .slice(0, 3);
-
-  const withHashtag = (captionStats ?? []).filter((c) => c.caption?.includes("#")).length;
-  const totalCaptioned = (captionStats ?? []).length;
-
-  const reels = (interactions ?? []).find((i) => i.format === "reels");
-  const postsAgg = (interactions ?? []).find((i) => i.format === "posts");
-  const storiesAgg = (interactions ?? []).find((i) => i.format === "stories");
-
-  const replyRate = ecoSummary?.n ? (ecoSummary.n_got_reply ?? 0) / ecoSummary.n : null;
-
   return (
-    <main style={{ display: "flex", flexDirection: "column", gap: 40, maxWidth: 1100, minWidth: 0 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <main style={{ display: "flex", flexDirection: "column", gap: 52, maxWidth: 1100, minWidth: 0, paddingBottom: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <Badge variant="cadrage">Showroom</Badge>
         <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: "-0.01em" }}>Ce que l&apos;IA pourrait faire avec vos données</h1>
-        <p style={{ margin: 0, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 760, textWrap: "pretty" }}>
-          Page statique de démonstration, pas un outil branché : rien ici n&apos;est généré en direct. Chaque section montre
-          d&apos;abord une donnée réelle de @{account.handle} (carte claire), puis un exemple du type de résultat qu&apos;un
-          module IA pourrait produire à partir d&apos;elle (carte en pointillés bleus, toujours marquée « exemple
-          illustratif »). Objectif : décider quoi construire en premier, pas livrer un produit fini.
-        </p>
+        <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "18px 22px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>Une promesse, pas un outil branché</span>
+          <span style={{ fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.65, maxWidth: 780 }}>
+            Chaque exemple ci-dessous est illustratif — les chiffres sont fictifs. Les données sources, elles, sont
+            réelles et déjà disponibles pour @{account.handle} ; c&apos;est le module IA qui les transformerait en ces
+            sorties qui n&apos;est pas encore branché.
+          </span>
+        </div>
       </div>
 
-      {/* 1 — Idées de post inspirées de ce qui fonctionne */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {/* Disponible dès le branchement de l'API : légendes/format de chaque
+          média, portée/vues/enregistrements/partages, taux de skip des
+          reels, heure et jour de publication — aucun historique à
+          accumuler, tout vient dans la même réponse dès la connexion. */}
+      <Section>
         <SectionHeader
           n={1}
-          title="Idées de post inspirées de ce qui fonctionne"
-          subtitle="L'IA analyserait vos publications les plus converties pour en dégager le ton, le format et le sujet — puis proposer des variations dans le même registre."
+          title="Pourquoi ce post a marché, et pas l'autre"
+          subtitle="Vos publications ont toutes des chiffres. Aucune n'a d'explication. L'IA lit les légendes, le format, l'heure et le sujet de vos 200 dernières publications, et cherche ce que les meilleures ont en commun. Pas une corrélation statistique : une lecture éditoriale, à l'échelle."
         />
-
-        {withMetrics.length > 0 && (
-          // Pas de vignette (media/ n'est plus jamais fourni) : légende, date
-          // et métriques de posts.json portent seules l'identification —
-          // état nominal, pas un repli dégradé.
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
-            {withMetrics.map((c) => (
-              <Card key={c.id} variant="claire" interactive={false}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12, color: "var(--text-muted)" }}>
-                    <span style={{ fontWeight: 600, color: "var(--encre)" }}>{shortDate(c.published_at)}</span>
-                    <span style={{ fontWeight: 700, color: "var(--bleu)" }}>{pct((c.m?.follow_conversion_rate ?? 0) * 100)} conversion</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: 13, color: c.caption ? "var(--encre)" : "var(--text-muted)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", fontStyle: c.caption ? "normal" : "italic" }}>
-                    {c.caption ?? "Légende non renseignée dans l'export"}
-                  </p>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, background: "var(--panneau)", borderRadius: 10, padding: "8px 10px" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                      <span style={{ fontSize: 14, fontWeight: 800 }}>{fr(c.m?.reach ?? null)}</span>
-                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Portée</span>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                      <span style={{ fontSize: 14, fontWeight: 800 }}>{fr(c.m?.impressions ?? null)}</span>
-                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Impressions</span>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                      <span style={{ fontSize: 14, fontWeight: 800 }}>{fr(c.m?.follows_gained ?? null)}</span>
-                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Abonnés +</span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        <MockCard title="Exemples de posts que l'IA pourrait suggérer, dans le même registre">
-          <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-            <li>« Le détail qui change tout : zoom sur [pièce du produit], celle que peu remarquent au premier regard 🎀 »</li>
-            <li>« D&apos;un rendez-vous pro à un week-end improvisé : un seul sac, deux vies. »</li>
-            <li>« Cuir, précision, esprit sportif — la formule Eden Park sur [nouveau produit]. »</li>
-          </ul>
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-            Générées ici à la main dans le ton des légendes réelles ci-dessus — un module branché s&apos;appuierait sur
-            l&apos;historique complet, pas 3 exemples.
+        <WhatWeRead items={["légende et format de chaque média", "portée, vues, enregistrements, partages", "taux de skip des reels", "heure et jour de publication"]} />
+        <MockCard title="Motif éditorial identifié">
+          <p style={{ margin: 0 }}>Sur vos 40 dernières publications, un motif net ressort.</p>
+          <p style={{ margin: 0 }}>
+            Les reels montrant un vêtement <strong>porté en mouvement</strong> font <Stat>3,1×</Stat> la portée des
+            packshots studio. L&apos;écart est stable sur les 6 derniers mois.
+          </p>
+          <p style={{ margin: 0 }}>
+            Vos légendes qui racontent la fabrication (matière, atelier, geste) génèrent <Stat>4×</Stat> plus
+            d&apos;enregistrements que les légendes produit classiques — 27 enregistrements en moyenne contre 6.
+          </p>
+          <p style={{ margin: 0 }}>
+            À l&apos;inverse, les publications produit sans contexte plafonnent à <Stat>40 %</Stat> de votre portée
+            moyenne, quel que soit le produit mis en avant. Six publications de ce type ce trimestre.
           </p>
         </MockCard>
-      </div>
+        <SectionDecision>arbitrer le plan de production du mois suivant.</SectionDecision>
+      </Section>
 
-      {/* 2 — Idées de post pour maintenir une cohorte */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {/* Nécessite un HISTORIQUE de commentaires accumulé par nos soins —
+          l'API ne fournit pas de rétroactif exploitable. Compter 4 à 8
+          semaines après le branchement du webhook `comments` avant que
+          cette section ait de la matière. */}
+      <Section>
         <SectionHeader
           n={2}
-          title="Idées de contenu pour retenir une cohorte fragile"
-          subtitle="Quand les arrivées récentes se retrouvent nettement moins nombreuses au dernier import (Import / API, section Suivi nominatif), l'IA proposerait un contenu de réengagement ciblé plutôt qu'un post générique."
+          title="Ce que vos abonnés disent, et que personne ne lit"
+          subtitle="Vos commentaires contiennent des questions produit, des réclamations, des demandes de taille et des mentions de concurrents. Aujourd'hui ils se noient dans le flux. L'IA les classe en continu et remonte ce qui mérite une action."
         />
-
-        <MockCard title="Séquence de contenu de réengagement, si l'IA détecte une cohorte à risque">
-          <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-            <li><strong>J+2 :</strong> story sondage léger (« Plutôt cuir ou toile ? ») pour réactiver l&apos;interaction.</li>
-            <li><strong>J+5 :</strong> post « coulisses » (fabrication, équipe) — renforce le lien avant qu&apos;il ne se distende.</li>
-            <li><strong>J+9 :</strong> reel témoignage client réel — la preuve sociale retient mieux qu&apos;une promotion.</li>
-          </ol>
+        <WhatWeRead items={["texte, auteur et date de chaque commentaire", "publication concernée", "historique accumulé depuis le branchement"]} />
+        <MockCard title="Commentaires classés — semaine du 2 au 8 septembre">
+          <p style={{ margin: 0 }}>Semaine du 2 au 8 septembre — <Stat>187</Stat> commentaires analysés.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "var(--surface-creme)", borderRadius: 10, padding: "10px 14px" }}>
+            {[
+              ["Disponibilité produit", "23 commentaires"],
+              ["Question de taille", "9 commentaires"],
+              ["Signalement qualité", "4 commentaires"],
+              ["Mention d'un concurrent", "6 commentaires"],
+              ["Demande boutique / point de vente", "11 commentaires"],
+            ].map(([label, value]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 14 }}>
+                <strong>{label}</strong>
+                <span style={{ color: "var(--text-muted)" }}>{value}</span>
+              </div>
+            ))}
+          </div>
+          <p style={{ margin: 0 }}>
+            <strong>À traiter en priorité :</strong> 4 commentaires évoquent un décousu au col sur le polo Ruck, dont 3
+            sur la même publication du 28 août. Aucun n&apos;a reçu de réponse.
+          </p>
         </MockCard>
-      </div>
+        <SectionDecision>router vers le SAV, le merch ou le community manager selon la catégorie.</SectionDecision>
+      </Section>
 
-      {/* 3 — Générateur de description & hashtags */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {/* Nécessite un HISTORIQUE de commentaires accumulé par nos soins,
+          même contrainte qu'en §2 — 4 à 8 semaines de matière avant que ce
+          signal de demande soit exploitable. */}
+      <Section>
         <SectionHeader
           n={3}
-          title="Générateur de légendes et de hashtags"
-          subtitle="Meta n'expose la performance d'aucun hashtag précis — impossible de dire lesquels « fonctionnent ». L'IA peut en revanche générer des suggestions pertinentes par sujet, à valider ensuite sur quelques posts avant d'en tirer une vraie mesure."
+          title="La demande que votre e-commerce ne voit pas"
+          subtitle="Quand un produit est en rupture, les gens ne vont pas sur la fiche produit — ils commentent. Cette demande n'apparaît nulle part dans vos analytics e-commerce. L'IA la capte et la chiffre."
         />
-
-        <Card variant="claire" interactive={false}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Constat réel sur l&apos;export</span>
-            <span style={{ fontSize: 26, fontWeight: 800 }}>
-              {fr(withHashtag)} / {fr(totalCaptioned)} légendes contiennent un hashtag
-            </span>
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              Aucun hashtag utilisé à ce jour sur les publications captées par l&apos;export — un générateur n&apos;aurait
-              donc aucun historique de performance à imiter, seulement des suggestions génériques au départ.
-            </span>
-          </div>
-        </Card>
-
-        <MockCard title="Avant / après, sur une légende réelle du compte">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div>
-              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>Légende actuelle</span>
-              <p style={{ margin: "2px 0 0" }}>« Le bandana imprimé, le petit détail qui change tout 💚 »</p>
-            </div>
-            <div>
-              <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>Suggestion IA</span>
-              <p style={{ margin: "2px 0 0" }}>
-                « Le bandana imprimé, le petit détail qui change tout 💚 — celui qu&apos;on glisse partout, du bureau au
-                week-end. »
-                <br />
-                <span style={{ color: "var(--bleu)" }}>#EdenPark #DetailQuiCompte #StyleIntemporel #AccessoireMode</span>
-              </p>
-            </div>
-          </div>
+        <WhatWeRead items={["commentaires mentionnant une disponibilité, une taille, une couleur", "publication et produit associés", "évolution dans le temps"]} />
+        <MockCard title="Demande captée — polo marine col contrasté">
+          <p style={{ margin: 0 }}>
+            <strong>Polo marine col contrasté</strong> — <Stat>31</Stat> signaux de demande en 10 jours.
+          </p>
+          <p style={{ margin: 0 }}>
+            18 mentionnent explicitement une taille : 11× M, 7× L.
+            <br />9 demandent une date de réassort.
+            <br />4 signalent l&apos;avoir cherché en boutique sans le trouver.
+          </p>
+          <p style={{ margin: 0 }}>
+            Aucun de ces 31 comptes n&apos;a visité la fiche produit : la rupture était déjà affichée. Cette demande
+            est invisible dans vos statistiques de vente.
+          </p>
+          <p style={{ margin: 0 }}>
+            Deuxième signal en formation : le nœud papillon rose édition limitée, <Stat>7</Stat> mentions en 4 jours.
+          </p>
         </MockCard>
-      </div>
+        <SectionDecision>alimenter les arbitrages de réassort avec un signal amont.</SectionDecision>
+      </Section>
 
-      {/* 4 — Idées de contenu engageant par format */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {/* Disponible dès le branchement de l'API : démographie (âge, genre,
+          ville, pays), engaged_audience_demographics, et les métriques de
+          publication déjà couvertes en §1 — rien à accumuler. */}
+      <Section>
         <SectionHeader
           n={4}
-          title="Contenu engageant, par format"
-          subtitle="Les trois formats ne retiennent pas pareil (écran Contenu) : l'IA adapterait le brief selon le format plutôt que de recycler la même idée en post, reel et story."
+          title="L'audience que vous avez n'est pas celle que vous visez"
+          subtitle="Vous connaissez l'âge, le genre et la géographie de vos abonnés. Vous ne savez pas lesquels engagent réellement. L'IA croise les deux et mesure l'écart entre l'audience que vous ciblez et celle qui répond."
         />
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14 }}>
-          {[
-            { key: "reel", label: "Reels", interactions: reels?.interactions },
-            { key: "post", label: "Posts", interactions: postsAgg?.interactions },
-            { key: "story", label: "Stories", interactions: storiesAgg?.interactions },
-          ].map((f) => (
-            <Card key={f.key} variant="claire" interactive={false}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>{f.label}</span>
-                <span style={{ fontSize: 22, fontWeight: 800 }}>{f.interactions != null ? fr(f.interactions) : "—"}</span>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>interactions sur la période</span>
-              </div>
-            </Card>
-          ))}
-        </div>
-
-        <MockCard title="Idées par format">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <p style={{ margin: 0 }}><strong>Reel :</strong> montage rapide « avant/après » d&apos;un produit en situation (voyage, sport, bureau).</p>
-            <p style={{ margin: 0 }}><strong>Story :</strong> sondage ou quiz sur une gamme, avec sticker réponse — format le plus léger à produire, souvent le mieux retenu.</p>
-            <p style={{ margin: 0 }}><strong>Post :</strong> mise en scène produit soignée, légende courte (les meilleures conversions du compte ont des légendes de moins de 15 mots).</p>
-          </div>
+        <WhatWeRead items={["répartition par âge, genre, ville et pays", "comptes ayant interagi", "performance par publication", "ton et références des légendes"]} />
+        <MockCard title="Écart audience ciblée / audience engagée">
+          <p style={{ margin: 0 }}>
+            Vos 45-54 ans représentent <Stat>19 %</Stat> de vos abonnés mais <Stat>34 %</Stat> de vos interactions.
+            Ils commentent 2,4× plus que la moyenne et enregistrent davantage.
+          </p>
+          <p style={{ margin: 0 }}>
+            Vos 25-34 ans pèsent <Stat>28 %</Stat> des abonnés et <Stat>17 %</Stat> des interactions.
+          </p>
+          <p style={{ margin: 0 }}>
+            Or votre ligne éditoriale — formats verticaux rapides, références musicales contemporaines, langage
+            familier — s&apos;adresse aux 25-34.
+          </p>
+          <p style={{ margin: 0 }}>
+            Géographie : Paris concentre <Stat>22 %</Stat> de vos abonnés, mais Lyon, Bordeaux et Toulouse cumulent
+            19 % avec un engagement <Stat>40 %</Stat> supérieur. Ces villes n&apos;ont jamais été adressées
+            spécifiquement.
+          </p>
         </MockCard>
-      </div>
+        <SectionDecision>recalibrer le ton, ou assumer le décalage en connaissance de cause.</SectionDecision>
+      </Section>
 
-      {/* 5 — Flows ManyChat + stratégies marketing */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {/* Disponible dès le branchement de l'API : business_discovery sur
+          les concurrents suivis (données publiques uniquement) — rien à
+          accumuler, un appel par concurrent. */}
+      <Section>
         <SectionHeader
           n={5}
-          title="Flows ManyChat et stratégies pour faire croître les abonnés"
-          subtitle="Deux données réelles orientent la priorité : le taux de réponse en messagerie (Écosystème) et la géographie de l'audience (Audience)."
+          title="Les territoires que vos concurrents occupent"
+          subtitle="L'API donne accès aux publications publiques de Lacoste, Serge Blanco et Ralph Lauren France. L'IA les lit, identifie les angles qu'ils travaillent, et repère ce que personne n'occupe."
         />
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-          {replyRate != null && (
-            <Card variant="claire" interactive={false}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Taux de réponse actuel</span>
-                <span style={{ fontSize: 26, fontWeight: 800, color: replyRate < 0.3 ? "#C0392B" : "var(--encre)" }}>{pct(replyRate * 100)}</span>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>sur {fr(ecoSummary?.n ?? 0)} discussions — cf. Écosystème</span>
-              </div>
-            </Card>
-          )}
-          {(geo ?? []).length > 0 && (
-            <Card variant="claire" interactive={false}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Audience concentrée</span>
-                <span style={{ fontSize: 26, fontWeight: 800 }}>{pct(geo![0].pct)}</span>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {geo!.map((g) => g.name).join(", ")}
-                </span>
-              </div>
-            </Card>
-          )}
-        </div>
-
-        <MockCard title="Flow ManyChat — répondre à un taux de réponse aujourd'hui trop bas">
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div>1. Commentaire contenant un mot-clé (« prix », « dispo », un emoji produit) → déclenche le flow.</div>
-            <div>2. Message privé automatique sous 1 minute : réponse à la question + lien produit.</div>
-            <div>3. Si pas d&apos;interaction sous 24 h → relance légère avec une offre de découverte.</div>
-            <div>4. Sortie de flow → passage en file de modération humaine pour toute question hors script.</div>
-          </div>
-        </MockCard>
-
-        <MockCard title="Autres pistes marketing, ancrées sur les données réelles ci-dessus">
-          <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-            <li>Créatives publicitaires priorisées {geo && geo.length > 0 ? `pour ${geo[0].name}` : "sur le premier pays"} plutôt qu&apos;une campagne générique multi-pays.</li>
-            <li>Programme de parrainage avec code de réduction — mesurable directement via les pics d&apos;acquisition déjà détectés (écran Acquisition).</li>
-            <li>Réponse automatique aux stories partagées par des abonnés (UGC) pour faire remonter le taux de réponse sans charge de modération supplémentaire.</li>
-          </ul>
-        </MockCard>
-      </div>
-
-      {/* Audience Intelligence — section 100 % démo (mock-audience-intelligence.ts),
-          aucune donnée réelle ni appel réseau : cf. en-tête du fichier de données. */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <Badge variant="cadrage">{fr(MOCK_AUDIENCE_INTELLIGENCE.sampleSize)} profils actifs analysés</Badge>
-            <Badge variant="forfait">Données anonymisées</Badge>
-          </div>
-          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-0.01em" }}>Découvrez qui compose réellement votre audience</h2>
-          <p style={{ margin: 0, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 760, textWrap: "pretty" }}>
-            L&apos;IA transforme les signaux agrégés de votre communauté en personas, affinités et opportunités marketing.
+        <WhatWeRead items={["publications récentes des concurrents suivis", "légendes, likes, commentaires", "évolution de leurs compteurs d'abonnés"]} />
+        <MockCard title="Territoires concurrents">
+          <p style={{ margin: 0 }}>Trimestre écoulé — 3 concurrents, <Stat>217</Stat> publications analysées.</p>
+          <p style={{ margin: 0 }}>
+            <strong>Lacoste</strong> a publié <Stat>14</Stat> contenus sur le tennis féminin. Vous : zéro. Territoire
+            verrouillé, pas d&apos;angle d&apos;entrée évident.
           </p>
-          <span style={{ fontSize: 12, fontStyle: "italic", color: "var(--text-muted)" }}>Données fictives à des fins de démonstration.</span>
-        </div>
+          <p style={{ margin: 0 }}>
+            <strong>Serge Blanco</strong> occupe la transmission père-fils, avec un engagement <Stat>2,3×</Stat>{" "}
+            supérieur à sa propre moyenne. Territoire proche du vôtre, disputable.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Ralph Lauren France</strong> est sur le nautisme et la côte. Aucun recoupement avec votre univers.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Territoire libre : le rugby amateur, les clubs de village.</strong> Personne ne l&apos;occupe. Et
+            3 de vos 5 meilleures publications de l&apos;année y touchent sans que ce soit une intention éditoriale.
+          </p>
+        </MockCard>
+        <SectionDecision>choisir un angle différenciant plutôt que suivre.</SectionDecision>
+      </Section>
 
-        <AudienceAISummary data={MOCK_AUDIENCE_INTELLIGENCE} />
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-          {MOCK_AUDIENCE_INTELLIGENCE.personas.map((persona) => (
-            <AudiencePersonaCard key={persona.name} persona={persona} />
-          ))}
-        </div>
-
-        <AudienceAffinityChart interests={MOCK_AUDIENCE_INTELLIGENCE.interests} brandAffinities={MOCK_AUDIENCE_INTELLIGENCE.brandAffinities} />
-
-        <AudienceBrandFit
-          score={MOCK_AUDIENCE_INTELLIGENCE.brandFit}
-          dimensions={MOCK_AUDIENCE_INTELLIGENCE.brandFitDimensions}
-          insight="L'audience reste très cohérente avec le territoire historique de la marque. Le principal signal d'évolution concerne la progression d'un univers lifestyle plus contemporain."
+      {/* Dépend de la sortie des sept autres sections — c'est une synthèse,
+          pas une source de données propre. Ne peut exister avant qu'au
+          moins §1/§4/§5/§8 (immédiates) et, idéalement, §2/§3/§7 (après
+          accumulation) produisent quelque chose. */}
+      <Section>
+        <SectionHeader
+          n={6}
+          title="Votre brief créa du mois, déjà écrit"
+          subtitle="Toutes les analyses précédentes convergent vers un seul document : ce qu'il faut produire le mois prochain. L'IA le rédige, l'équipe le corrige."
         />
+        <WhatWeRead items={["la synthèse de toutes les sections précédentes"]} />
+        <MockCard title="Brief éditorial — octobre">
+          <div>
+            <strong>Formats à privilégier</strong>
+            <p style={{ margin: "2px 0 0" }}>
+              Reel produit porté en mouvement (3,1× la portée). Objectif : 6 sur le mois.
+              <br />Format atelier / matière en carrousel (record d&apos;enregistrements). 2 sur le mois.
+            </p>
+          </div>
+          <div>
+            <strong>Angles à travailler</strong>
+            <p style={{ margin: "2px 0 0" }}>
+              Le club amateur — territoire libre, cohérent avec vos meilleurs scores.
+              <br />La transmission — Serge Blanco y performe, vous avez la légitimité.
+            </p>
+          </div>
+          <div>
+            <strong>Sujets à traiter en contenu</strong>
+            <p style={{ margin: "2px 0 0" }}>
+              Le réassort du polo marine (31 demandes en attente).
+              <br />Le guide des tailles — 9 questions cette semaine, sujet récurrent.
+            </p>
+          </div>
+          <div>
+            <strong>À éviter</strong>
+            <p style={{ margin: "2px 0 0" }}>
+              Le packshot studio sans contexte : 6 publications ce trimestre, toutes sous 40 % de votre portée
+              moyenne.
+            </p>
+          </div>
+          <div>
+            <strong>Fenêtre de publication</strong>
+            <p style={{ margin: "2px 0 0" }}>Mardi et jeudi 18h-20h : portée moyenne supérieure de 35 %.</p>
+          </div>
+        </MockCard>
+        <SectionDecision>c&apos;est le document que le community manager ouvre le 1er du mois.</SectionDecision>
+      </Section>
 
-        <AudienceSignals signals={MOCK_AUDIENCE_INTELLIGENCE.signals} />
+      {/* Nécessite un HISTORIQUE de commentaires accumulé par nos soins,
+          même contrainte qu'en §2/§3 — 4 à 8 semaines avant que le
+          classement ait assez de matière pour distinguer une régularité
+          d'un pic isolé. */}
+      <Section>
+        <SectionHeader
+          n={7}
+          title="Vos 50 ambassadeurs, nommément"
+          subtitle="Certains comptes commentent chaque publication, depuis des années. Vous ne savez pas qui ils sont. L'IA reconstitue ce classement à partir de l'historique des commentaires et qualifie chaque profil."
+        />
+        <WhatWeRead items={["auteur, date et contenu de chaque commentaire", "publications concernées", "ancienneté et régularité"]} />
+        <MockCard title="Top ambassadeurs identifiés">
+          <div>
+            <span style={{ fontWeight: 800, color: "var(--bleu)" }}>@clement.rugbylife</span> — <Stat>47</Stat> commentaires depuis janvier
+            <p style={{ margin: "2px 0 0" }}>
+              Présent sur 8 de vos 10 lancements. Commente en moyenne 20 minutes après publication. Répond aux autres
+              commentateurs.
+              <br />→ Profil : <strong>prescripteur</strong>
+            </p>
+          </div>
+          <div>
+            <span style={{ fontWeight: 800, color: "var(--bleu)" }}>@marieaparis</span> — <Stat>31</Stat> commentaires
+            <p style={{ margin: "2px 0 0" }}>
+              Ne commente que les publications produit. Pose des questions de taille et de disponibilité. Mentionne
+              régulièrement ses achats.
+              <br />→ Profil : <strong>cliente fidèle</strong>
+            </p>
+          </div>
+          <div>
+            <span style={{ fontWeight: 800, color: "var(--bleu)" }}>@lesgaillards.paris</span> — 12 commentaires, 3
+            mentions en story
+            <p style={{ margin: "2px 0 0" }}>
+              Compte club. Vous a mentionné 3 fois sans jamais être sollicité.
+              <br />→ Profil : <strong>relais communautaire</strong>
+            </p>
+          </div>
+          <p style={{ margin: 0 }}><Stat>12</Stat> comptes de ce type identifiés sur les 6 derniers mois.</p>
+        </MockCard>
+        <SectionDecision>constituer une liste d&apos;activation pour un lancement, sans jamais toucher aux messages privés.</SectionDecision>
+      </Section>
 
-        <AudienceRecommendations recommendations={MOCK_AUDIENCE_INTELLIGENCE.recommendations} />
-
-        <AudiencePrivacyNotice />
-      </div>
+      {/* Disponible dès le branchement de l'API : reach quotidien (30 j),
+          contenu et mentions déjà couverts en §1/§5/§9 d'Import/API — rien
+          à accumuler. */}
+      <Section>
+        <SectionHeader
+          n={8}
+          title="Pourquoi cette courbe fait ça"
+          subtitle="Votre courbe de portée a des pics et des creux. Aujourd'hui personne ne sait pourquoi. L'IA croise chaque anomalie avec ce qui a été publié ce jour-là et l'explique en une phrase."
+        />
+        <WhatWeRead items={["portée quotidienne sur 30 jours", "publications et leur contenu", "mentions reçues", "jours sans publication"]} />
+        <MockCard title="Anomalies de portée expliquées">
+          <div>
+            <strong>18 août — pic à <Stat>1 026</Stat> comptes touchés</strong> (×14 vs la veille)
+            <p style={{ margin: "2px 0 0" }}>
+              Reel « atelier maille » publié le 17 à 18h. Meilleure performance du trimestre. Format et sujet
+              cohérents avec le motif identifié en section 1.
+            </p>
+          </div>
+          <div>
+            <strong>10 août — pic à <Stat>689</Stat></strong>
+            <p style={{ margin: "2px 0 0" }}>
+              Ne vient d&apos;aucune publication. Mention par @lesgaillards.paris le 9 au soir. Votre portée organique
+              dépend plus des mentions que vous ne le pensez.
+            </p>
+          </div>
+          <div>
+            <strong>25 au 31 août — portée divisée par <Stat>8</Stat></strong>
+            <p style={{ margin: "2px 0 0" }}>
+              6 jours consécutifs sans publication. La chute commence 48 h après le dernier post, pas le jour même.
+            </p>
+          </div>
+          <p style={{ margin: 0 }}>
+            <strong>Constat de fond :</strong> votre portée retombe systématiquement sous 5 comptes après 3 jours de
+            silence. Le rythme compte plus que le volume.
+          </p>
+        </MockCard>
+        <SectionDecision>comprendre le graphique au lieu de le contempler.</SectionDecision>
+      </Section>
     </main>
   );
 }
