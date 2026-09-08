@@ -892,6 +892,96 @@ export function mockTopCommenters(accountId: string, count = 50): TopCommenter[]
   return rows.sort((a, b) => b.commentCount - a.commentCount);
 }
 
+export interface FollowerMovementCounts {
+  nouveau: number;
+  revenu: number;
+  toujoursLa: number;
+  parti: number;
+}
+
+export interface ArrivalExampleRow {
+  username: string;
+  verified: boolean;
+  followedAt: string;
+  movement: "nouveau" | "revenu";
+  windowStart: string;
+  windowEnd: string;
+}
+
+export interface DepartureExampleRow {
+  username: string;
+  verified: boolean;
+  followedAt: string;
+  windowStart: string;
+  windowEnd: string;
+  tenureDays: number;
+}
+
+export interface FollowerMovementsExample {
+  counts: FollowerMovementCounts;
+  arrivals: ArrivalExampleRow[];
+  departures: DepartureExampleRow[];
+}
+
+function randomHandle(r: () => number, used: Set<string>): string {
+  let handle = "";
+  do {
+    const prefix = HANDLE_PREFIXES[Math.floor(r() * HANDLE_PREFIXES.length)];
+    const suffix = HANDLE_SUFFIXES[Math.floor(r() * HANDLE_SUFFIXES.length)];
+    handle = `${prefix}${suffix}`;
+  } while (used.has(handle));
+  used.add(handle);
+  return handle;
+}
+
+function daysBefore(anchorIso: string, days: number): string {
+  const d = new Date(`${anchorIso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Exemple illustratif pour la section "Suivi nominatif" — la mécanique
+// (comparaison des deux derniers imports : v_follower_movements/
+// v_recent_departures/v_recent_arrivals) est réelle et déjà active, mais un
+// exemple à comptes fictifs se lit mieux qu'un tableau clairsemé sur un
+// compte dont peu de mouvements ont été identifiés récemment. Aucun
+// mécanisme de révélation ici : ces identités sont déjà fictives, pas des
+// données personnelles à protéger.
+export function mockFollowerMovementsExample(accountId: string, followersTotal: number): FollowerMovementsExample {
+  const r = rng(`${accountId}:movements-example`);
+  const used = new Set<string>();
+  const windowStart = "2026-08-01";
+  const windowEnd = "2026-09-01";
+
+  const nouveau = Math.max(1, Math.round(followersTotal * (between(r, 15, 35) / 1000)));
+  const revenu = Math.max(0, Math.round(followersTotal * (between(r, 1, 4) / 1000)));
+  const parti = Math.max(1, Math.round(followersTotal * (between(r, 5, 15) / 1000)));
+  const toujoursLa = Math.max(0, followersTotal - nouveau - parti);
+
+  const arrivals: ArrivalExampleRow[] = Array.from({ length: 5 }, (_, i) => ({
+    username: randomHandle(r, used),
+    verified: r() < 0.04,
+    followedAt: daysBefore(windowEnd, between(r, 1, 30)),
+    movement: i < 4 ? "nouveau" : "revenu",
+    windowStart,
+    windowEnd,
+  }));
+
+  const departures: DepartureExampleRow[] = Array.from({ length: 5 }, () => {
+    const tenureDays = between(r, 20, 900);
+    return {
+      username: randomHandle(r, used),
+      verified: r() < 0.02,
+      followedAt: daysBefore(windowEnd, tenureDays),
+      windowStart,
+      windowEnd,
+      tenureDays,
+    };
+  });
+
+  return { counts: { nouveau, revenu, toujoursLa, parti }, arrivals, departures };
+}
+
 export interface LiveCommentSeed {
   author: string;
   text: string;

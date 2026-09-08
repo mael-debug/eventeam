@@ -3,9 +3,6 @@ import { Input } from "@/components/ui/input";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, signedFr, pct, shortDate, signedPct } from "@/lib/format";
 import { TrendLine } from "@/components/trend-line";
-import { ReconciliationBanner } from "@/components/reconciliation-banner";
-import { RevealDepartures, type DepartureRow } from "@/components/reveal-departures";
-import { RevealArrivals, type ArrivalRow } from "@/components/reveal-arrivals";
 import { createInstagramAccountAction } from "../actions";
 import {
   mockMediaInsights,
@@ -18,6 +15,7 @@ import {
   mockMentions,
   mockCompetitors,
   mockTopCommenters,
+  mockFollowerMovementsExample,
   withLiveFallback,
   notWiredYet,
   GRAPH_VERSION,
@@ -68,8 +66,6 @@ import { LiveComments } from "./live-comments";
 // puisque rien n'est encore branché.
 const MEDIA_LABEL: Record<MediaType, string> = { post: "Post", reel: "Reel", story: "Story" };
 const SERIES_COLOR: Record<MediaType, string> = { post: "var(--bleu)", reel: "var(--vert-logo)", story: "#8B5CF6" };
-const DEPARTURES_SHOWN = 6;
-const ARRIVALS_SHOWN = 6;
 
 function monthLabel(month: string): string {
   return new Date(`${month}-01T00:00:00Z`).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
@@ -216,7 +212,7 @@ export default async function AnalysePage({
   params: Promise<{ org: string; brand: string }>;
 }) {
   const { org: orgSlug, brand: brandSlug } = await params;
-  const { supabase, org, brand, accounts, canViewIdentities } = await resolveBrandContext(orgSlug, brandSlug);
+  const { supabase, org, brand, accounts } = await resolveBrandContext(orgSlug, brandSlug);
   const base = `/${orgSlug}/${brandSlug}`;
   const attachAction = createInstagramAccountAction.bind(null, org.slug, brand.slug, brand.id);
 
@@ -293,53 +289,13 @@ export default async function AnalysePage({
   const followersTotal = overview?.followers_total ?? 0;
   const postLabels = (posts ?? []).map((p) => (p.caption ?? "").slice(0, 40));
 
-  // Suivi nominatif : uniquement calculable dès le deuxième import (§2).
-  const movementCounts = { nouveau: 0, toujours_la: 0, parti: 0, revenu: 0 } as Record<string, number>;
-  let departureRows: DepartureRow[] = [];
-  let departuresCount = 0;
-  let arrivalRows: ArrivalRow[] = [];
-  let arrivalsCount = 0;
-
-  if (hasComparison) {
-    const [{ data: movements }, { data: departures, count: dCount }, { data: arrivals, count: aCount }] = await Promise.all([
-      supabase.from("v_follower_movements").select("movement").eq("account_id", account.id),
-      supabase.from("v_recent_departures").select("*", { count: "exact" }).eq("account_id", account.id).limit(DEPARTURES_SHOWN),
-      supabase.from("v_recent_arrivals").select("*", { count: "exact" }).eq("account_id", account.id).limit(ARRIVALS_SHOWN),
-    ]);
-
-    for (const m of movements ?? []) {
-      if (!m.movement) continue;
-      movementCounts[m.movement] = (movementCounts[m.movement] ?? 0) + 1;
-    }
-
-    departuresCount = dCount ?? 0;
-    departureRows = (departures ?? [])
-      .filter((d): d is typeof d & { profile_id: number; followed_at: string; cohort_week: string } => d.profile_id != null && d.followed_at != null && d.cohort_week != null)
-      .map((d) => ({
-        profileId: d.profile_id,
-        followedAtLabel: shortDate(d.followed_at),
-        cohortLabel: shortDate(d.cohort_week),
-        departedLabel:
-          d.departure_window_start && d.departure_window_end
-            ? `entre le ${shortDate(d.departure_window_start)} et le ${shortDate(d.departure_window_end)}`
-            : "—",
-        tenureLabel: d.tenure_days != null ? `${d.tenure_days} j` : "—",
-      }));
-
-    arrivalsCount = aCount ?? 0;
-    arrivalRows = (arrivals ?? [])
-      .filter((a): a is typeof a & { profile_id: number; followed_at: string; cohort_week: string; movement: string } => a.profile_id != null && a.followed_at != null && a.cohort_week != null && a.movement != null)
-      .map((a) => ({
-        profileId: a.profile_id,
-        followedAtLabel: shortDate(a.followed_at),
-        cohortLabel: shortDate(a.cohort_week),
-        movement: a.movement === "revenu" ? "revenu" : "nouveau",
-        arrivedLabel:
-          a.arrival_window_start && a.arrival_window_end
-            ? `entre le ${shortDate(a.arrival_window_start)} et le ${shortDate(a.arrival_window_end)}`
-            : "—",
-      }));
-  }
+  // Suivi nominatif : la mécanique (comparaison des deux derniers imports —
+  // v_follower_movements/v_recent_departures/v_recent_arrivals) est réelle et
+  // déjà active en base, mais l'exemple affiché ici utilise des comptes
+  // fictifs (mockFollowerMovementsExample) : un tableau à noms inventés se
+  // lit mieux, en démo, qu'un tableau clairsemé sur un compte réel où peu de
+  // mouvements ont été identifiés récemment.
+  const movementsExample = mockFollowerMovementsExample(account.id, followersTotal);
 
   // Chaque source du second pilier tente l'appel réel (stub qui échoue
   // systématiquement, rien n'étant branché) et retombe sur le mock — voir
@@ -380,15 +336,20 @@ export default async function AnalysePage({
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 44, maxWidth: 1120, minWidth: 0, paddingBottom: 24 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: "-0.01em" }}>Import / API</h1>
-        <p style={{ margin: 0, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 780, textWrap: "pretty" }}>
-          Deux façons de connaître @{account.handle}. En haut : la mémoire construite par les exports mensuels —
-          qui reste, qui revient, qui part, en comparant uniquement les deux derniers imports. En dessous : les
-          métriques Instagram en direct, confirmées par la documentation Graph API Meta ({GRAPH_VERSION}) — si Meta
-          ne peut pas les fournir de façon fiable, elles n&apos;apparaissent pas ici. La connexion à l&apos;API
-          n&apos;est pas encore branchée, donc ces chiffres restent illustratifs (badge « Simulé »).
-        </p>
+        <p style={{ margin: 0, fontSize: 15, color: "var(--text-muted)" }}>Tout ce qu&apos;on sait sur @{account.handle}, en deux temps.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 620 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15 }}>
+            <span aria-hidden style={{ color: "var(--vert-logo)", fontWeight: 800 }}>✓</span>
+            Déjà actif — qui reste, qui part, qui revient, à partir des exports mensuels.
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15 }}>
+            <span aria-hidden style={{ color: "var(--bleu)", fontWeight: 800 }}>→</span>
+            À venir — les métriques Instagram en direct, une fois l&apos;API branchée.
+            <UnverifiedNote callToTest={`Aucune de ces métriques n'est encore récupérée en direct — chaque appel est documenté et confirmé contre la doc Graph API Meta (${GRAPH_VERSION}), mais le jeton n'est pas encore branché.`} />
+          </span>
+        </div>
       </div>
 
       {/* 1. Aperçu du compte
@@ -444,112 +405,120 @@ export default async function AnalysePage({
             sub={`${fr(overview?.organic_gained ?? null)} sur ${fr(overview?.followers_gained ?? null)} · Insights ${insightsLabel}`}
           />
         </div>
-
-        <ReconciliationBanner reconciliation={reconciliation ?? null} />
       </div>
 
       {/* 2. Suivi nominatif
-          v_follower_movements (nouveau/revenu/toujours_là/parti),
-          v_recent_departures et v_recent_arrivals (0059) : comparaison
-          directe des deux derniers imports de follower_observations, sans
-          aucune table à maintenir. C'est désormais le SEUL usage de
-          l'import dans l'app — les anciens écrans Audience/Contenu/
-          Écosystème (démographie déclarative, performance par publication,
-          discussions) sont retirés, cette comparaison présent/absent est
-          ce qui reste. */}
+          La mécanique (v_follower_movements, v_recent_departures,
+          v_recent_arrivals — comparaison directe des deux derniers imports
+          de follower_observations, sans aucune table à maintenir) est réelle
+          et déjà active en base ; c'est désormais le SEUL usage de l'import
+          dans l'app. L'exemple ci-dessous, en revanche, utilise des comptes
+          fictifs (mockFollowerMovementsExample, lib/analyse-mock.ts) : un
+          tableau à noms inventés se lit mieux, en démo, qu'un tableau
+          clairsemé sur un compte réel où peu de mouvements ont été
+          identifiés récemment. Aucun mécanisme de révélation ici — ces
+          identités sont déjà fictives. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={2}
           title="Suivi nominatif"
-          subtitle="Qui est nouveau, qui est revenu, qui est parti — en comparant uniquement les deux derniers imports. Aucune date exacte : l'écart entre deux imports fixe la précision."
+          subtitle="Qui est nouveau, qui est revenu, qui est parti — en comparant les deux derniers imports."
         />
-        {!hasComparison ? (
-          <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5 }}>
-            Il faut un second import pour que cet écran affiche quelque chose.
-          </div>
-        ) : (
-          <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
-              <Card variant="claire" interactive={false}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Nouveaux</span>
-                  <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "var(--bleu)" }}>{fr(movementCounts.nouveau)}</span>
-                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>jamais identifiés avant</span>
-                </div>
-              </Card>
-              {movementCounts.revenu > 0 && (
-                <Card variant="claire" interactive={false}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Revenus</span>
-                    <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>{fr(movementCounts.revenu)}</span>
-                    <span style={{ fontSize: 13, color: "var(--text-muted)" }}>absents du dernier import, déjà identifiés avant</span>
-                  </div>
-                </Card>
-              )}
-              <Card variant="claire" interactive={false}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Toujours là</span>
-                  <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>{fr(movementCounts.toujours_la)}</span>
-                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>identifiés aux deux derniers imports</span>
-                </div>
-              </Card>
-              <Card variant="claire" interactive={false}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Partis</span>
-                  <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "#A8A196" }}>{fr(movementCounts.parti)}</span>
-                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>identifiés au dernier import précédent, absents de celui-ci</span>
-                </div>
-              </Card>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Exemple ci-dessous à comptes fictifs — la mécanique de comparaison, elle, est bien réelle.</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
+          <Card variant="claire" interactive={false}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Nouveaux</span>
+              <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "var(--bleu)" }}>{fr(movementsExample.counts.nouveau)}</span>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>jamais identifiés avant</span>
             </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
-              <Card variant="claire" interactive={false}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Derniers nouveaux et revenus</h3>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                        {arrivalRows.length} exemple{arrivalRows.length > 1 ? "s" : ""} sur {fr(arrivalsCount)}
-                      </span>
-                    </div>
-                  </div>
-                  {arrivalRows.length === 0 ? (
-                    <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucune arrivée mesurée sur cet import.</p>
-                  ) : canViewIdentities ? (
-                    <RevealArrivals accountId={account.id} rows={arrivalRows} />
-                  ) : (
-                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Accès aux identités non autorisé pour ce rôle.</div>
-                  )}
-                </div>
-              </Card>
-
-              <Card variant="claire" interactive={false}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Derniers départs</h3>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                        {departureRows.length} exemple{departureRows.length > 1 ? "s" : ""} sur {fr(departuresCount)}
-                      </span>
-                    </div>
-                    {departuresCount > departureRows.length && (
-                      <Button href={`${base}/listes`} variant="secondaire" size="sm">
-                        Voir la liste complète ({fr(departuresCount)})
-                      </Button>
-                    )}
-                  </div>
-                  {departureRows.length === 0 ? (
-                    <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucun départ mesuré sur cet import.</p>
-                  ) : canViewIdentities ? (
-                    <RevealDepartures accountId={account.id} rows={departureRows} />
-                  ) : (
-                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Accès aux identités non autorisé pour ce rôle.</div>
-                  )}
-                </div>
-              </Card>
+          </Card>
+          {movementsExample.counts.revenu > 0 && (
+            <Card variant="claire" interactive={false}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Revenus</span>
+                <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>{fr(movementsExample.counts.revenu)}</span>
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>partis, puis réabonnés</span>
+              </div>
+            </Card>
+          )}
+          <Card variant="claire" interactive={false}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Toujours là</span>
+              <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>{fr(movementsExample.counts.toujoursLa)}</span>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>identifiés aux deux derniers imports</span>
             </div>
-          </>
-        )}
+          </Card>
+          <Card variant="claire" interactive={false}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Partis</span>
+              <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "#A8A196" }}>{fr(movementsExample.counts.parti)}</span>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>absents du dernier import</span>
+            </div>
+          </Card>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
+          <Card variant="claire" interactive={false}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Derniers nouveaux et revenus</h3>
+              <div style={{ overflowX: "auto", minWidth: 0 }}>
+                <table style={{ width: "100%", minWidth: 420, fontSize: 14, borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", color: "var(--text-muted)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                      <th style={{ padding: "0 0 10px", fontWeight: 600 }}>Compte</th>
+                      <th style={{ padding: "0 0 10px", fontWeight: 600 }}>Mouvement</th>
+                      <th style={{ padding: "0 0 10px", fontWeight: 600, textAlign: "right" }}>Abonné depuis</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movementsExample.arrivals.map((a) => (
+                      <tr key={a.username} style={{ borderTop: "1px solid var(--bordure-carte)" }}>
+                        <td style={{ padding: "11px 0", fontWeight: 600 }}>
+                          @{a.username}
+                          {a.verified && <span aria-label="Compte vérifié" title="Compte vérifié" style={{ marginLeft: 4, color: "var(--vert-logo)" }}>✓</span>}
+                        </td>
+                        <td style={{ padding: "11px 0" }}>{a.movement === "revenu" ? "Revenu" : "Nouveau"}</td>
+                        <td style={{ padding: "11px 0", textAlign: "right", color: "var(--text-muted)" }}>{shortDate(a.followedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </Card>
+
+          <Card variant="claire" interactive={false}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Derniers départs</h3>
+              <div style={{ overflowX: "auto", minWidth: 0 }}>
+                <table style={{ width: "100%", minWidth: 420, fontSize: 14, borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", color: "var(--text-muted)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                      <th style={{ padding: "0 0 10px", fontWeight: 600 }}>Compte</th>
+                      <th style={{ padding: "0 0 10px", fontWeight: 600 }}>Ancienneté</th>
+                      <th style={{ padding: "0 0 10px", fontWeight: 600, textAlign: "right" }}>Parti le</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movementsExample.departures.map((d) => (
+                      <tr key={d.username} style={{ borderTop: "1px solid var(--bordure-carte)" }}>
+                        <td style={{ padding: "11px 0", fontWeight: 600 }}>
+                          @{d.username}
+                          {d.verified && <span aria-label="Compte vérifié" title="Compte vérifié" style={{ marginLeft: 4, color: "var(--vert-logo)" }}>✓</span>}
+                        </td>
+                        <td style={{ padding: "11px 0", color: "var(--text-muted)" }}>{d.tenureDays} j</td>
+                        <td style={{ padding: "11px 0", textAlign: "right", color: "var(--text-muted)" }}>{shortDate(d.windowEnd)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
 
       {/* 3. Vue d'ensemble
@@ -586,11 +555,7 @@ export default async function AnalysePage({
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={3} title="Vue d'ensemble Instagram" cadence={<CadenceChip cadence="J" />} subtitle="Indicateurs du compte sur 30 jours." />
         <div style={{ background: "var(--pastel-jaune)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--encre)", lineHeight: 1.5 }}>
-          Meta ne conserve ces données que <strong>90 jours</strong>, avec un retard de traitement possible jusqu&apos;à{" "}
-          <strong>48 h</strong> — même relevées chaque nuit, elles ne sont jamais garanties « à jour ce matin ». C&apos;est
-          tout l&apos;intérêt de les archiver chez nous dès le premier jour. Et quand une donnée n&apos;existe pas, l&apos;API
-          renvoie « aucune donnée », jamais un zéro — les deux ne veulent pas dire la même chose, l&apos;interface le
-          distingue partout sur cette page.
+          Meta ne garde que <strong>90 jours</strong> d&apos;historique — on l&apos;archive chez nous dès le premier jour pour ne rien perdre.
         </div>
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -599,9 +564,7 @@ export default async function AnalysePage({
               <LiveSourceTag source={reachDailyResult.source} reason={reachDailyResult.reason} />
             </div>
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              Courbe globale, sans détail par format : Meta n&apos;autorise jamais de breakdown dans une série quotidienne
-              (metric_type=time_series). Le détail par format existe, mais seulement en total sur la période — voir
-              ci-dessous.
+              Courbe globale, tous formats confondus. Le détail par format est juste en dessous.
             </span>
             <TrendLine
               labels={reachDaily.map((p) => shortDate(p.date))}
@@ -616,8 +579,7 @@ export default async function AnalysePage({
               <LiveSourceTag source={reachTotalsResult.source} reason={reachTotalsResult.reason} />
             </div>
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              Deuxième appel à la même métrique <code>reach</code>, cette fois en total sur 30 jours ventilé par format
-              (posts, reels, stories) — pas un point par jour, cette combinaison-là n&apos;existe pas côté Meta.
+              Répartition par format sur les 30 derniers jours.
             </span>
             <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
               {(["post", "reel", "story"] as MediaType[])
@@ -641,7 +603,7 @@ export default async function AnalysePage({
               <UnverifiedNote callToTest="infaisable en un seul appel — nécessite d'archiver nos propres relevés de GET /{ig-user-id}/insights?metric=reach&period=day dans le temps" />
             </div>
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              Meta ne garde que 90 jours : cette vue longue n&apos;existe que grâce à notre propre historique, construit mois après mois.
+              Vue longue durée, construite mois après mois grâce à notre propre historique.
             </span>
             <TrendLine
               labels={reachMonthly.map((p) => monthLabel(p.month))}
@@ -673,19 +635,12 @@ export default async function AnalysePage({
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 760 }}>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-            « Abonnements » et « Désabonnements » viennent du même appel Meta (disponible à partir de 100 abonnés) : Meta ne
-            distingue pas un départ volontaire d&apos;un compte supprimé ou désactivé, les deux comptent comme
-            désabonnement.
+            Un « désabonnement » regroupe aussi les comptes supprimés ou désactivés — Meta ne distingue pas les deux.
           </p>
           {periodTotals.profileLinksTaps != null && (
             <div>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Détail des clics sur les liens du profil, par type de bouton :</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Clics sur les liens du profil, par type de bouton :</span>
               <BreakdownList rows={periodTotals.profileLinksTapsByButton} />
-              <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
-                Les types de bouton affichés dépendent de ceux configurés sur le profil Instagram — un bouton absent ne
-                remonte pas comme zéro, il n&apos;apparaît simplement pas. Ne couvre pas le clic sur le lien en bio,
-                comptabilisé séparément (§4, Actions sur le profil).
-              </span>
             </div>
           )}
         </div>
@@ -726,10 +681,8 @@ export default async function AnalysePage({
           <LiveSourceTag source={postInsightsResult.source} reason={postInsightsResult.reason} />
         </div>
         <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
-          « Actions sur le profil » ne détaille que les boutons configurés sur le profil Instagram — un bouton absent ne
-          remonte pas comme zéro, il n&apos;apparaît simplement pas. Les j&apos;aime sont cumulés depuis la publication
-          alors que la portée est un compte de comptes uniques : un taux « j&apos;aime / portée » supérieur à 100 % n&apos;est
-          pas une anomalie. <UnverifiedNote callToTest="GET /{media-id}/insights?metric=total_views,total_likes,total_comments — agrégat multi-surfaces, jamais rejoué en conditions réelles" />
+          Un taux « j&apos;aime / portée » au-dessus de 100 % n&apos;est pas une anomalie — la portée compte des comptes
+          uniques, les j&apos;aime s&apos;accumulent dans le temps. <UnverifiedNote callToTest="GET /{media-id}/insights?metric=total_views,total_likes,total_comments — agrégat multi-surfaces, jamais rejoué en conditions réelles" />
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
           {(posts ?? []).map((p, i) => {
@@ -887,22 +840,9 @@ export default async function AnalysePage({
           }
           subtitle="Les chiffres d'une story disparaissent 24 h après sa publication : seul le webhook, capté au bon moment, permet de les garder."
         />
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ background: "var(--pastel-jaune)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--encre)", lineHeight: 1.5 }}>
-            🇫🇷 Sur un compte français, <strong>les réponses aux stories ne remontent jamais</strong> — une contrainte que
-            Meta applique à l&apos;Europe et au Japon, pas un bug de notre côté. C&apos;est pourquoi cette métrique
-            n&apos;apparaît pas carte par carte ci-dessous : un zéro affiché à chaque story laisserait croire à une
-            mesure, alors que Meta ne la fournit tout simplement pas ici.
-          </div>
-          <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
-            Une story vue par moins de 5 personnes ne renvoie aucune donnée — l&apos;interface l&apos;affiche comme « trop
-            peu de vues pour être mesuré », jamais comme un score cassé.
-          </div>
+        <div style={{ background: "var(--pastel-jaune)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--encre)", lineHeight: 1.5 }}>
+          🇫🇷 Sur un compte français, les réponses aux stories ne remontent jamais — une contrainte Meta, pas un bug.
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
-          « Actions sur le profil » ne détaille que les boutons configurés sur le profil Instagram — un bouton absent ne
-          remonte pas comme zéro, il n&apos;apparaît simplement pas.
-        </p>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <LiveSourceTag source={storyInsightsResult.source} reason={storyInsightsResult.reason} />
         </div>
@@ -996,8 +936,7 @@ export default async function AnalysePage({
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <LiveSourceTag source={demographicsResult.source} reason={demographicsResult.reason} />
           <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            Basé sur {fr(demographics.measuredTotal)} abonnés mesurés sur {fr(followersTotal)} — Meta n&apos;a de donnée
-            démographique que pour une partie des abonnés, jamais la totalité.
+            Basé sur {fr(demographics.measuredTotal)} abonnés mesurés sur {fr(followersTotal)}.
           </span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
@@ -1030,9 +969,7 @@ export default async function AnalysePage({
                 <LiveSourceTag source={engagedAudienceResult.source} reason={engagedAudienceResult.reason} />
               </div>
               <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>
-                Comptes ayant interagi, pas seulement abonnés — nécessite ≥100 engagements sur la période, dans chaque
-                critère de répartition. Disponible « cette semaine » ou « ce mois-ci » seulement, pas sur 90 jours comme
-                le reste de cette page.
+                Comptes ayant interagi, pas seulement abonnés.
               </span>
               {engagedAudience.ok ? (
                 engagedAudience.rows.map((c) => (
@@ -1053,9 +990,8 @@ export default async function AnalysePage({
               <span style={{ fontSize: 15, fontWeight: 700 }}>Genre</span>
               {unspecifiedPct >= 20 && (
                 <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>
-                  {pct(unspecifiedPct, 0)} des abonnés mesurés n&apos;ont pas renseigné leur genre auprès d&apos;Instagram
-                  (« U », non demandé à l&apos;inscription) — répartition ci-dessous calculée sur les{" "}
-                  {fr(genderReported)} restants.
+                  {pct(unspecifiedPct, 0)} des abonnés mesurés n&apos;ont pas renseigné leur genre — répartition calculée
+                  sur les {fr(genderReported)} restants.
                 </span>
               )}
               {genderReported > 0 ? (
@@ -1154,14 +1090,6 @@ export default async function AnalysePage({
             </div>
           ))}
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, maxWidth: 760 }}>
-          Une entrée a été retirée de cette liste : « programmer une publication automatiquement » y figurait à tort.
-          L&apos;API de publication de contenu (Content Publishing API) permet bien de publier un post ou un reel par
-          appel programmatique — ce qui manque, c&apos;est une programmation native côté Meta (un « publier le X à
-          telle heure ») ; il faut un déclencheur externe (notre propre planificateur) qui appelle l&apos;API au bon
-          moment. Ce n&apos;est donc pas quelque chose qu&apos;on ne peut pas récupérer, mais un outil qu&apos;il reste à
-          construire si le besoin se confirme.
-        </p>
       </div>
     </main>
   );
