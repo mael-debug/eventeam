@@ -45,13 +45,66 @@ export interface DemographicRow {
   value: number;
 }
 
-// Répartit `total` entre `labels` avec des poids aléatoires stables — sert à
-// simuler n'importe quel breakdown Meta (action_type, contact_button_type,
-// follow_type...) une fois qu'on connaît le total agrégé de la métrique.
-function splitTotal(r: () => number, labels: string[], total: number): DemographicRow[] {
-  const weights = labels.map(() => 0.2 + r());
-  const sum = weights.reduce((s, w) => s + w, 0);
-  return labels.map((label, i) => ({ label, value: Math.round((total * weights[i]) / sum) })).sort((a, b) => b.value - a.value);
+// Meta ne renvoie jamais une clé de breakdown sans donnée : un bouton non
+// configuré sur le profil est absent du tableau `breakdowns`, ce n'est pas
+// un zéro ("If insights data you are requesting does not exist or is
+// currently unavailable, the API will return an empty data set instead of
+// 0 for individual metrics"). Chaque distribution ci-dessous ne renvoie
+// donc que les postes réellement non nuls, jamais la liste exhaustive des
+// valeurs possibles de l'enum.
+
+// breakdown=action_type sur profile_activity (métrique média, FEED + STORY).
+// Eden Park est une marque e-commerce nationale : le lien en bio domine très
+// largement (c'est la vitrine vers la boutique en ligne), le reste ne
+// remonte que si le bouton correspondant est configuré sur le profil. TEXT
+// n'est jamais généré : aucune marque de cette taille n'utilise le bouton
+// SMS d'un profil Instagram.
+function distributeProfileActivity(r: () => number, total: number): DemographicRow[] {
+  if (total <= 0) return [];
+  const hasDirection = r() < 0.7; // une adresse boutique est configurée la plupart du temps
+  const hasCall = r() < 0.25; // bouton d'appel rarement configuré sur ce type de profil
+  const bioShare = between(r, 85, 95) / 100;
+  let remaining = 1 - bioShare;
+  const emailShare = Math.min(remaining, between(r, 3, 8) / 100);
+  remaining -= emailShare;
+  const directionShare = hasDirection ? Math.min(remaining, between(r, 2, 5) / 100) : 0;
+  remaining -= directionShare;
+  const callShare = hasCall ? Math.min(remaining, between(r, 0, 2) / 100) : 0;
+  const rows: DemographicRow[] = [{ label: "Clic sur le lien en bio", value: Math.round(total * bioShare) }];
+  if (emailShare > 0) rows.push({ label: "E-mail", value: Math.round(total * emailShare) });
+  if (directionShare > 0) rows.push({ label: "Itinéraire", value: Math.round(total * directionShare) });
+  if (callShare > 0) rows.push({ label: "Appel", value: Math.round(total * callShare) });
+  // La somme doit coller exactement au total déjà affiché par ailleurs
+  // (MediaInsights.profileActivity.total) : l'écart d'arrondi est absorbé
+  // par le premier poste plutôt que tiré indépendamment.
+  const sum = rows.reduce((s, row) => s + row.value, 0);
+  rows[0].value += total - sum;
+  return rows.filter((row) => row.value > 0);
+}
+
+// breakdown=contact_button_type sur profile_links_taps (métrique compte).
+// Le lien en bio n'y est PAS compté (Meta la décrit comme les taps sur
+// l'adresse, le bouton d'appel, e-mail et SMS) : des volumes bien plus
+// faibles que profile_activity, quelques dizaines à quelques centaines par
+// mois. Un compte de marque nationale sans téléphone configuré n'a jamais
+// CALL/TEXT/BOOK_NOW/INSTANT_EXPERIENCE ; peut même n'avoir aucune donnée du
+// tout si aucun bouton de contact n'est configuré — dans ce cas la fonction
+// renvoie `null`, à distinguer d'un compte à 0.
+function distributeProfileLinksTaps(r: () => number, total: number): DemographicRow[] {
+  if (total <= 0) return [];
+  const hasDirection = r() < 0.6;
+  const hasUndefined = r() < 0.5;
+  const emailShare = between(r, 40, 60) / 100;
+  let remaining = 1 - emailShare;
+  const directionShare = hasDirection ? Math.min(remaining, between(r, 30, 50) / 100) : 0;
+  remaining -= directionShare;
+  const undefinedShare = hasUndefined ? Math.min(remaining, between(r, 5, 15) / 100) : 0;
+  const rows: DemographicRow[] = [{ label: "E-mail", value: Math.round(total * emailShare) }];
+  if (directionShare > 0) rows.push({ label: "Itinéraire", value: Math.round(total * directionShare) });
+  if (undefinedShare > 0) rows.push({ label: "Autre", value: Math.round(total * undefinedShare) });
+  const sum = rows.reduce((s, row) => s + row.value, 0);
+  rows[0].value += total - sum;
+  return rows.filter((row) => row.value > 0);
 }
 
 export type MediaType = "post" | "reel" | "story";
@@ -95,7 +148,15 @@ export interface MediaInsights {
   shares: number;
   follows: number | null;
   profileVisits: number | null;
-  // breakdown=action_type : BIO_LINK_CLICKED, CALL, DIRECTION, EMAIL, TEXT.
+  // GET /{media-id}/insights?metric=profile_activity&breakdown=action_type
+  // (FEED + STORY, jamais REELS ; le breakdown est gratuit, même appel que
+  // profile_activity seul — mais isolé de toute métrique sans breakdown,
+  // sous peine d'un générique "An unknown error has occurred" côté Meta,
+  // sans indiquer laquelle des métriques mélangées pose problème).
+  // byAction ne contient que les postes non nuls : BIO_LINK_CLICKED, CALL,
+  // DIRECTION, EMAIL, TEXT sont les 5 valeurs possibles de l'enum, mais un
+  // bouton non configuré sur le profil est absent, jamais à 0 — itérer sur
+  // les clés reçues, pas sur la liste exhaustive.
   profileActivity: { total: number; byAction: DemographicRow[] } | null;
   navigation: { tapForward: number; tapBack: number; tapExit: number; swipeForward: number } | null;
   reposts: number;
@@ -107,8 +168,6 @@ export interface MediaInsights {
   totalViews: number | null;
   tooFewViewers: boolean;
 }
-
-const PROFILE_ACTION_LABELS = ["Lien bio", "Appel", "Itinéraire", "Email", "SMS"];
 
 export function mockMediaInsights(contentId: string, mediaType: MediaType, followersTotal: number): MediaInsights {
   const r = rng(contentId);
@@ -141,7 +200,7 @@ export function mockMediaInsights(contentId: string, mediaType: MediaType, follo
   const profileVisits = mediaType === "reel" ? null : between(r, 100, 900);
   const profileActivityTotal = profileVisits != null ? Math.round(profileVisits * 0.4) : null;
   const profileActivity =
-    profileActivityTotal != null ? { total: profileActivityTotal, byAction: splitTotal(r, PROFILE_ACTION_LABELS, profileActivityTotal) } : null;
+    profileActivityTotal != null ? { total: profileActivityTotal, byAction: distributeProfileActivity(r, profileActivityTotal) } : null;
   const navigation =
     mediaType === "story"
       ? { tapForward: between(r, 2000, 5000), tapBack: between(r, 200, 600), tapExit: between(r, 300, 900), swipeForward: between(r, 100, 500) }
@@ -252,8 +311,16 @@ export interface AccountPeriodTotals {
   saves: TrendMetric;
   follows: TrendMetric;
   unfollows: TrendMetric;
-  profileLinksTaps: TrendMetric;
-  // breakdown=contact_button_type.
+  // GET /{ig-user-id}/insights?metric=profile_links_taps&period=day&
+  // metric_type=total_value&breakdown=contact_button_type (breakdown
+  // gratuit, même appel — mais à isoler de toute métrique sans breakdown
+  // dans sa propre requête, voir la note sur profile_activity). `null` si
+  // le profil ne porte aucun bouton de contact (adresse, e-mail, téléphone)
+  // : Meta ne renvoie alors aucune donnée, à ne jamais confondre avec 0.
+  profileLinksTaps: TrendMetric | null;
+  // Ne contient que les postes non nuls parmi BOOK_NOW, CALL, DIRECTION,
+  // EMAIL, INSTANT_EXPERIENCE, TEXT, UNDEFINED — vide si profileLinksTaps
+  // est null.
   profileLinksTapsByButton: DemographicRow[];
 }
 
@@ -268,8 +335,6 @@ function withTrend(r: () => number, previous: number): TrendMetric {
   return { value, deltaPct };
 }
 
-const CONTACT_BUTTON_LABELS = ["Appel", "Itinéraire", "Email", "SMS"];
-
 // GET /{ig-user-id}/insights, metric_type=total_value, period sur la fenêtre
 // affichée → 3 appels : (1) accounts_engaged, total_interactions, likes,
 // comments, shares, saves — regroupables tant qu'aucun breakdown n'est
@@ -278,7 +343,12 @@ const CONTACT_BUTTON_LABELS = ["Appel", "Itinéraire", "Email", "SMS"];
 // les traiter comme deux mesures indépendantes côté API, seul ce mock les
 // tire séparément) — nécessite ≥100 abonnés, et "désabonnements" mélange les
 // départs volontaires et les comptes supprimés/désactivés, à rappeler dans
-// l'UI ; (3) profile_links_taps avec breakdown=contact_button_type.
+// l'UI ; (3) profile_links_taps avec breakdown=contact_button_type, à
+// isoler dans sa propre requête (mélanger une métrique sans breakdown avec
+// une qui en a un renvoie "An unknown error has occurred" sans préciser
+// laquelle). Volumes bien plus faibles que profile_activity — le lien en
+// bio n'y est pas compté — et peut ne renvoyer aucune donnée pour un compte
+// sans bouton de contact configuré : voir profileLinksTaps ci-dessous.
 export function mockAccountPeriodTotals(accountId: string, followersTotal: number): AccountPeriodTotals {
   const r = rng(`${accountId}:period-totals`);
   const prevLikes = Math.round(followersTotal * (between(r, 8, 14) / 100));
@@ -287,7 +357,12 @@ export function mockAccountPeriodTotals(accountId: string, followersTotal: numbe
   const shares = withTrend(r, between(r, 400, 1200));
   const saves = withTrend(r, between(r, 800, 2400));
   const totalInteractionsPrev = prevLikes + comments.value + shares.value + saves.value;
-  const profileLinksTaps = withTrend(r, between(r, 600, 1800));
+  // Une marque nationale avec boutique en ligne configure presque toujours
+  // au moins l'e-mail de contact — mais pas systématiquement une adresse ou
+  // un numéro affiché publiquement : dans le cas contraire, Meta ne renvoie
+  // aucune donnée pour cette métrique, jamais un compte à 0.
+  const hasAnyContactButton = r() < 0.8;
+  const profileLinksTaps = hasAnyContactButton ? withTrend(r, between(r, 30, 300)) : null;
   return {
     accountsEngaged: withTrend(r, Math.round(followersTotal * (between(r, 3, 6) / 100))),
     totalInteractions: withTrend(r, totalInteractionsPrev),
@@ -295,7 +370,7 @@ export function mockAccountPeriodTotals(accountId: string, followersTotal: numbe
     follows: withTrend(r, between(r, 8000, 20000)),
     unfollows: withTrend(r, between(r, 4000, 11000)),
     profileLinksTaps,
-    profileLinksTapsByButton: splitTotal(r, CONTACT_BUTTON_LABELS, profileLinksTaps.value),
+    profileLinksTapsByButton: profileLinksTaps != null ? distributeProfileLinksTaps(r, profileLinksTaps.value) : [],
   };
 }
 

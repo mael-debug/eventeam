@@ -73,6 +73,7 @@ function MetricRow({ label, value }: { label: string; value: string | number | n
 }
 
 function BreakdownList({ rows }: { rows: DemographicRow[] }) {
+  if (rows.length === 0) return null;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 1, paddingLeft: 10 }}>
       {rows.map((row) => (
@@ -191,7 +192,14 @@ export default async function AnalysePage({
           (3) accounts_engaged/total_interactions/likes/comments/shares/
               saves, metric_type=total_value, aucun breakdown.
           (4) follows_and_unfollows, breakdown=follow_type, ≥100 abonnés.
-          (5) profile_links_taps, breakdown=contact_button_type.
+          (5) profile_links_taps, breakdown=contact_button_type — peut ne
+              renvoyer aucune donnée (profil sans bouton de contact
+              configuré), auquel cas la vignette et son détail disparaissent
+              plutôt que d'afficher un compte à 0.
+          Le breakdown est gratuit (même appel que la métrique seule), mais
+          chaque métrique avec breakdown doit rester isolée dans sa propre
+          requête : la mélanger à une métrique qui n'en a pas renvoie un
+          générique "An unknown error has occurred" sans préciser laquelle.
           Détail par métrique : lib/analyse-mock.ts. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={2} title="Vue d'ensemble" cadence={<CadenceChip cadence="J" />} subtitle="Indicateurs du compte sur 30 jours." />
@@ -260,10 +268,12 @@ export default async function AnalysePage({
               ["Abonnements", periodTotals.follows],
               ["Désabonnements", periodTotals.unfollows],
               ["Clics sur les liens du profil", periodTotals.profileLinksTaps],
-            ] as [string, TrendMetric][]
-          ).map(([label, metric]) => (
-            <TrendTile key={label} label={label} metric={metric} />
-          ))}
+            ] as [string, TrendMetric | null][]
+          )
+            .filter((entry): entry is [string, TrendMetric] => entry[1] != null)
+            .map(([label, metric]) => (
+              <TrendTile key={label} label={label} metric={metric} />
+            ))}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 760 }}>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
@@ -271,10 +281,16 @@ export default async function AnalysePage({
             distingue pas un départ volontaire d&apos;un compte supprimé ou désactivé, les deux comptent comme
             désabonnement.
           </p>
-          <div>
-            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Détail des clics sur les liens du profil, par type de bouton :</span>
-            <BreakdownList rows={periodTotals.profileLinksTapsByButton} />
-          </div>
+          {periodTotals.profileLinksTaps != null && (
+            <div>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Détail des clics sur les liens du profil, par type de bouton :</span>
+              <BreakdownList rows={periodTotals.profileLinksTapsByButton} />
+              <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+                Les types de bouton affichés dépendent de ceux configurés sur le profil Instagram — un bouton absent ne
+                remonte pas comme zéro, il n&apos;apparaît simplement pas.
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -282,9 +298,13 @@ export default async function AnalysePage({
           GET /{media-id}/insights par publication (posts et reels) — reach,
           views, shares, reposts, total_interactions sur les deux formats.
           likes/comments/saved : posts et reels. follows/profile_visits/
-          profile_activity (breakdown=action_type) : posts uniquement,
-          inexistants sur les reels. reels_skip_rate et
-          ig_reels_avg_watch_time (ms, non documenté précisément par Meta —
+          profile_activity (breakdown=action_type, gratuit dans le même
+          appel que profile_activity seul mais à isoler de toute métrique
+          sans breakdown) : posts uniquement, inexistants sur les reels.
+          profile_activity ne renvoie que les postes non nuls (BIO_LINK_
+          CLICKED, CALL, DIRECTION, EMAIL, TEXT sont les 5 valeurs possibles,
+          jamais toutes présentes à la fois). reels_skip_rate et
+          ig_reels_avg_watch_time (ms, non documenté précisément par Meta) :
           reels uniquement. total_views/total_likes/total_comments : agrégat
           multi-surfaces, Facebook Login. Aucun insight sur les images d'un
           carrousel pris individuellement. Conservation 2 ans. */}
@@ -295,6 +315,10 @@ export default async function AnalysePage({
           cadence={<CadenceChip cadence="J" />}
           subtitle="Contenu réel (légende, date) — métriques en attendant le branchement de l'API. Aucun insight n'existe pour les images individuelles d'un carrousel : seul l'album entier est mesuré."
         />
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+          « Actions sur le profil » ne détaille que les boutons configurés sur le profil Instagram — un bouton absent ne
+          remonte pas comme zéro, il n&apos;apparaît simplement pas.
+        </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
           {(posts ?? []).map((p) => {
             const insights = mockMediaInsights(p.id, p.media_type as MediaType, followersTotal);
@@ -433,6 +457,10 @@ export default async function AnalysePage({
             peu de vues pour être mesuré », jamais comme un score cassé.
           </div>
         </div>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+          « Actions sur le profil » ne détaille que les boutons configurés sur le profil Instagram — un bouton absent ne
+          remonte pas comme zéro, il n&apos;apparaît simplement pas.
+        </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           {(stories ?? []).map((s) => {
             const insights = mockMediaInsights(s.id, "story", followersTotal);
