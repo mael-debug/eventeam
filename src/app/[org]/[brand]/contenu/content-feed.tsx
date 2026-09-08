@@ -9,12 +9,6 @@ import { useState } from "react";
 import { Card } from "@/components/ds";
 import { fr, pct, shortDate } from "@/lib/format";
 
-const CONFIDENCE_LABEL: Record<string, string> = { robuste: "Fiabilité élevée", indicatif: "Fiabilité indicative", insuffisant: "Fiabilité faible" };
-const CONFIDENCE_BG: Record<string, string> = {
-  robuste: "var(--vert-pastel)",
-  indicatif: "var(--pastel-jaune)",
-  insuffisant: "var(--creme-fonce)",
-};
 const FORMAT_LABEL: Record<string, string> = { post: "Posts", reel: "Reels", story: "Stories" };
 
 export interface ContentItem {
@@ -30,9 +24,6 @@ export interface ContentItem {
   shares: number | null;
   followsGained: number | null;
   followConversionRate: number | null;
-  excessArrivals: number | null;
-  retentionRate: number | null;
-  confidence: string | null;
 }
 
 // Sans vignette (media/ n'est plus jamais fourni), la légende porte
@@ -92,49 +83,6 @@ function ContentCard({ item }: { item: ContentItem }) {
             <MetricCell label="Partages" value={item.shares} />
           </div>
         )}
-
-        <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12, fontSize: 13 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-              <span style={{ color: "var(--text-muted)" }}>Pic d&apos;abonnements dans les 48 h</span>
-              <span style={{ fontWeight: 700 }}>{item.excessArrivals != null ? `+${fr(item.excessArrivals)} vs habituel` : "—"}</span>
-            </div>
-            {item.excessArrivals != null && (
-              <span style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                Dans les 48 h suivant la publication, le compte a gagné {fr(item.excessArrivals)} abonnés de plus que son rythme
-                habituel. Signal temporel, pas attribution certaine.
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-              <span style={{ color: "var(--text-muted)" }}>Encore abonnés aujourd&apos;hui</span>
-              <span style={{ fontWeight: 700 }}>{item.retentionRate != null ? pct(item.retentionRate * 100) : "non calculé"}</span>
-            </div>
-            {item.retentionRate != null && (
-              <span style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                Parmi les personnes qui se sont abonnées pendant ces 48 h, {pct(item.retentionRate * 100)} suivent encore le
-                compte au dernier point de mesure.
-              </span>
-            )}
-          </div>
-
-          {item.confidence && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                <span style={{ color: "var(--text-muted)" }}>Fiabilité de l&apos;analyse</span>
-                <span style={{ borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 700, background: CONFIDENCE_BG[item.confidence] ?? "var(--creme-fonce)" }}>
-                  {CONFIDENCE_LABEL[item.confidence] ?? item.confidence}
-                </span>
-              </div>
-              <span style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                Le pic est une corrélation temporelle : il peut être lié au post, à une campagne, à un événement ou à une autre
-                source d&apos;acquisition.
-              </span>
-            </div>
-          )}
-        </div>
       </div>
     </Card>
   );
@@ -178,8 +126,7 @@ export function ContentFeed({ items }: { items: ContentItem[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, minWidth: 0 }}>
       <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 720, textWrap: "pretty" }}>
-        Pour chaque publication, Community Intelligence distingue ce qu&apos;Instagram attribue directement au contenu et ce
-        qui est simplement observé autour de sa publication.
+        Les métriques de chaque publication proviennent directement des statistiques Instagram exportées.
       </p>
 
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>

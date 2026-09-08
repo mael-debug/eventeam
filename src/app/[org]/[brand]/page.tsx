@@ -91,30 +91,32 @@ export default async function BrandOverviewPage({
     );
   }
 
-  const [{ data: overview }, { data: cohorts }, { count: identifiedCount }, { data: reconciliation }] = await Promise.all([
+  const [{ data: overview }, { count: identifiedCount }, { data: reconciliation }] = await Promise.all([
     supabase.from("v_overview").select("*").eq("account_id", account.id).maybeSingle(),
-    supabase
-      .from("cohort_survival")
-      .select("cohort_week, remaining, departed")
-      .eq("account_id", account.id)
-      .eq("measured_import_id", comparability.latest_import_id!),
     // overview.followers_total (audience_insights) est le compteur Meta,
     // généré séparément de la liste de connexions exportée — devenu la
     // seule métrique fiable à afficher en primaire (cas Ultime/
     // @edenparkparis2, 2026-09-04 : audience_insights.json est resté sur
     // la même période à deux exports consécutifs, alors que la liste
-    // d'abonnés, elle, avait bien été régénérée).
-    supabase.from("follower_states").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("status", "present"),
-    // reconciliation.observed_arrivals/observed_departures : comparaison
+    // d'abonnés, elle, avait bien été régénérée). identifiedCount compte les
+    // profils présents dans le dernier import (follower_observations,
+    // 2026-09-08 : remplace follower_states, supprimée avec toute la
+    // logique d'épisodes — cf. 0058).
+    supabase
+      .from("follower_observations")
+      .select("*", { count: "exact", head: true })
+      .eq("account_id", account.id)
+      .eq("import_id", comparability.latest_import_id!),
+    // v_reconciliation.observed_arrivals/observed_departures : comparaison
     // directe des deux derniers exports de follower_observations (qui est
-    // nouveau / qui n'y est plus, avec leur followed_at) — déjà calculée
-    // par recompute_account(), jamais dérivée du rapport Meta. Contrairement
-    // à ce qu'on pensait initialement, ce n'est pas "quasi inobservable" :
+    // nouveau / qui n'y est plus, avec leur followed_at) — recalculée à la
+    // volée (0058), jamais dérivée du rapport Meta. Contrairement à ce
+    // qu'on pensait initialement, ce n'est pas "quasi inobservable" :
     // vérifié en direct sur Ultime, 5082 nouveaux / 1 parti entre juillet et
     // août, identique à une simple différence d'ensembles sur les deux
     // imports. C'est le nombre Meta (gagnés/perdus) qui n'a rien de fiable
     // à quoi se comparer ici, pas notre mesure.
-    supabase.from("reconciliation").select("observed_arrivals, observed_departures, unobservable_reason").eq("import_id", comparability.latest_import_id!).maybeSingle(),
+    supabase.from("v_reconciliation").select("observed_arrivals, observed_departures, unobservable_reason").eq("import_id", comparability.latest_import_id!).maybeSingle(),
   ]);
 
   // Dès qu'il y a un import précédent, nos propres arrivées/départs
@@ -133,38 +135,6 @@ export default async function BrandOverviewPage({
 
   const alerts: Alert[] = [];
 
-  const cohortRows = cohorts ?? [];
-  if (cohortRows.length >= 2) {
-    const ranked = cohortRows
-      .filter((c) => c.remaining + c.departed > 0)
-      .map((c) => ({ ...c, rate: c.departed / (c.remaining + c.departed) }))
-      .sort((a, b) => a.cohort_week.localeCompare(b.cohort_week));
-    if (ranked.length >= 2) {
-      let worst = ranked[0];
-      let best = ranked[0];
-      for (const c of ranked) {
-        if (c.rate > worst.rate) worst = c;
-        if (c.rate < best.rate) best = c;
-      }
-      if (best.rate > 0 && worst.rate / best.rate >= 2 && worst.cohort_week !== best.cohort_week) {
-        const multiple = Math.round((worst.rate / best.rate) * 10) / 10;
-        alerts.push({
-          badge: "Rupture de cohorte",
-          title: `Les abonnés recrutés depuis le ${shortDate(worst.cohort_week)} partent ${multiple} fois plus que ceux du ${shortDate(best.cohort_week)}.`,
-          detail: `${pct(best.rate * 100)} de départs pour la cohorte du ${shortDate(best.cohort_week)}, ${pct(worst.rate * 100)} pour celle du ${shortDate(worst.cohort_week)}.`,
-          cta: "Ouvrir Croissance →",
-          href: `${base}/croissance`,
-        });
-      }
-    }
-  }
-
-  // Alerte "Qualité des cohortes" désactivée : le score cross_analyses.cohort_quality_score
-  // est expérimental (pondérations arbitraires, NULL de survival_at_horizon
-  // converti en 0 ce qui pénalise à tort les cohortes récentes) et ne doit
-  // pas être présenté comme un indicateur métier fiable. Le calcul reste en
-  // base pour du travail R&D, simplement plus affiché ici.
-
   if (overview?.organic_gained != null) {
     alerts.push({
       badge: "Origine de l'acquisition",
@@ -174,9 +144,6 @@ export default async function BrandOverviewPage({
       href: `${base}/contenu`,
     });
   }
-
-  const totalMeasurable = overview?.total_measurable ?? 0;
-  const totalDeparted = overview?.total_departed ?? 0;
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 28, maxWidth: 1280, minWidth: 0 }}>
@@ -189,9 +156,9 @@ export default async function BrandOverviewPage({
 
       {comparability.is_single_import && (
         <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5 }}>
-          Un seul import disponible pour @{account.handle}. Les modules de comparaison (taux de départ mesuré, cohortes, pics
-          d&apos;acquisition) restent inactifs tant qu&apos;un deuxième import n&apos;a pas été traité — ils ont besoin de deux
-          exports consécutifs pour établir une variation.
+          Un seul import disponible pour @{account.handle}. Les nouveaux/partis identifiés individuellement restent
+          indisponibles tant qu&apos;un deuxième import n&apos;a pas été traité — il faut deux exports consécutifs pour
+          établir une variation.
         </div>
       )}
       {!comparability.is_single_import && !comparability.comparable && (
@@ -218,15 +185,6 @@ export default async function BrandOverviewPage({
             hasComparison
               ? `${fr(reconciliation?.observed_arrivals ?? null)} identifiés en plus · ${fr(reconciliation?.observed_departures ?? null)} identifiés partis · depuis le dernier import`
               : `${fr(overview?.followers_gained ?? null)} gagnés · ${fr(overview?.followers_lost ?? null)} perdus (rapport Meta) · Insights ${insightsLabel}`
-          }
-        />
-        <KpiCard
-          label="Taux de départ mesuré"
-          value={totalMeasurable > 0 ? pct(overview?.departure_rate != null ? overview.departure_rate * 100 : null) : "—"}
-          sub={
-            totalMeasurable > 0
-              ? `${fr(totalDeparted)} sur ${fr(totalMeasurable)} comptes comparables · ${windowLabel}`
-              : "Disponible après un second import"
           }
         />
         <KpiCard

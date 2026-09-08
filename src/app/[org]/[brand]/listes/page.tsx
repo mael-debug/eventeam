@@ -33,10 +33,14 @@ export default async function ListesPage({
 
   // count only : la liste elle-même est chargée page par page côté client
   // (PaginatedDepartures) pour ne pas transférer les 1138+ lignes d'un coup.
-  const [{ data: cohortTotals }, { count: totalCount }] = await Promise.all([
-    supabase.from("v_cohort_totals").select("*").eq("account_id", account.id).maybeSingle(),
+  // "comptes comparables" = toujours_là + parti (base identifiée au moment
+  // de l'import précédent) — remplace v_cohort_totals (supprimée avec
+  // cohort_survival, 2026-09-08).
+  const [{ data: movements }, { count: totalCount }] = await Promise.all([
+    supabase.from("v_follower_movements").select("movement").eq("account_id", account.id),
     supabase.from("v_recent_departures").select("*", { count: "exact", head: true }).eq("account_id", account.id),
   ]);
+  const comparableBase = (movements ?? []).filter((m) => m.movement === "toujours_la" || m.movement === "parti").length;
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1280, minWidth: 0 }}>
@@ -48,7 +52,7 @@ export default async function ListesPage({
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-0.01em" }}>Listes nominatives</h1>
         <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-          {fr(cohortTotals?.total_departed ?? null)} comptes partis sur la cohorte suivie de {fr(cohortTotals?.total_measurable ?? null)} comptes
+          {fr(totalCount ?? null)} comptes partis sur {fr(comparableBase)} comptes suivis depuis le dernier import
         </span>
       </div>
 

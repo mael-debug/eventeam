@@ -14,138 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      acquisition_spikes: {
-        Row: {
-          account_id: string
-          baseline_daily: number
-          id: string
-          import_id: string
-          inference_confidence: string
-          inferred_type: string
-          linked_content_id: string | null
-          multiple: number
-          night_share: number | null
-          retention_rate: number | null
-          shape: string
-          signal_share: number | null
-          spike_end: string
-          spike_start: string
-          volume: number
-        }
-        Insert: {
-          account_id: string
-          baseline_daily: number
-          id?: string
-          import_id: string
-          inference_confidence: string
-          inferred_type: string
-          linked_content_id?: string | null
-          multiple: number
-          night_share?: number | null
-          retention_rate?: number | null
-          shape: string
-          signal_share?: number | null
-          spike_end: string
-          spike_start: string
-          volume: number
-        }
-        Update: {
-          account_id?: string
-          baseline_daily?: number
-          id?: string
-          import_id?: string
-          inference_confidence?: string
-          inferred_type?: string
-          linked_content_id?: string | null
-          multiple?: number
-          night_share?: number | null
-          retention_rate?: number | null
-          shape?: string
-          signal_share?: number | null
-          spike_end?: string
-          spike_start?: string
-          volume?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "acquisition_spikes_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_linked_content_id_fkey"
-            columns: ["linked_content_id"]
-            isOneToOne: false
-            referencedRelation: "content"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       audience_activity: {
         Row: {
           account_id: string
@@ -212,7 +80,7 @@ export type Database = {
             foreignKeyName: "audience_activity_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -233,7 +101,7 @@ export type Database = {
             foreignKeyName: "audience_activity_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -307,7 +175,7 @@ export type Database = {
             foreignKeyName: "audience_age_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -328,7 +196,7 @@ export type Database = {
             foreignKeyName: "audience_age_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -402,7 +270,7 @@ export type Database = {
             foreignKeyName: "audience_geo_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -423,7 +291,7 @@ export type Database = {
             foreignKeyName: "audience_geo_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -515,7 +383,7 @@ export type Database = {
             foreignKeyName: "audience_insights_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: true
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -536,7 +404,7 @@ export type Database = {
             foreignKeyName: "audience_insights_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: true
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -762,7 +630,7 @@ export type Database = {
             foreignKeyName: "chat_conversations_last_import_id_fkey"
             columns: ["last_import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -783,218 +651,7 @@ export type Database = {
             foreignKeyName: "chat_conversations_last_import_id_fkey"
             columns: ["last_import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
-          },
-        ]
-      }
-      cohort_survival: {
-        Row: {
-          account_id: string
-          cohort_week: string
-          departed: number
-          exposure_days: number
-          horizon_confidence: string | null
-          horizon_confidence_reason: string | null
-          horizon_days: number | null
-          measured_at: string
-          measured_import_id: string
-          rate_at_horizon: number | null
-          remaining: number
-          survival_rate: number
-        }
-        Insert: {
-          account_id: string
-          cohort_week: string
-          departed: number
-          exposure_days: number
-          horizon_confidence?: string | null
-          horizon_confidence_reason?: string | null
-          horizon_days?: number | null
-          measured_at: string
-          measured_import_id: string
-          rate_at_horizon?: number | null
-          remaining: number
-          survival_rate: number
-        }
-        Update: {
-          account_id?: string
-          cohort_week?: string
-          departed?: number
-          exposure_days?: number
-          horizon_confidence?: string | null
-          horizon_confidence_reason?: string | null
-          horizon_days?: number | null
-          measured_at?: string
-          measured_import_id?: string
-          rate_at_horizon?: number | null
-          remaining?: number
-          survival_rate?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cohort_survival_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cohort_survival_measured_import_id_fkey"
-            columns: ["measured_import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "cohort_survival_measured_import_id_fkey"
-            columns: ["measured_import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "cohort_survival_measured_import_id_fkey"
-            columns: ["measured_import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cohort_survival_measured_import_id_fkey"
-            columns: ["measured_import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohort_survival_measured_import_id_fkey"
-            columns: ["measured_import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohort_survival_measured_import_id_fkey"
-            columns: ["measured_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohort_survival_measured_import_id_fkey"
-            columns: ["measured_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohort_survival_measured_import_id_fkey"
-            columns: ["measured_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohort_survival_measured_import_id_fkey"
-            columns: ["measured_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
-          },
-        ]
-      }
-      cohorts: {
-        Row: {
-          account_id: string
-          cohort_week: string
-          is_spike_period: boolean
-          origin_import_id: string
-          size: number
-        }
-        Insert: {
-          account_id: string
-          cohort_week: string
-          is_spike_period?: boolean
-          origin_import_id: string
-          size: number
-        }
-        Update: {
-          account_id?: string
-          cohort_week?: string
-          is_spike_period?: boolean
-          origin_import_id?: string
-          size?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cohorts_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cohorts_origin_import_id_fkey"
-            columns: ["origin_import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "cohorts_origin_import_id_fkey"
-            columns: ["origin_import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "cohorts_origin_import_id_fkey"
-            columns: ["origin_import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cohorts_origin_import_id_fkey"
-            columns: ["origin_import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohorts_origin_import_id_fkey"
-            columns: ["origin_import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohorts_origin_import_id_fkey"
-            columns: ["origin_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohorts_origin_import_id_fkey"
-            columns: ["origin_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohorts_origin_import_id_fkey"
-            columns: ["origin_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cohorts_origin_import_id_fkey"
-            columns: ["origin_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -1110,7 +767,7 @@ export type Database = {
             foreignKeyName: "content_first_import_id_fkey"
             columns: ["first_import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -1131,130 +788,7 @@ export type Database = {
             foreignKeyName: "content_first_import_id_fkey"
             columns: ["first_import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
-          },
-        ]
-      }
-      content_attribution: {
-        Row: {
-          account_id: string
-          arrivals_in_window: number
-          baseline_expected: number
-          confidence: string
-          content_id: string
-          divergence_ratio: number | null
-          excess_arrivals: number
-          import_id: string
-          meta_follows_gained: number | null
-          retained_at_horizon: number | null
-          retention_rate: number | null
-          window_hours: number
-        }
-        Insert: {
-          account_id: string
-          arrivals_in_window: number
-          baseline_expected: number
-          confidence: string
-          content_id: string
-          divergence_ratio?: number | null
-          excess_arrivals: number
-          import_id: string
-          meta_follows_gained?: number | null
-          retained_at_horizon?: number | null
-          retention_rate?: number | null
-          window_hours?: number
-        }
-        Update: {
-          account_id?: string
-          arrivals_in_window?: number
-          baseline_expected?: number
-          confidence?: string
-          content_id?: string
-          divergence_ratio?: number | null
-          excess_arrivals?: number
-          import_id?: string
-          meta_follows_gained?: number | null
-          retained_at_horizon?: number | null
-          retention_rate?: number | null
-          window_hours?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "content_attribution_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "content_attribution_content_id_fkey"
-            columns: ["content_id"]
-            isOneToOne: false
-            referencedRelation: "content"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "content_attribution_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "content_attribution_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "content_attribution_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "content_attribution_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "content_attribution_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "content_attribution_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "content_attribution_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "content_attribution_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "content_attribution_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -1416,7 +950,7 @@ export type Database = {
             foreignKeyName: "content_metrics_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -1437,165 +971,8 @@ export type Database = {
             foreignKeyName: "content_metrics_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
-          },
-        ]
-      }
-      cross_analyses: {
-        Row: {
-          account_id: string
-          code: string
-          computed_at: string
-          confidence: string
-          confidence_reason: string | null
-          dimension: string
-          id: string
-          import_id: string
-          payload: Json
-          sample_size: number
-          window_end: string | null
-          window_start: string | null
-        }
-        Insert: {
-          account_id: string
-          code: string
-          computed_at?: string
-          confidence: string
-          confidence_reason?: string | null
-          dimension?: string
-          id?: string
-          import_id: string
-          payload: Json
-          sample_size: number
-          window_end?: string | null
-          window_start?: string | null
-        }
-        Update: {
-          account_id?: string
-          code?: string
-          computed_at?: string
-          confidence?: string
-          confidence_reason?: string | null
-          dimension?: string
-          id?: string
-          import_id?: string
-          payload?: Json
-          sample_size?: number
-          window_end?: string | null
-          window_start?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cross_analyses_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cross_analyses_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "cross_analyses_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "cross_analyses_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cross_analyses_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cross_analyses_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cross_analyses_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cross_analyses_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cross_analyses_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "cross_analyses_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
-          },
-        ]
-      }
-      custom_acquisition_windows: {
-        Row: {
-          account_id: string
-          budget_eur: number | null
-          created_at: string
-          created_by: string | null
-          id: string
-          label: string | null
-          window_end: string
-          window_start: string
-        }
-        Insert: {
-          account_id: string
-          budget_eur?: number | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          label?: string | null
-          window_end: string
-          window_start: string
-        }
-        Update: {
-          account_id?: string
-          budget_eur?: number | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          label?: string | null
-          window_end?: string
-          window_start?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "custom_acquisition_windows_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -1686,7 +1063,7 @@ export type Database = {
             foreignKeyName: "ecosystem_profiles_last_import_id_fkey"
             columns: ["last_import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -1707,7 +1084,7 @@ export type Database = {
             foreignKeyName: "ecosystem_profiles_last_import_id_fkey"
             columns: ["last_import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -1784,7 +1161,7 @@ export type Database = {
             foreignKeyName: "ecosystem_summary_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: true
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -1805,7 +1182,7 @@ export type Database = {
             foreignKeyName: "ecosystem_summary_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: true
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -1876,7 +1253,7 @@ export type Database = {
             foreignKeyName: "follower_observations_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -1897,201 +1274,7 @@ export type Database = {
             foreignKeyName: "follower_observations_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
-          },
-        ]
-      }
-      follower_states: {
-        Row: {
-          account_id: string
-          cohort_week: string
-          computed_at: string
-          departure_window_end: string | null
-          departure_window_start: string | null
-          episode: number
-          first_import_id: string
-          followed_at: string
-          is_latest_episode: boolean
-          last_present_import_id: string
-          profile_id: number
-          rename_candidate_of: number | null
-          sig_digit_suffix: boolean
-          sig_long_handle: boolean
-          sig_many_underscores: boolean
-          status: Database["public"]["Enums"]["follower_status"]
-          tenure_days: number | null
-        }
-        Insert: {
-          account_id: string
-          cohort_week: string
-          computed_at?: string
-          departure_window_end?: string | null
-          departure_window_start?: string | null
-          episode?: number
-          first_import_id: string
-          followed_at: string
-          is_latest_episode?: boolean
-          last_present_import_id: string
-          profile_id: number
-          rename_candidate_of?: number | null
-          sig_digit_suffix?: boolean
-          sig_long_handle?: boolean
-          sig_many_underscores?: boolean
-          status: Database["public"]["Enums"]["follower_status"]
-          tenure_days?: number | null
-        }
-        Update: {
-          account_id?: string
-          cohort_week?: string
-          computed_at?: string
-          departure_window_end?: string | null
-          departure_window_start?: string | null
-          episode?: number
-          first_import_id?: string
-          followed_at?: string
-          is_latest_episode?: boolean
-          last_present_import_id?: string
-          profile_id?: number
-          rename_candidate_of?: number | null
-          sig_digit_suffix?: boolean
-          sig_long_handle?: boolean
-          sig_many_underscores?: boolean
-          status?: Database["public"]["Enums"]["follower_status"]
-          tenure_days?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "follower_states_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "follower_states_first_import_id_fkey"
-            columns: ["first_import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_first_import_id_fkey"
-            columns: ["first_import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_first_import_id_fkey"
-            columns: ["first_import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "follower_states_first_import_id_fkey"
-            columns: ["first_import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_first_import_id_fkey"
-            columns: ["first_import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_first_import_id_fkey"
-            columns: ["first_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_first_import_id_fkey"
-            columns: ["first_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_first_import_id_fkey"
-            columns: ["first_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_first_import_id_fkey"
-            columns: ["first_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_last_present_import_id_fkey"
-            columns: ["last_present_import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_last_present_import_id_fkey"
-            columns: ["last_present_import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_last_present_import_id_fkey"
-            columns: ["last_present_import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "follower_states_last_present_import_id_fkey"
-            columns: ["last_present_import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_last_present_import_id_fkey"
-            columns: ["last_present_import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_last_present_import_id_fkey"
-            columns: ["last_present_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_last_present_import_id_fkey"
-            columns: ["last_present_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_last_present_import_id_fkey"
-            columns: ["last_present_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "follower_states_last_present_import_id_fkey"
-            columns: ["last_present_import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -2162,7 +1345,7 @@ export type Database = {
             foreignKeyName: "following_observations_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -2183,7 +1366,7 @@ export type Database = {
             foreignKeyName: "following_observations_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -2223,107 +1406,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "instagram_accounts"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      hazard_curve: {
-        Row: {
-          account_id: string
-          age_bucket: number
-          at_risk: number
-          cohort_week: string
-          departed: number
-          hazard_rate: number
-          import_id: string
-        }
-        Insert: {
-          account_id: string
-          age_bucket: number
-          at_risk: number
-          cohort_week?: string
-          departed: number
-          hazard_rate: number
-          import_id: string
-        }
-        Update: {
-          account_id?: string
-          age_bucket?: number
-          at_risk?: number
-          cohort_week?: string
-          departed?: number
-          hazard_rate?: number
-          import_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "hazard_curve_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "hazard_curve_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "hazard_curve_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "hazard_curve_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "hazard_curve_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "hazard_curve_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "hazard_curve_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "hazard_curve_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "hazard_curve_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "hazard_curve_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
           },
         ]
       }
@@ -2404,7 +1486,7 @@ export type Database = {
             foreignKeyName: "import_files_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -2425,7 +1507,7 @@ export type Database = {
             foreignKeyName: "import_files_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -2511,7 +1593,7 @@ export type Database = {
             foreignKeyName: "import_schema_fingerprint_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -2532,7 +1614,7 @@ export type Database = {
             foreignKeyName: "import_schema_fingerprint_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -2596,107 +1678,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "instagram_accounts"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      inflow_geo_estimate: {
-        Row: {
-          account_id: string
-          confidence: string
-          country: string
-          error_margin: number
-          estimated_pct: number
-          import_id: string
-          method: string
-        }
-        Insert: {
-          account_id: string
-          confidence: string
-          country: string
-          error_margin: number
-          estimated_pct: number
-          import_id: string
-          method?: string
-        }
-        Update: {
-          account_id?: string
-          confidence?: string
-          country?: string
-          error_margin?: number
-          estimated_pct?: number
-          import_id?: string
-          method?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "inflow_geo_estimate_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "inflow_geo_estimate_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
           },
         ]
       }
@@ -2834,7 +1815,7 @@ export type Database = {
             foreignKeyName: "interaction_insights_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -2855,7 +1836,7 @@ export type Database = {
             foreignKeyName: "interaction_insights_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
@@ -3083,7 +2064,7 @@ export type Database = {
             foreignKeyName: "reach_insights_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: true
-            referencedRelation: "v_cohort_totals"
+            referencedRelation: "v_latest_two_imports"
             referencedColumns: ["import_id"]
           },
           {
@@ -3104,221 +2085,13 @@ export type Database = {
             foreignKeyName: "reach_insights_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: true
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
-          },
-        ]
-      }
-      reconciliation: {
-        Row: {
-          account_id: string
-          arrivals_coverage: number | null
-          departures_coverage: number | null
-          import_id: string
-          meta_gained: number | null
-          meta_lost: number | null
-          observed_arrivals: number | null
-          observed_departures: number | null
-          unobservable_reason: string | null
-        }
-        Insert: {
-          account_id: string
-          arrivals_coverage?: number | null
-          departures_coverage?: number | null
-          import_id: string
-          meta_gained?: number | null
-          meta_lost?: number | null
-          observed_arrivals?: number | null
-          observed_departures?: number | null
-          unobservable_reason?: string | null
-        }
-        Update: {
-          account_id?: string
-          arrivals_coverage?: number | null
-          departures_coverage?: number | null
-          import_id?: string
-          meta_gained?: number | null
-          meta_lost?: number | null
-          observed_arrivals?: number | null
-          observed_departures?: number | null
-          unobservable_reason?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reconciliation_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reconciliation_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: true
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "reconciliation_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: true
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "reconciliation_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: true
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reconciliation_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: true
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "reconciliation_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: true
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "reconciliation_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: true
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "reconciliation_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: true
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "reconciliation_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: true
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "reconciliation_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: true
-            referencedRelation: "v_recent_arrival_risk"
+            referencedRelation: "v_reconciliation"
             referencedColumns: ["import_id"]
           },
         ]
       }
     }
     Views: {
-      acquisition_spikes_with_budget: {
-        Row: {
-          account_id: string | null
-          baseline_daily: number | null
-          budget_eur: number | null
-          cout_brut_eur: number | null
-          cout_retenu_eur: number | null
-          id: string | null
-          import_id: string | null
-          inference_confidence: string | null
-          inferred_type: string | null
-          linked_content_id: string | null
-          multiple: number | null
-          night_share: number | null
-          retention_rate: number | null
-          shape: string | null
-          signal_share: number | null
-          spike_end: string | null
-          spike_start: string | null
-          volume: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "acquisition_spikes_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_linked_content_id_fkey"
-            columns: ["linked_content_id"]
-            isOneToOne: false
-            referencedRelation: "content"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       import_comparability: {
         Row: {
           account_id: string | null
@@ -3380,25 +2153,6 @@ export type Database = {
           },
         ]
       }
-      v_cohort_totals: {
-        Row: {
-          account_id: string | null
-          departure_rate: number | null
-          import_id: string | null
-          total_departed: number | null
-          total_measurable: number | null
-          total_remaining: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "imports_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v_ecosystem_chat_summary: {
         Row: {
           account_id: string | null
@@ -3420,32 +2174,25 @@ export type Database = {
           },
         ]
       }
-      v_growth_by_cohort: {
+      v_follower_movements: {
         Row: {
           account_id: string | null
-          arrivals: number | null
-          cohort_week: string | null
-          departed: number | null
-          is_spike_period: boolean | null
+          followed_at: string | null
+          movement: string | null
+          profile_id: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "cohorts_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      v_likely_renames: {
+      v_latest_two_imports: {
         Row: {
           account_id: string | null
-          likely_rename_count: number | null
+          exported_at: string | null
+          import_id: string | null
+          rn: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "follower_states_account_id_fkey"
+            foreignKeyName: "imports_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "instagram_accounts"
@@ -3473,7 +2220,6 @@ export type Database = {
         Row: {
           account_id: string | null
           completed_at: string | null
-          departure_rate: number | null
           followers_gained: number | null
           followers_lost: number | null
           followers_net: number | null
@@ -3484,32 +2230,12 @@ export type Database = {
           insights_period_start: string | null
           organic_gained: number | null
           organic_share: number | null
-          total_departed: number | null
-          total_measurable: number | null
-          total_remaining: number | null
           window_end: string | null
           window_start: string | null
         }
         Relationships: [
           {
             foreignKeyName: "imports_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_recent_arrival_risk: {
-        Row: {
-          account_id: string | null
-          import_id: string | null
-          n: number | null
-          risk_tier: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "follower_states_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "instagram_accounts"
@@ -3527,119 +2253,27 @@ export type Database = {
           profile_id: number | null
           tenure_days: number | null
         }
-        Insert: {
-          account_id?: string | null
-          cohort_week?: string | null
-          departure_window_end?: string | null
-          departure_window_start?: string | null
-          followed_at?: string | null
-          profile_id?: number | null
-          tenure_days?: number | null
-        }
-        Update: {
-          account_id?: string | null
-          cohort_week?: string | null
-          departure_window_end?: string | null
-          departure_window_start?: string | null
-          followed_at?: string | null
-          profile_id?: number | null
-          tenure_days?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "follower_states_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "instagram_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      v_segments: {
+      v_reconciliation: {
         Row: {
           account_id: string | null
-          duration_days_avg: number | null
+          arrivals_coverage: number | null
+          departures_coverage: number | null
           import_id: string | null
-          inferred_type: string | null
-          n_spikes: number | null
-          night_share_avg: number | null
-          retention_rate_weighted: number | null
-          segment_confidence: string | null
-          signal_share_avg: number | null
-          volume_total: number | null
-          window_end: string | null
-          window_start: string | null
+          meta_gained: number | null
+          meta_lost: number | null
+          observed_arrivals: number | null
+          observed_departures: number | null
+          unobservable_reason: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "acquisition_spikes_account_id_fkey"
+            foreignKeyName: "imports_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "instagram_accounts"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["latest_import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_comparability"
-            referencedColumns: ["previous_import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "imports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "latest_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "previous_completed_import"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_cohort_totals"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_organic_gained"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_overview"
-            referencedColumns: ["import_id"]
-          },
-          {
-            foreignKeyName: "acquisition_spikes_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "v_recent_arrival_risk"
-            referencedColumns: ["import_id"]
           },
         ]
       }
@@ -3669,14 +2303,6 @@ export type Database = {
       can_write: { Args: { p_brand: string }; Returns: boolean }
       can_write_account: { Args: { p_account: string }; Returns: boolean }
       check_canary_account: { Args: { p_account_id: string }; Returns: Json }
-      cohort_rate_at_horizon: {
-        Args: {
-          p_account: string
-          p_cohort_week: string
-          p_horizon_days: number
-        }
-        Returns: number
-      }
       create_organization: {
         Args: { p_name: string; p_slug: string }
         Returns: {
@@ -3691,17 +2317,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      custom_window_stats: {
-        Args: {
-          p_account_id: string
-          p_window_end: string
-          p_window_start: string
-        }
-        Returns: {
-          retained: number
-          volume: number
-        }[]
       }
       delete_stuck_import: { Args: { p_import_id: string }; Returns: undefined }
       ingest_resolve_usernames: {
@@ -3761,7 +2376,6 @@ export type Database = {
       user_org_ids: { Args: never; Returns: string[] }
     }
     Enums: {
-      follower_status: "present" | "gone" | "out_of_window" | "likely_rename"
       import_status:
         | "uploading"
         | "uploaded"
@@ -3901,7 +2515,6 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      follower_status: ["present", "gone", "out_of_window", "likely_rename"],
       import_status: [
         "uploading",
         "uploaded",

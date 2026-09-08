@@ -53,7 +53,6 @@ export default async function AudiencePage({
     { data: geo },
     { data: age },
     { data: activity },
-    { data: inflow },
     { data: reconciliation },
   ] = await Promise.all([
     supabase.from("v_overview").select("followers_total").eq("account_id", account.id).maybeSingle(),
@@ -61,8 +60,7 @@ export default async function AudiencePage({
     supabase.from("audience_geo").select("*").eq("account_id", account.id).eq("import_id", latestImportId),
     supabase.from("audience_age").select("*").eq("account_id", account.id).eq("import_id", latestImportId),
     supabase.from("audience_activity").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("weekday"),
-    supabase.from("inflow_geo_estimate").select("*").eq("account_id", account.id).eq("import_id", latestImportId).order("estimated_pct", { ascending: false }),
-    supabase.from("reconciliation").select("*").eq("import_id", latestImportId).maybeSingle(),
+    supabase.from("v_reconciliation").select("*").eq("import_id", latestImportId).maybeSingle(),
   ]);
 
   const countries = (geo ?? []).filter((g) => g.kind === "country").sort((a, b) => b.pct - a.pct).slice(0, 5);
@@ -182,23 +180,6 @@ export default async function AudiencePage({
                     {c.name} {pct(c.pct)}
                   </span>
                 ))}
-              </div>
-            )}
-            {(inflow ?? []).length > 0 && (
-              <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Part du flux entrant, estimée</div>
-                {(inflow ?? []).slice(0, 5).map((i) => (
-                  <div key={i.country} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-muted)" }}>
-                    <span>{i.country}</span>
-                    <span>
-                      {pct(i.estimated_pct)} ± {i.error_margin.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} pts
-                    </span>
-                  </div>
-                ))}
-                <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                  Inférence par différence de stocks entre les deux derniers imports — dit ce que le stock seul ne dit pas : où va
-                  le flux entrant, pas seulement où se trouve l&apos;audience installée.
-                </div>
               </div>
             )}
           </div>

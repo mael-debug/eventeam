@@ -1,7 +1,6 @@
 import { Card, Badge } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, pct, shortDate } from "@/lib/format";
-import { TrendLine } from "@/components/trend-line";
 import { MOCK_AUDIENCE_INTELLIGENCE } from "./mock-audience-intelligence";
 import { AudienceAISummary } from "./audience-ai-summary";
 import { AudiencePersonaCard } from "./audience-persona-card";
@@ -88,18 +87,14 @@ export default async function IaShowroomPage({
   const [
     { data: postsContent },
     { data: postsMetrics },
-    { data: formatRetention },
     { data: interactions },
-    { data: qualityRows },
     { data: ecoSummary },
     { data: geo },
     { data: captionStats },
   ] = await Promise.all([
     supabase.from("content").select("id, media_type, published_at, caption").eq("account_id", account.id).eq("media_type", "post"),
     supabase.from("content_metrics").select("content_id, reach, impressions, profile_visits, likes, comments, saves, shares, follows_gained, follow_conversion_rate").eq("account_id", account.id).eq("import_id", latestImport.import_id!),
-    supabase.from("cross_analyses").select("dimension, payload").eq("account_id", account.id).eq("import_id", latestImport.import_id!).eq("code", "format_retention").order("dimension"),
     supabase.from("interaction_insights").select("*").eq("account_id", account.id).eq("import_id", latestImport.import_id!).in("format", ["reels", "posts", "stories"]),
-    supabase.from("cross_analyses").select("dimension, payload").eq("account_id", account.id).eq("code", "cohort_quality_score").order("dimension"),
     supabase.from("v_ecosystem_chat_summary").select("*").eq("account_id", account.id).maybeSingle(),
     supabase.from("audience_geo").select("name, pct").eq("account_id", account.id).eq("import_id", latestImport.import_id!).eq("kind", "country").order("pct", { ascending: false }).limit(3),
     supabase.from("content").select("id, caption").eq("account_id", account.id).not("caption", "is", null),
@@ -115,24 +110,11 @@ export default async function IaShowroomPage({
   const withHashtag = (captionStats ?? []).filter((c) => c.caption?.includes("#")).length;
   const totalCaptioned = (captionStats ?? []).length;
 
-  const qualitySeries = (qualityRows ?? [])
-    .map((q) => ({ week: q.dimension, score: (q.payload as { score?: number })?.score }))
-    .filter((q): q is { week: string; score: number } => q.score != null)
-    .sort((a, b) => a.week.localeCompare(b.week));
-  const recentQuality = qualitySeries.slice(-3);
-  const recentQualityAvg = recentQuality.length ? Math.round(recentQuality.reduce((s, q) => s + q.score, 0) / recentQuality.length) : null;
-
   const reels = (interactions ?? []).find((i) => i.format === "reels");
   const postsAgg = (interactions ?? []).find((i) => i.format === "posts");
   const storiesAgg = (interactions ?? []).find((i) => i.format === "stories");
 
   const replyRate = ecoSummary?.n ? (ecoSummary.n_got_reply ?? 0) / ecoSummary.n : null;
-
-  const retentionByFormat = new Map(
-    (formatRetention ?? []).map((f) => [f.dimension, (f.payload as { retention_moyenne?: number })?.retention_moyenne ?? null]),
-  );
-  const bestFormat = [...retentionByFormat.entries()].sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0];
-  const FORMAT_LABEL: Record<string, string> = { post: "les posts", reel: "les reels", story: "les stories" };
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 40, maxWidth: 1100, minWidth: 0 }}>
@@ -208,24 +190,8 @@ export default async function IaShowroomPage({
         <SectionHeader
           n={2}
           title="Idées de contenu pour retenir une cohorte fragile"
-          subtitle="Croisé avec le score de qualité de cohorte (déjà calculé, écran Croissance) : quand une cohorte récente décroche, l'IA proposerait un contenu de réengagement ciblé plutôt qu'un post générique."
+          subtitle="Quand les arrivées récentes se retrouvent nettement moins nombreuses au dernier import (écran Croissance), l'IA proposerait un contenu de réengagement ciblé plutôt qu'un post générique."
         />
-
-        {qualitySeries.length > 1 && (
-          <Card variant="claire" interactive={false}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                Score de qualité par cohorte hebdomadaire (survie, ancienneté au départ, signaux suspects, horaires) — donnée
-                réelle, déjà utilisée sur Croissance.
-                {recentQualityAvg != null && ` Moyenne des 3 dernières semaines : ${recentQualityAvg}/100.`}
-              </span>
-              <TrendLine
-                labels={qualitySeries.map((q) => shortDate(q.week))}
-                series={[{ key: "score", label: "Score qualité", color: "var(--bleu)", values: qualitySeries.map((q) => q.score) }]}
-              />
-            </div>
-          </Card>
-        )}
 
         <MockCard title="Séquence de contenu de réengagement, si l'IA détecte une cohorte à risque">
           <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -293,15 +259,14 @@ export default async function IaShowroomPage({
             <Card key={f.key} variant="claire" interactive={false}>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>{f.label}</span>
-                <span style={{ fontSize: 22, fontWeight: 800 }}>{retentionByFormat.has(f.key) ? pct((retentionByFormat.get(f.key) ?? 0) * 100) : "—"}</span>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>rétention 48 h attribuée</span>
-                {f.interactions != null && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{fr(f.interactions)} interactions sur la période</span>}
+                <span style={{ fontSize: 22, fontWeight: 800 }}>{f.interactions != null ? fr(f.interactions) : "—"}</span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>interactions sur la période</span>
               </div>
             </Card>
           ))}
         </div>
 
-        <MockCard title={bestFormat ? `Le format le mieux placé aujourd'hui : ${FORMAT_LABEL[bestFormat[0]] ?? bestFormat[0]}` : "Idées par format"}>
+        <MockCard title="Idées par format">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <p style={{ margin: 0 }}><strong>Reel :</strong> montage rapide « avant/après » d&apos;un produit en situation (voyage, sport, bureau).</p>
             <p style={{ margin: 0 }}><strong>Story :</strong> sondage ou quiz sur une gamme, avec sticker réponse — format le plus léger à produire, souvent le mieux retenu.</p>
