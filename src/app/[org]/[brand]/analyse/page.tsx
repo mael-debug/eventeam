@@ -1,6 +1,6 @@
 import { Card, Chip } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
-import { fr, shortDate, signedPct } from "@/lib/format";
+import { fr, pct, shortDate, signedPct } from "@/lib/format";
 import { TrendLine } from "@/components/trend-line";
 import {
   mockMediaInsights,
@@ -9,9 +9,12 @@ import {
   mockAccountReachMonthly,
   mockAccountPeriodTotals,
   mockAudienceDemographics,
+  mockEngagedAudienceDemographics,
   mockMentions,
   mockCompetitors,
   mockTopCommenters,
+  withLiveFallback,
+  notWiredYet,
   GRAPH_VERSION,
   type MediaType,
   type TrendMetric,
@@ -38,10 +41,13 @@ import { LiveComments } from "./live-comments";
 // un rôle sur la Page, stocké côté serveur. L'app Meta reste en mode
 // développement pour ce seul compte.
 //
-// La connexion à l'API n'est pas encore câblée : les chiffres viennent de
-// lib/analyse-mock.ts (générateur déterministe) et sont illustratifs. Le
-// contenu réel (légendes, dates, abonnés) provient bien de nos données.
-
+// Chaque section tente l'appel réel (aujourd'hui un stub qui échoue
+// systématiquement, voir withLiveFallback/notWiredYet dans analyse-mock.ts)
+// et retombe sur le mock en cas d'échec — c'est le même mécanisme qu'en
+// production le jour où un appel échouera pour de vraies raisons (jeton
+// expiré, limite de débit, panne Meta). Le badge "Simulé" à côté d'une
+// cadence signale ce repli ; aujourd'hui il apparaît partout puisque rien
+// n'est encore branché.
 const MEDIA_LABEL: Record<MediaType, string> = { post: "Post", reel: "Reel", story: "Story" };
 const SERIES_COLOR: Record<MediaType, string> = { post: "var(--bleu)", reel: "var(--vert-logo)", story: "#8B5CF6" };
 
@@ -99,6 +105,25 @@ function UnverifiedNote({ callToTest }: { callToTest: string }) {
   );
 }
 
+// Reflète withLiveFallback : "live" ne s'affiche jamais (rien à signaler),
+// "mock" affiche un petit badge dont le survol donne la raison exacte du
+// repli (aujourd'hui, systématiquement "non branché").
+function LiveSourceTag({ source, reason }: { source: "live" | "mock"; reason: string | null }) {
+  if (source === "live") return null;
+  return (
+    <span
+      title={reason ?? undefined}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
+        textTransform: "uppercase", color: "var(--text-muted)", background: "var(--panneau)", border: "1px solid var(--bordure)",
+        borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap",
+      }}
+    >
+      🔧 Simulé
+    </span>
+  );
+}
+
 function TrendTile({ label, metric }: { label: string; metric: TrendMetric }) {
   const up = metric.deltaPct > 0;
   const flat = metric.deltaPct === 0;
@@ -152,16 +177,43 @@ export default async function AnalysePage({
   ]);
 
   const followersTotal = latestInsights?.followers_total ?? 0;
-
-  const reachDaily = mockAccountReachSeries(account.id, followersTotal);
-  const reachTotalsByFormat = mockAccountReachTotalsByFormat(account.id, followersTotal);
-  const reachMonthly = mockAccountReachMonthly(account.id, followersTotal);
-  const periodTotals = mockAccountPeriodTotals(account.id, followersTotal);
-  const demographics = mockAudienceDemographics(account.id, followersTotal);
-  const mentions = mockMentions(account.id);
-  const competitors = mockCompetitors(account.id);
-  const topCommenters = mockTopCommenters(account.id);
   const postLabels = (posts ?? []).map((p) => (p.caption ?? "").slice(0, 40));
+
+  // Chaque source tente l'appel réel (stub qui échoue systématiquement,
+  // rien n'étant branché) et retombe sur le mock — voir withLiveFallback.
+  const [
+    reachDailyResult, reachTotalsResult, reachMonthlyResult, periodTotalsResult,
+    demographicsResult, engagedAudienceResult, mentionsResult, competitorsResult,
+    topCommentersResult, postInsightsResult, storyInsightsResult,
+  ] = await Promise.all([
+    withLiveFallback(() => notWiredYet("GET /{ig-user-id}/insights?metric=reach&metric_type=time_series&since&until"), () => mockAccountReachSeries(account.id, followersTotal)),
+    withLiveFallback(() => notWiredYet("GET /{ig-user-id}/insights?metric=reach&metric_type=total_value&breakdown=media_product_type"), () => mockAccountReachTotalsByFormat(account.id, followersTotal)),
+    withLiveFallback(() => notWiredYet("archive interne (aucun appel Meta direct, >90 jours)"), () => mockAccountReachMonthly(account.id, followersTotal)),
+    withLiveFallback(() => notWiredYet("GET /{ig-user-id}/insights?metric=accounts_engaged,total_interactions,likes,comments,shares,saves + follows_and_unfollows + profile_links_taps"), () => mockAccountPeriodTotals(account.id, followersTotal)),
+    withLiveFallback(() => notWiredYet("GET /{ig-user-id}/insights?metric=follower_demographics&breakdown=city|country|gender|age"), () => mockAudienceDemographics(account.id, followersTotal)),
+    withLiveFallback(() => notWiredYet("GET /{ig-user-id}/insights?metric=engaged_audience_demographics&breakdown=city"), () => mockEngagedAudienceDemographics(account.id, followersTotal)),
+    withLiveFallback(() => notWiredYet("GET /{ig-user-id}/tags + webhook mentions"), () => mockMentions(account.id)),
+    withLiveFallback(() => notWiredYet("GET /{ig-user-id}?fields=business_discovery"), () => mockCompetitors(account.id)),
+    withLiveFallback(() => notWiredYet("webhook comments (accumulation nominative)"), () => mockTopCommenters(account.id)),
+    withLiveFallback(() => notWiredYet("GET /{media-id}/insights (par publication)"), () => (posts ?? []).map((p) => mockMediaInsights(p.id, p.media_type as MediaType, followersTotal))),
+    withLiveFallback(() => notWiredYet("GET /{media-id}/insights (par story)"), () => (stories ?? []).map((s) => mockMediaInsights(s.id, "story", followersTotal))),
+  ]);
+
+  const reachDaily = reachDailyResult.data;
+  const reachTotalsByFormat = reachTotalsResult.data;
+  const reachMonthly = reachMonthlyResult.data;
+  const periodTotals = periodTotalsResult.data;
+  const demographics = demographicsResult.data;
+  const engagedAudience = engagedAudienceResult.data;
+  const mentions = mentionsResult.data;
+  const competitors = competitorsResult.data;
+  const topCommenters = topCommentersResult.data;
+  const postInsightsList = postInsightsResult.data;
+  const storyInsightsList = storyInsightsResult.data;
+
+  const genderReported = demographics.genderSplit.female + demographics.genderSplit.male;
+  const genderMeasured = genderReported + demographics.genderSplit.unspecified;
+  const unspecifiedPct = genderMeasured > 0 ? (demographics.genderSplit.unspecified / genderMeasured) * 100 : 0;
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 44, maxWidth: 1120, minWidth: 0, paddingBottom: 24 }}>
@@ -172,13 +224,14 @@ export default async function AnalysePage({
           donnée se rafraîchit. Chaque métrique ci-dessous est une capacité confirmée par la documentation Graph API
           Meta ({GRAPH_VERSION}) — si Meta ne peut pas la fournir de façon fiable, elle n&apos;apparaît pas sur cette
           page. Le contenu réel (légendes, dates) est déjà le nôtre ; la connexion à l&apos;API n&apos;est pas encore
-          branchée, donc les chiffres affichés restent illustratifs en attendant l&apos;activation.
+          branchée, donc les chiffres affichés restent illustratifs (badge « Simulé ») en attendant l&apos;activation.
         </p>
       </div>
 
       {/* 1. En-tête compte
           Champs de base du nœud Instagram User (username, followers_count) —
-          disponibilité certaine, aucun breakdown. */}
+          disponibilité certaine, aucun breakdown. Donnée réelle (import),
+          pas de repli mock ici. */}
       <Card variant="claire" interactive={false}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -200,10 +253,11 @@ export default async function AnalysePage({
           mention contraire :
           (1) reach, metric_type=time_series, period=day, SANS breakdown —
               since ET until en timestamps Unix OBLIGATOIRES (sans eux,
-              l'API ne renvoie que ~2 points sur une fenêtre 24 h par
-              défaut) → courbe quotidienne globale. end_time revient à
-              07:00:00+0000, pas minuit UTC : le fuseau du compte fixe la
-              journée, ne jamais supposer minuit.
+              seulement 2 points sur une fenêtre 24 h par défaut ; avec eux,
+              30 points exacts en un seul appel, pas de pagination). end_time
+              revient à 07:00:00+0000 sur tous les points, pas minuit UTC :
+              le fuseau du compte fixe la journée. Les jours sans activité
+              sont présents à 0, la série ne saute aucun jour.
           (2) reach, metric_type=total_value, breakdown=media_product_type,
               même fenêtre → un total par format, pas une série quotidienne
               (confirmé : time_series et breakdown sont exclusifs dans la
@@ -215,12 +269,16 @@ export default async function AnalysePage({
               VÉRIFIÉ CONTRE L'API. Peut ne renvoyer aucune donnée (profil
               sans bouton de contact configuré), auquel cas la vignette et
               son détail disparaissent plutôt que d'afficher un compte à 0.
+              Ne couvre PAS le clic sur le lien en bio (voir section 3,
+              profile_activity) : deux métriques distinctes, jamais
+              additionnées.
           Le breakdown est gratuit (même appel que la métrique seule), mais
           chaque métrique avec breakdown doit rester isolée dans sa propre
           requête : la mélanger à une métrique qui n'en a pas renvoie un
           générique "An unknown error has occurred" sans préciser laquelle.
-          Parseur commun aux quatre formes de réponse observées : voir
-          lib/analyse-mock.ts (parseInsightsBreakdown/SimpleValue/TimeSeries). */}
+          Parseur commun aux cinq formes de réponse observées : voir
+          lib/analyse-mock.ts (parseInsightsBreakdown/SimpleValue/
+          MediaSimpleValue/TimeSeries). */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={2} title="Vue d'ensemble" cadence={<CadenceChip cadence="J" />} subtitle="Indicateurs du compte sur 30 jours." />
         <div style={{ background: "var(--pastel-jaune)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--encre)", lineHeight: 1.5 }}>
@@ -232,7 +290,10 @@ export default async function AnalysePage({
         </div>
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <span style={{ fontSize: 15, fontWeight: 700 }}>Comptes touchés, chaque jour</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>Comptes touchés, chaque jour</span>
+              <LiveSourceTag source={reachDailyResult.source} reason={reachDailyResult.reason} />
+            </div>
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
               Courbe globale, sans détail par format : Meta n&apos;autorise jamais de breakdown dans une série quotidienne
               (metric_type=time_series). Le détail par format existe, mais seulement en total sur la période — voir
@@ -246,7 +307,10 @@ export default async function AnalysePage({
         </Card>
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <span style={{ fontSize: 15, fontWeight: 700 }}>Comptes touchés, total par format sur la période</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>Comptes touchés, total par format sur la période</span>
+              <LiveSourceTag source={reachTotalsResult.source} reason={reachTotalsResult.reason} />
+            </div>
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
               Deuxième appel à la même métrique <code>reach</code>, cette fois en total sur 30 jours ventilé par format
               (posts, reels, stories) — pas un point par jour, cette combinaison-là n&apos;existe pas côté Meta.
@@ -279,6 +343,9 @@ export default async function AnalysePage({
             />
           </div>
         </Card>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <LiveSourceTag source={periodTotalsResult.source} reason={periodTotalsResult.reason} />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
           {(
             [
@@ -310,7 +377,8 @@ export default async function AnalysePage({
               <BreakdownList rows={periodTotals.profileLinksTapsByButton} />
               <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
                 Les types de bouton affichés dépendent de ceux configurés sur le profil Instagram — un bouton absent ne
-                remonte pas comme zéro, il n&apos;apparaît simplement pas.
+                remonte pas comme zéro, il n&apos;apparaît simplement pas. Ne couvre pas le clic sur le lien en bio,
+                comptabilisé séparément (§3, Actions sur le profil).
               </span>
             </div>
           )}
@@ -318,29 +386,29 @@ export default async function AnalysePage({
       </div>
 
       {/* 3. Publications
-          GET /{media-id}/insights par publication (posts et reels). La
-          liste elle-même vient de notre propre table `content` (import ZIP),
-          pas de GET /{ig-user-id}/media — le jour où cette liste sera
-          branchée en direct, prévoir sa pagination par curseurs
+          GET /{media-id}/insights par publication (posts et reels), toutes
+          VÉRIFIÉES le 08/09/2026 sur un compte réel à 2429 abonnés : reach,
+          views, likes, comments, saved, shares, reposts, total_interactions.
+          follows/profile_visits/profile_activity (breakdown=action_type,
+          gratuit dans le même appel mais à isoler de toute métrique sans
+          breakdown) : posts uniquement, absents sans erreur sur les reels.
+          profile_activity ne renvoie que les postes non nuls parmi
+          BIO_LINK_CLICKED, CALL, DIRECTION, EMAIL, TEXT — jamais tous à la
+          fois. reels_skip_rate (pourcentage direct) et
+          ig_reels_avg_watch_time (millisecondes, ex. observé 4840 ms) :
+          reels uniquement. La liste elle-même vient de notre propre table
+          `content` (import ZIP), pas de GET /{ig-user-id}/media — le jour où
+          elle sera branchée en direct, prévoir sa pagination par curseurs
           (paging.cursors.after, paging.next), jamais par offset ; noter
-          aussi que media_type (IMAGE/VIDEO/CAROUSEL_ALBUM) et
-          media_product_type (FEED/REELS/STORY) sont deux axes différents —
-          un CAROUSEL_ALBUM est classé FEED, pas un troisième type à
-          mapper (VÉRIFIÉ le 08/09/2026).
-          VÉRIFIÉ le 08/09/2026 : reach, views (point H, sur un reel),
-          profile_activity + son breakdown=action_type (point I — ne renvoie
-          que les postes non nuls parmi BIO_LINK_CLICKED, CALL, DIRECTION,
-          EMAIL, TEXT, jamais tous à la fois ; posts uniquement, inexistant
-          sur les reels), ig_reels_avg_watch_time (confirmé en
-          millisecondes, ex. observé 4840 ms). NON VÉRIFIÉ CONTRE L'API — à
-          tester avant prod, appel : GET /{media-id}/insights?metric=likes,
-          comments,saved,shares,follows,profile_visits,reposts,
-          total_interactions,reels_skip_rate,total_views,total_likes,
-          total_comments : le reste des métriques ci-dessous (likes,
-          comments, enregistrements, partages, reposts, interactions
-          totales, visites de profil, taux de skip, vues/j'aime/commentaires
-          toutes surfaces). Aucun insight sur les images d'un carrousel pris
-          individuellement. Conservation 2 ans. */}
+          aussi que media_type (IMAGE/VIDEO/CAROUSEL_ALBUM observés) et
+          media_product_type (FEED/REELS observés dans l'échantillon) sont
+          deux axes différents — un CAROUSEL_ALBUM est classé FEED, pas un
+          troisième type à mapper. NON VÉRIFIÉ CONTRE L'API : total_views/
+          total_likes/total_comments (agrégat multi-surfaces, Facebook
+          Login) et ig_reels_video_view_total_time (non affiché ici). Aucun
+          insight sur les images d'un carrousel pris individuellement
+          (Meta parle de « conteneur de carrousel » dans la description de
+          reach). Conservation 2 ans. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={3}
@@ -348,14 +416,19 @@ export default async function AnalysePage({
           cadence={<CadenceChip cadence="J" />}
           subtitle="Contenu réel (légende, date) — métriques en attendant le branchement de l'API. Aucun insight n'existe pour les images individuelles d'un carrousel : seul l'album entier est mesuré."
         />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <LiveSourceTag source={postInsightsResult.source} reason={postInsightsResult.reason} />
+        </div>
         <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
           « Actions sur le profil » ne détaille que les boutons configurés sur le profil Instagram — un bouton absent ne
-          remonte pas comme zéro, il n&apos;apparaît simplement pas.
+          remonte pas comme zéro, il n&apos;apparaît simplement pas. Les j&apos;aime sont cumulés depuis la publication
+          alors que la portée est un compte de comptes uniques : un taux « j&apos;aime / portée » supérieur à 100 % n&apos;est
+          pas une anomalie.
         </p>
-        <UnverifiedNote callToTest="GET /{media-id}/insights?metric=likes,comments,saved,shares,follows,profile_visits,reposts,total_interactions,reels_skip_rate — seuls reach, views, profile_activity et ig_reels_avg_watch_time ont été rejoués en conditions réelles" />
+        <UnverifiedNote callToTest="GET /{media-id}/insights?metric=total_views,total_likes,total_comments — agrégat multi-surfaces, jamais rejoué en conditions réelles" />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-          {(posts ?? []).map((p) => {
-            const insights = mockMediaInsights(p.id, p.media_type as MediaType, followersTotal);
+          {(posts ?? []).map((p, i) => {
+            const insights = postInsightsList[i];
             return (
               <Card key={p.id} variant="claire" interactive={false}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
@@ -385,7 +458,7 @@ export default async function AnalysePage({
                         <BreakdownList rows={insights.profileActivity.byAction} />
                       </div>
                     )}
-                    {insights.reelsSkipRate != null && <MetricRow label="Taux de skip (3 premières s)" value={`${insights.reelsSkipRate} %`} />}
+                    {insights.reelsSkipRate != null && <MetricRow label="Taux de skip (3 premières s)" value={pct(insights.reelsSkipRate, 1)} />}
                     {insights.avgWatchTimeMs != null && <MetricRow label="Durée de visionnage moyenne" value={`${Math.round(insights.avgWatchTimeMs / 1000)} s`} />}
                     {insights.totalViews != null && (
                       <div title="Agrège Instagram + surfaces Facebook cross-postées ou boostées — Facebook Login. C'est le chiffre que le client voit dans l'app Instagram.">
@@ -401,12 +474,13 @@ export default async function AnalysePage({
       </div>
 
       {/* 4. Commentaires en direct
-          Webhook `comments` (Facebook Login) : chaque commentaire pousserait
-          un événement avec from.username/from.id, texte et média — aucun
-          sondage, donc pas de nombre d'appels à documenter ici. Ce serait la
-          seule donnée entrante nominative de tout le périmètre. NON VÉRIFIÉ
-          CONTRE L'API : webhook jamais configuré, compte de test sans
-          commentaire. */}
+          Webhook `comments` (Facebook Login, demande une URL publique de
+          réception) : chaque commentaire pousserait un événement avec
+          from.username/from.id, texte et média — aucun sondage, donc pas de
+          nombre d'appels à documenter ici. Ce serait la seule donnée
+          entrante nominative de tout le périmètre. NON VÉRIFIÉ CONTRE
+          L'API : webhook jamais configuré (URL publique manquante),
+          compte de test sans commentaire pendant la fenêtre de test. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={4}
@@ -414,7 +488,7 @@ export default async function AnalysePage({
           cadence={<CadenceChip cadence="RT" />}
           subtitle="Aperçu du flux temps réel : dès qu'un abonné commente, l'entrée apparaît ici sans recharger la page."
         />
-        <UnverifiedNote callToTest="configurer le webhook `comments` (Facebook Login) et publier un commentaire de test pour confirmer la présence de from.username/from.id dans la charge utile" />
+        <UnverifiedNote callToTest="configurer le webhook `comments` (Facebook Login, URL publique requise) et publier un commentaire de test pour confirmer la charge utile" />
         <Card variant="encre" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(250,248,243,0.85)", textWrap: "pretty" }}>
@@ -430,11 +504,14 @@ export default async function AnalysePage({
 
       {/* 5. Top commentateurs
           Aucun endpoint Meta ne classe les commentateurs : reconstruit chez
-          nous à partir de l'historique du webhook `comments` (section 4),
-          qui fournirait déjà l'identité — le classement s'affine mois après
-          mois à mesure que l'historique s'accumule, il ne part jamais de
-          zéro utile. NON VÉRIFIÉ CONTRE L'API : dépend entièrement du
-          webhook de la section 4, jamais configuré. */}
+          nous à partir des commentaires collectés (webhook ou lecture
+          périodique de GET /{media-id}/comments). VÉRIFIÉ le 08/09/2026 :
+          cet endpoint fonctionne et renvoie bien le USERNAME du
+          commentateur (avec id, text, timestamp, like_count) — le
+          classement nominatif est donc techniquement possible dès le
+          premier commentaire lu, pas seulement "à terme". NON VÉRIFIÉ CONTRE
+          L'API : notre propre mécanisme de collecte en continu (webhook ou
+          sondage périodique), jamais configuré ni testé dans la durée. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={5}
@@ -442,12 +519,15 @@ export default async function AnalysePage({
           cadence={<CadenceChip cadence="CUMUL" />}
           subtitle="En stockant chaque commentaire reçu au fil du temps (§4 ci-dessus), on reconstitue qui commente le plus souvent — un classement qui s'affine mois après mois, à mesure que l'historique s'accumule."
         />
-        <UnverifiedNote callToTest="dépend du webhook `comments` (section 4), pas d'appel indépendant à tester" />
+        <UnverifiedNote callToTest="mettre en place la collecte continue (webhook `comments` ou sondage périodique de GET /{media-id}/comments) — l'identité du commentateur est déjà confirmée présente dans la réponse" />
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              Classement illustratif — le vrai classement se construira à partir des commentaires réellement reçus.
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Classement illustratif — le vrai classement se construira à partir des commentaires réellement reçus.
+              </span>
+              <LiveSourceTag source={topCommentersResult.source} reason={topCommentersResult.reason} />
+            </div>
             <div style={{ maxHeight: 480, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "2px 16px", alignContent: "start" }}>
               {topCommenters.map((c, i) => (
                 <div key={c.username} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid var(--bordure-carte)" }}>
@@ -468,19 +548,20 @@ export default async function AnalysePage({
           GET /{media-id}/insights — reach, views, shares, reposts,
           total_interactions, follows, profile_visits, profile_activity
           (breakdown=action_type), navigation (tap_forward/tap_back/exits/
-          swipe_forward). Contrairement aux reels, follows/profile_visits/
-          profile_activity EXISTENT bien sur les stories. PAS de likes, PAS
-          de comments, PAS de saved. `replies` existe mais remonte toujours 0
-          pour un compte créé en Europe (depuis le 01/12/2020) ou au Japon
-          (depuis le 14/04/2021) — au lieu d'afficher ce zéro trompeur par
-          story, un seul bandeau statique l'explique une fois. <5 vues →
-          erreur (#10) Not enough viewers, affichée comme un état, pas comme
-          un score cassé. Disponible 24 h seulement : il faut le webhook
-          story_insights (Facebook Login) pour le capter à temps.
+          swipe_forward, breakdown story_navigation_action_type).
+          Contrairement aux reels, follows/profile_visits/profile_activity
+          EXISTENT bien sur les stories (doc + §1 du compte-rendu). PAS de
+          likes, PAS de comments, PAS de saved. `replies` existe mais
+          remonte toujours 0 pour un compte créé en Europe (depuis le
+          01/12/2020) ou au Japon (depuis le 14/04/2021) — au lieu d'afficher
+          ce zéro trompeur par story, un seul bandeau statique l'explique une
+          fois. <5 vues → erreur (#10) Not enough viewers, affichée comme un
+          état, pas comme un score cassé. Disponible 24 h seulement : il faut
+          le webhook story_insights (Facebook Login) pour le capter à temps.
           SECTION ENTIÈRE NON VÉRIFIÉE CONTRE L'API : le compte de test
-          n'avait aucune story — aucune métrique ci-dessous, y compris le
-          seuil des 5 vues et le webhook story_insights, n'a été rejouée en
-          conditions réelles. */}
+          n'avait aucune story active — rien ci-dessus, y compris le seuil
+          des 5 vues, replies=0 et le webhook, n'a été rejoué en conditions
+          réelles. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={6}
@@ -505,9 +586,12 @@ export default async function AnalysePage({
           « Actions sur le profil » ne détaille que les boutons configurés sur le profil Instagram — un bouton absent ne
           remonte pas comme zéro, il n&apos;apparaît simplement pas.
         </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <LiveSourceTag source={storyInsightsResult.source} reason={storyInsightsResult.reason} />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-          {(stories ?? []).map((s) => {
-            const insights = mockMediaInsights(s.id, "story", followersTotal);
+          {(stories ?? []).map((s, i) => {
+            const insights = storyInsightsList[i];
             return (
               <Card key={s.id} variant="claire" interactive={false}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
@@ -566,19 +650,39 @@ export default async function AnalysePage({
       </div>
 
       {/* 7. Audience
-          GET /{ig-user-id}/insights, metric_type=total_value → 5 appels,
-          un par breakdown, jamais mélangés — nécessite ≥100 abonnés,
-          classement limité au top ~45 par Meta. VÉRIFIÉ le 08/09/2026 pour
-          breakdown=city UNIQUEMENT : 45 résultats exactement (plafond top
-          45 atteint), timeframe=this_month fonctionne, libellé "Ville,
+          GET /{ig-user-id}/insights?metric=follower_demographics&
+          period=lifetime&timeframe=this_month&metric_type=total_value&
+          breakdown=<city|country|gender|age> — un appel par breakdown,
+          jamais mélangés → 4 appels, VÉRIFIÉS le 08/09/2026 pour LES
+          QUATRE : plafond top 45 confirmé (city et country), toutes les
+          valeurs sont des effectifs absolus (converties en % ici à
+          l'affichage, jamais générées comme telles). city : libellé "Ville,
           Région" concaténé en une seule chaîne (ex. "Marseille,
-          Provence-Alpes-Côte d'Azur") — traité comme opaque, jamais reparsé
-          sur la virgule. country/gender/age (follower_demographics) et
-          engaged_audience_demographics (villes engagées, seuil ≥100
-          engagements sur la période et non ≥100 abonnés, timeframes
-          this_week/this_month uniquement) : NON VÉRIFIÉS CONTRE L'API. */}
+          Provence-Alpes-Côte d'Azur"), traité comme opaque. country : codes
+          ISO 3166-1 alpha-2 ("FR", "BR"...), traduits ici via une table de
+          correspondance. gender : F/M/U — "U" signifie non renseigné (93 %
+          observé sur le compte de test), pas "autre" : Instagram ne demande
+          pas le genre à l'inscription. age : SEPT tranches, 13-17 à 65+.
+          Le total mesuré est inférieur au nombre d'abonnés (observé : 2164
+          sur 2429) — seuls les abonnés pour qui Meta a la donnée entrent
+          dans le calcul, jamais présenté comme exhaustif.
+          5e appel séparé : engaged_audience_demographics, breakdown=city —
+          À ISOLER (une erreur ici ferait tomber tout le reste si groupée).
+          Comportement DIFFÉRENT : sous le seuil (≥100 engagements par
+          critère), Meta renvoie une vraie erreur (code 3006 "Not enough
+          users"), pas un jeu vide — capturée et affichée telle quelle
+          (error_user_msg, déjà en français). VÉRIFIÉ le 08/09/2026
+          UNIQUEMENT sur ce chemin d'erreur ; le chemin de succès n'a jamais
+          été observé (compte de test sous le seuil). */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={7} title="Audience" cadence={<CadenceChip cadence="S" />} subtitle="Profil agrégé des abonnés — jamais attribué à une personne. Classement limité au top 45 par Meta." />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <LiveSourceTag source={demographicsResult.source} reason={demographicsResult.reason} />
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            Basé sur {fr(demographics.measuredTotal)} abonnés mesurés sur {fr(followersTotal)} — Meta n&apos;a de donnée
+            démographique que pour une partie des abonnés, jamais la totalité.
+          </span>
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -594,7 +698,6 @@ export default async function AnalysePage({
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <span style={{ fontSize: 15, fontWeight: 700 }}>Top pays (sur 45 max)</span>
-              <UnverifiedNote callToTest="GET /{ig-user-id}/insights?metric=follower_demographics&breakdown=country&metric_type=total_value&timeframe=this_month" />
               {demographics.followerCountries.map((c) => (
                 <div key={c.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                   <span style={{ color: "var(--text-muted)" }}>{c.label}</span>
@@ -605,35 +708,56 @@ export default async function AnalysePage({
           </Card>
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <span style={{ fontSize: 15, fontWeight: 700 }}>Villes engagées (sur 45 max)</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>Villes engagées (sur 45 max)</span>
+                <LiveSourceTag source={engagedAudienceResult.source} reason={engagedAudienceResult.reason} />
+              </div>
               <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>
-                Comptes ayant interagi, pas seulement abonnés — nécessite ≥100 engagements sur la période. Disponible
-                « cette semaine » ou « ce mois-ci » seulement, pas sur 90 jours comme le reste de cette page.
+                Comptes ayant interagi, pas seulement abonnés — nécessite ≥100 engagements sur la période, dans chaque
+                critère de répartition. Disponible « cette semaine » ou « ce mois-ci » seulement, pas sur 90 jours comme
+                le reste de cette page.
               </span>
-              <UnverifiedNote callToTest="GET /{ig-user-id}/insights?metric=engaged_audience_demographics&breakdown=city&metric_type=total_value&timeframe=this_month" />
-              {demographics.engagedCities.map((c) => (
-                <div key={c.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                  <span style={{ color: "var(--text-muted)" }}>{c.label}</span>
-                  <span style={{ fontWeight: 700 }}>{fr(c.value)}</span>
+              {engagedAudience.ok ? (
+                engagedAudience.rows.map((c) => (
+                  <div key={c.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                    <span style={{ color: "var(--text-muted)" }}>{c.label}</span>
+                    <span style={{ fontWeight: 700 }}>{fr(c.value)}</span>
+                  </div>
+                ))
+              ) : (
+                <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 12, padding: "10px 12px", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                  {engagedAudience.errorUserMsg}
                 </div>
-              ))}
+              )}
             </div>
           </Card>
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <span style={{ fontSize: 15, fontWeight: 700 }}>Genre</span>
-              <UnverifiedNote callToTest="GET /{ig-user-id}/insights?metric=follower_demographics&breakdown=gender&metric_type=total_value&timeframe=this_month" />
-              <MetricRow label="Femmes" value={`${demographics.genderSplit.femme} %`} />
-              <MetricRow label="Hommes" value={`${demographics.genderSplit.homme} %`} />
-              <MetricRow label="Autre" value={`${demographics.genderSplit.autre} %`} />
+              {unspecifiedPct >= 20 && (
+                <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  {pct(unspecifiedPct, 0)} des abonnés mesurés n&apos;ont pas renseigné leur genre auprès d&apos;Instagram
+                  (« U », non demandé à l&apos;inscription) — répartition ci-dessous calculée sur les{" "}
+                  {fr(genderReported)} restants.
+                </span>
+              )}
+              {genderReported > 0 ? (
+                <>
+                  <MetricRow label="Femmes" value={pct((demographics.genderSplit.female / genderReported) * 100)} />
+                  <MetricRow label="Hommes" value={pct((demographics.genderSplit.male / genderReported) * 100)} />
+                </>
+              ) : (
+                <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+                  Aucun abonné mesuré n&apos;a renseigné son genre.
+                </span>
+              )}
             </div>
           </Card>
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <span style={{ fontSize: 15, fontWeight: 700 }}>Âge</span>
-              <UnverifiedNote callToTest="GET /{ig-user-id}/insights?metric=follower_demographics&breakdown=age&metric_type=total_value&timeframe=this_month" />
               {demographics.ageSplit.map((a) => (
-                <MetricRow key={a.label} label={a.label} value={`${a.value} %`} />
+                <MetricRow key={a.label} label={a.label} value={demographics.measuredTotal > 0 ? pct((a.value / demographics.measuredTotal) * 100) : null} />
               ))}
             </div>
           </Card>
@@ -641,13 +765,15 @@ export default async function AnalysePage({
       </div>
 
       {/* 8. Mentions et veille
-          Mentions : webhook `mentions` + edge /{ig-user-id}/tags (Facebook
-          Login) — ne capte pas les mentions en story. NON VÉRIFIÉ CONTRE
-          L'API : ni le webhook ni l'edge n'ont été testés, compte de test
-          sans mention. Veille : GET /{ig-user-id}?fields=business_
-          discovery.username(...) — VÉRIFIÉ le 08/09/2026 (exemple : lacoste,
-          8 873 423 abonnés) — un appel par concurrent, données publiques
-          uniquement. */}
+          Mentions : edge /{ig-user-id}/tags — VÉRIFIÉ le 08/09/2026 :
+          accessible avec les scopes courants, renvoie {"{"}"data":[]{"}"} sur
+          le compte de test (structure confirmée, aucune mention à ce jour).
+          Webhook `mentions` (temps réel, légende/commentaire) — NON VÉRIFIÉ
+          CONTRE L'API : demande une URL publique de réception, jamais
+          configurée. Ne capte de toute façon pas les mentions en story.
+          Veille : GET /{ig-user-id}?fields=business_discovery.username(...)
+          — VÉRIFIÉ le 08/09/2026 (exemple : lacoste, 8 873 423 abonnés) — un
+          appel par concurrent, données publiques uniquement. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={8} title="Mentions et veille" subtitle="Ce qui se dit autour de la marque, et où elle se situe face à ses concurrents." />
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
@@ -656,8 +782,9 @@ export default async function AnalysePage({
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 15, fontWeight: 700 }}>Mentions</span>
                 <CadenceChip cadence="RT" />
+                <LiveSourceTag source={mentionsResult.source} reason={mentionsResult.reason} />
               </div>
-              <UnverifiedNote callToTest="configurer le webhook `mentions` et l'edge GET /{ig-user-id}/tags, puis mentionner le compte pour confirmer la charge utile" />
+              <UnverifiedNote callToTest="configurer le webhook `mentions` (URL publique requise), puis mentionner le compte pour confirmer la charge utile — l'edge /{ig-user-id}/tags, lui, est déjà confirmé accessible" />
               {mentions.map((m, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", gap: 2, borderTop: i > 0 ? "1px solid var(--bordure-carte)" : undefined, paddingTop: i > 0 ? 10 : 0 }}>
                   <span style={{ fontSize: 12, fontWeight: 700 }}>@{m.author}</span>
@@ -673,6 +800,7 @@ export default async function AnalysePage({
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 15, fontWeight: 700 }}>Veille concurrentielle</span>
                 <CadenceChip cadence="S" />
+                <LiveSourceTag source={competitorsResult.source} reason={competitorsResult.reason} />
               </div>
               {competitors.map((c) => (
                 <div key={c.username} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
