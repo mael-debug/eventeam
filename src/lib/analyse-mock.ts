@@ -3,6 +3,14 @@
 // l'autre. Ces valeurs illustrent ce que l'API Graph Meta renverrait une
 // fois branchée — jamais présentées comme mesurées. Plages calibrées sur le
 // catalogue validé : ne pas inventer de champ hors de ce catalogue.
+//
+// Cadre du projet (détermine tout le reste) : solution propriétaire
+// mono-client pour Eden Park, un seul compte Instagram suivi, voie
+// Instagram API with Facebook Login. Les utilisateurs Eden Park se
+// connectent à l'app via Supabase, jamais auprès de Meta ; un seul jeton,
+// autorisé une fois par une personne ayant un rôle sur la Page, stocké
+// côté serveur. L'app Meta reste en mode développement pour ce seul compte.
+export const GRAPH_VERSION = "v26.0";
 
 function hashSeed(input: string): number {
   let h = 2166136261;
@@ -32,32 +40,52 @@ function between(r: () => number, min: number, max: number): number {
   return Math.round(min + r() * (max - min));
 }
 
+export interface DemographicRow {
+  label: string;
+  value: number;
+}
+
+// Répartit `total` entre `labels` avec des poids aléatoires stables — sert à
+// simuler n'importe quel breakdown Meta (action_type, contact_button_type,
+// follow_type...) une fois qu'on connaît le total agrégé de la métrique.
+function splitTotal(r: () => number, labels: string[], total: number): DemographicRow[] {
+  const weights = labels.map(() => 0.2 + r());
+  const sum = weights.reduce((s, w) => s + w, 0);
+  return labels.map((label, i) => ({ label, value: Math.round((total * weights[i]) / sum) })).sort((a, b) => b.value - a.value);
+}
+
 export type MediaType = "post" | "reel" | "story";
 
 // Disponibilité par type de média — GET /{media-id}/insights, doc Graph API
-// v25.0 (Instagram API with Facebook Login). Vérification directe des pages
-// developers.facebook.com bloquée par la politique réseau de ce bac à sable ;
-// ce mapping s'appuie sur le tableau fourni et vérifié par le client, recoupé
-// via recherche indépendante pour les points à plus fort risque. À
-// recontrôler manuellement contre la console Meta avant la mise en prod.
-//   - FEED (post)  : reach, views, likes, comments, saved, shares, follows,
-//                    profile_visits, profile_activity. Aucun insight sur les
-//                    images individuelles d'un carrousel (seul l'album l'est).
-//   - REELS        : reach, views, likes, comments, saved, shares,
-//                    ig_reels_avg_watch_time (ms). PAS de follows ni de
-//                    profile_visits — ces deux champs n'existent pas sur ce
-//                    type de média, quoi qu'en dise une intégration naïve.
-//   - STORY        : reach, views, navigation (tap_forward/tap_back/exits).
-//                    PAS de follows, PAS de profile_visits. Le champ replies
-//                    existe mais remonte toujours 0 pour un compte créé en
-//                    Europe/Japon (limitation documentée par Meta, pas un
-//                    bug) — non exposé ici, voir le bandeau statique de la
-//                    section Stories plutôt qu'une ligne par story.
-//                    <5 vues → erreur (#10) « Not enough viewers » : c'est un
-//                    état d'affichage réel, pas un zéro.
+// GRAPH_VERSION (Instagram API with Facebook Login), tableau vérifié contre
+// la documentation officielle — ne pas re-rechercher.
+//   - FEED (post)  : comments, follows, likes, profile_activity,
+//                    profile_visits, reach, reposts, saved, shares,
+//                    total_interactions, views, total_comments, total_likes,
+//                    total_views. Aucun insight sur les images individuelles
+//                    d'un carrousel (seul l'album l'est).
+//   - REELS        : comments, ig_reels_avg_watch_time (ms, non documenté
+//                    précisément par Meta — à vérifier sur un appel réel
+//                    avant prod), ig_reels_video_view_total_time (non
+//                    modélisé ici), likes, reach, reels_skip_rate, reposts,
+//                    saved, shares, total_interactions, views,
+//                    total_comments, total_likes, total_views. PAS de
+//                    follows, PAS de profile_visits, PAS de profile_activity
+//                    — ces champs n'existent pas sur ce type de média.
+//   - STORY        : follows, navigation (tap_forward/tap_back/exits/
+//                    swipe_forward), profile_activity, profile_visits,
+//                    reach, replies, reposts, shares, total_interactions,
+//                    views, total_views. PAS de likes, PAS de comments, PAS
+//                    de saved. `replies` existe mais remonte toujours 0
+//                    pour un compte créé en Europe (depuis le 01/12/2020) ou
+//                    au Japon (depuis le 14/04/2021) — non exposé ici, voir
+//                    le bandeau statique de la section Stories plutôt qu'une
+//                    ligne par story. <5 vues → erreur (#10) « Not enough
+//                    viewers for the media to show insights » : c'est un
+//                    état d'affichage réel, pas un zéro. Disponible 24 h
+//                    seulement — d'où le webhook story_insights.
 //   - total_views / total_likes / total_comments (FEED + REELS) agrègent
-//     Instagram + surfaces Facebook — nécessite Facebook Login, indisponible
-//     sous Instagram API with Instagram Login seul.
+//     Instagram + surfaces Facebook — Instagram API with Facebook Login.
 export interface MediaInsights {
   reach: number;
   views: number;
@@ -67,14 +95,20 @@ export interface MediaInsights {
   shares: number;
   follows: number | null;
   profileVisits: number | null;
-  profileActivity: number | null;
+  // breakdown=action_type : BIO_LINK_CLICKED, CALL, DIRECTION, EMAIL, TEXT.
+  profileActivity: { total: number; byAction: DemographicRow[] } | null;
   navigation: { tapForward: number; tapBack: number; tapExit: number; swipeForward: number } | null;
-  avgWatchTimeSeconds: number | null;
+  reposts: number;
+  totalInteractions: number;
+  reelsSkipRate: number | null;
+  avgWatchTimeMs: number | null;
   totalLikes: number | null;
   totalComments: number | null;
   totalViews: number | null;
   tooFewViewers: boolean;
 }
+
+const PROFILE_ACTION_LABELS = ["Lien bio", "Appel", "Itinéraire", "Email", "SMS"];
 
 export function mockMediaInsights(contentId: string, mediaType: MediaType, followersTotal: number): MediaInsights {
   const r = rng(contentId);
@@ -85,29 +119,40 @@ export function mockMediaInsights(contentId: string, mediaType: MediaType, follo
   if (tooFewViewers) {
     return {
       reach: 0, views: 0, likes: null, comments: null, saved: null, shares: 0, follows: null,
-      profileVisits: null, profileActivity: null, navigation: null,
-      avgWatchTimeSeconds: null, totalLikes: null, totalComments: null,
+      profileVisits: null, profileActivity: null, navigation: null, reposts: 0, totalInteractions: 0,
+      reelsSkipRate: null, avgWatchTimeMs: null, totalLikes: null, totalComments: null,
       totalViews: null, tooFewViewers: true,
     };
   }
 
+  // Portée proportionnelle à la taille du compte pour les trois formats —
+  // une story n'a pas de traitement à part, contrairement à l'ancienne
+  // fourchette 10000-18000 fixe qui ignorait la taille réelle du compte.
   const reachPct = between(r, 17, 50) / 100;
-  const reach = mediaType === "story" ? between(r, 10000, 18000) : Math.round(followersTotal * reachPct);
+  const reach = Math.round(followersTotal * reachPct);
   const viewsMultiplier = mediaType === "reel" ? between(r, 30, 80) / 10 : between(r, 12, 16) / 10;
   const views = Math.round(reach * viewsMultiplier);
   const likes = mediaType === "story" ? null : Math.round(reach * 0.06);
   const comments = mediaType === "story" ? null : Math.round((likes ?? 0) * 0.03);
   const saved = mediaType === "story" ? null : between(r, 40, 300);
   const shares = between(r, 10, 90);
-  // follows / profile_visits / profile_activity : uniquement sur FEED.
-  const follows = mediaType === "post" ? between(r, 5, 60) : null;
-  const profileVisits = mediaType === "post" ? between(r, 100, 900) : null;
-  const profileActivity = mediaType === "post" ? Math.round((profileVisits ?? 0) * 0.4) : null;
+  // follows / profile_visits / profile_activity : FEED et STORY, jamais REELS.
+  const follows = mediaType === "reel" ? null : between(r, 5, 60);
+  const profileVisits = mediaType === "reel" ? null : between(r, 100, 900);
+  const profileActivityTotal = profileVisits != null ? Math.round(profileVisits * 0.4) : null;
+  const profileActivity =
+    profileActivityTotal != null ? { total: profileActivityTotal, byAction: splitTotal(r, PROFILE_ACTION_LABELS, profileActivityTotal) } : null;
   const navigation =
     mediaType === "story"
       ? { tapForward: between(r, 2000, 5000), tapBack: between(r, 200, 600), tapExit: between(r, 300, 900), swipeForward: between(r, 100, 500) }
       : null;
-  const avgWatchTimeSeconds = mediaType === "reel" ? between(r, 4, 12) : null;
+  // reposts et total_interactions : disponibles sur les trois formats.
+  const reposts = between(r, 2, 40);
+  const totalInteractions = shares + (likes ?? 0) + (comments ?? 0) + (saved ?? 0);
+  const reelsSkipRate = mediaType === "reel" ? between(r, 18, 55) : null;
+  // ig_reels_avg_watch_time : Meta ne documente pas l'unité explicitement —
+  // généré en millisecondes ici, à confirmer sur un appel réel avant prod.
+  const avgWatchTimeMs = mediaType === "reel" ? between(r, 4000, 12000) : null;
   const bump = () => 1 + between(r, 5, 15) / 100;
   const totalLikes = likes != null ? Math.round(likes * bump()) : null;
   const totalComments = comments != null ? Math.round(comments * bump()) : null;
@@ -115,7 +160,7 @@ export function mockMediaInsights(contentId: string, mediaType: MediaType, follo
 
   return {
     reach, views, likes, comments, saved, shares, follows, profileVisits, profileActivity,
-    navigation, avgWatchTimeSeconds, totalLikes, totalComments,
+    navigation, reposts, totalInteractions, reelsSkipRate, avgWatchTimeMs, totalLikes, totalComments,
     totalViews, tooFewViewers: false,
   };
 }
@@ -125,7 +170,13 @@ export interface AccountDailyPoint {
   reach: number;
 }
 
-// Courbe de portée compte, 30 points quotidiens — §3.B, cadence J.
+// GET /{ig-user-id}/insights, metric=reach, metric_type=time_series,
+// period=day, since/until=30 j, SANS breakdown → 1 appel. Meta ne renvoie
+// jamais de breakdown avec metric_type=time_series ("If you request
+// metric_type=time_series, breakdowns will not be included in the
+// response"), donc cette courbe est globale, pas ventilée par format — voir
+// mockAccountReachTotalsByFormat pour la répartition par format sur la
+// période (un total, pas une série quotidienne).
 export function mockAccountReachSeries(accountId: string, followersTotal: number, days = 30): AccountDailyPoint[] {
   const r = rng(`${accountId}:reach-series`);
   const base = Math.round(followersTotal * 0.02);
@@ -141,44 +192,24 @@ export function mockAccountReachSeries(accountId: string, followersTotal: number
   return points;
 }
 
-export interface FormatReachSeries {
-  dates: string[];
-  post: number[];
-  reel: number[];
-  story: number[];
+export interface FormatReachTotals {
+  post: number;
+  reel: number;
+  story: number;
 }
 
-// GET /{ig-user-id}/insights, metric=reach, metric_type=time_series,
-// period=day, breakdown=media_product_type, since/until=30 j → 1 seul appel
-// (le breakdown est déjà ventilé par format dans la réponse, pas un appel par
-// jour). Fraîcheur réelle : Meta peut retarder ces chiffres jusqu'à 48 h,
-// même si on interroge chaque nuit — la conservation de Meta est de 90 jours,
-// au-delà seul notre propre historique archivé garde la donnée.
-export function mockAccountReachByFormat(accountId: string, followersTotal: number, days = 30): FormatReachSeries {
-  const r = rng(`${accountId}:reach-by-format`);
-  const basePost = Math.round(followersTotal * 0.009);
-  const baseReel = Math.round(followersTotal * 0.014);
-  const baseStory = Math.round(followersTotal * 0.006);
-  const dates: string[] = [];
-  const post: number[] = [];
-  const reel: number[] = [];
-  const story: number[] = [];
-  const today = new Date("2026-09-01T00:00:00Z");
-  let levelPost = basePost;
-  let levelReel = baseReel;
-  let levelStory = baseStory;
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setUTCDate(d.getUTCDate() - i);
-    levelPost = Math.max(80, levelPost + between(r, -Math.round(basePost * 0.15), Math.round(basePost * 0.18)));
-    levelReel = Math.max(80, levelReel + between(r, -Math.round(baseReel * 0.2), Math.round(baseReel * 0.25)));
-    levelStory = Math.max(80, levelStory + between(r, -Math.round(baseStory * 0.15), Math.round(baseStory * 0.18)));
-    dates.push(d.toISOString().slice(0, 10));
-    post.push(levelPost);
-    reel.push(levelReel);
-    story.push(levelStory);
-  }
-  return { dates, post, reel, story };
+// GET /{ig-user-id}/insights, metric=reach, metric_type=total_value,
+// breakdown=media_product_type, period=day, since/until=30 j → 1 appel.
+// Un total par format sur toute la période, PAS un point par jour : Meta ne
+// mélange jamais time_series et breakdown dans la même réponse (voir
+// mockAccountReachSeries ci-dessus pour la courbe quotidienne globale).
+export function mockAccountReachTotalsByFormat(accountId: string, followersTotal: number): FormatReachTotals {
+  const r = rng(`${accountId}:reach-totals-by-format`);
+  return {
+    post: Math.round(followersTotal * (between(r, 20, 32) / 100)),
+    reel: Math.round(followersTotal * (between(r, 30, 55) / 100)),
+    story: Math.round(followersTotal * (between(r, 12, 24) / 100)),
+  };
 }
 
 export interface MonthlyReachPoint {
@@ -222,6 +253,8 @@ export interface AccountPeriodTotals {
   follows: TrendMetric;
   unfollows: TrendMetric;
   profileLinksTaps: TrendMetric;
+  // breakdown=contact_button_type.
+  profileLinksTapsByButton: DemographicRow[];
 }
 
 // Chaque métrique est générée avec son niveau du mois précédent, puis le
@@ -235,6 +268,8 @@ function withTrend(r: () => number, previous: number): TrendMetric {
   return { value, deltaPct };
 }
 
+const CONTACT_BUTTON_LABELS = ["Appel", "Itinéraire", "Email", "SMS"];
+
 // GET /{ig-user-id}/insights, metric_type=total_value, period sur la fenêtre
 // affichée → 3 appels : (1) accounts_engaged, total_interactions, likes,
 // comments, shares, saves — regroupables tant qu'aucun breakdown n'est
@@ -243,10 +278,7 @@ function withTrend(r: () => number, previous: number): TrendMetric {
 // les traiter comme deux mesures indépendantes côté API, seul ce mock les
 // tire séparément) — nécessite ≥100 abonnés, et "désabonnements" mélange les
 // départs volontaires et les comptes supprimés/désactivés, à rappeler dans
-// l'UI ; (3) profile_links_taps — nom de métrique moins largement documenté
-// dans les sources recoupées ici (accès direct à developers.facebook.com
-// bloqué dans cet environnement) : à revérifier en priorité contre la
-// console Meta si ce champ renvoie une erreur une fois branché en direct.
+// l'UI ; (3) profile_links_taps avec breakdown=contact_button_type.
 export function mockAccountPeriodTotals(accountId: string, followersTotal: number): AccountPeriodTotals {
   const r = rng(`${accountId}:period-totals`);
   const prevLikes = Math.round(followersTotal * (between(r, 8, 14) / 100));
@@ -255,29 +287,30 @@ export function mockAccountPeriodTotals(accountId: string, followersTotal: numbe
   const shares = withTrend(r, between(r, 400, 1200));
   const saves = withTrend(r, between(r, 800, 2400));
   const totalInteractionsPrev = prevLikes + comments.value + shares.value + saves.value;
+  const profileLinksTaps = withTrend(r, between(r, 600, 1800));
   return {
     accountsEngaged: withTrend(r, Math.round(followersTotal * (between(r, 3, 6) / 100))),
     totalInteractions: withTrend(r, totalInteractionsPrev),
     likes, comments, shares, saves,
     follows: withTrend(r, between(r, 8000, 20000)),
     unfollows: withTrend(r, between(r, 4000, 11000)),
-    profileLinksTaps: withTrend(r, between(r, 600, 1800)),
+    profileLinksTaps,
+    profileLinksTapsByButton: splitTotal(r, CONTACT_BUTTON_LABELS, profileLinksTaps.value),
   };
-}
-
-export interface DemographicRow {
-  label: string;
-  value: number;
 }
 
 const CITIES = ["Paris", "Lyon", "Marseille", "Bordeaux", "Toulouse", "Lille", "Nantes", "Nice"];
 const COUNTRIES = ["France", "Belgique", "Suisse", "Algérie", "Royaume-Uni", "Maroc", "Canada", "États-Unis"];
 
-// GET /{ig-user-id}/insights, metric=follower_demographics, metric_type=
-// total_value, breakdown=city|country|gender|age (un appel par breakdown,
-// aucun mélange de breakdowns dans un même appel) → 4 appels. Nécessite
-// ≥100 abonnés ; classement limité au top ~45 par Meta, pas la liste
-// complète des villes/pays représentés.
+// GET /{ig-user-id}/insights, metric_type=total_value, un appel par
+// breakdown (jamais mélangés dans le même appel) → 5 appels : (1-4)
+// follower_demographics, breakdown=city|country|gender|age — nécessite
+// ≥100 abonnés, classement limité au top ~45 par Meta ; (5)
+// engaged_audience_demographics, breakdown=city — nécessite ≥100
+// engagements sur la période, et ne supporte plus que les timeframes
+// this_week et this_month (last_14/30/90_days et prev_month ont été
+// retirés) : "villes engagées" ne peut donc pas se comparer sur 90 jours
+// comme le reste de cette page.
 export function mockAudienceDemographics(accountId: string, followersTotal: number) {
   const r = rng(`${accountId}:demographics`);
   const engaged = Math.round(followersTotal * 0.08);
@@ -313,8 +346,7 @@ export interface MentionItem {
 }
 
 // Webhook `mentions` (commentaire ou légende) + edge /{ig-user-id}/tags —
-// Facebook Login uniquement. Les mentions en story ne sont pas captées par
-// ce webhook, quel que soit le mode d'authentification.
+// Facebook Login. Les mentions en story ne sont pas captées par ce webhook.
 export function mockMentions(accountId: string): MentionItem[] {
   const r = rng(`${accountId}:mentions`);
   const pool: MentionItem[] = [
