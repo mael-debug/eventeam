@@ -92,16 +92,26 @@ function BreakdownList({ rows }: { rows: DemographicRow[] }) {
   );
 }
 
+// Information interne (équipe technique), pas destinée au client : un
+// simple "i" au survol, jamais du texte affiché en direct sur la page.
 // Appel exécuté et rejoué contre de vraies données (08/09/2026) vs appel
-// jamais tenté sur ce compte : cette page distingue les deux plutôt que de
-// présenter une capacité documentée comme équivalente à une capacité
-// éprouvée. Ne retire rien — signale.
+// jamais tenté sur ce compte : cette page distingue les deux en interne
+// plutôt que de présenter une capacité documentée comme équivalente à une
+// capacité éprouvée. Ne retire rien — signale, discrètement.
 function UnverifiedNote({ callToTest }: { callToTest: string }) {
   return (
-    <div style={{ border: "1px dashed var(--bordure)", borderRadius: 12, padding: "8px 12px", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>
-      <strong style={{ fontStyle: "normal" }}>Non vérifié contre l&apos;API</strong> — jamais rejoué en conditions réelles sur ce
-      compte, à tester avant mise en prod : <code>{callToTest}</code>
-    </div>
+    <span
+      title={`Non vérifié contre l'API — jamais rejoué en conditions réelles sur ce compte, à tester avant mise en prod : ${callToTest}`}
+      aria-label={`Information interne, non vérifié contre l'API : ${callToTest}`}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
+        width: 15, height: 15, borderRadius: "50%", border: "1px solid var(--bordure)",
+        color: "var(--text-muted)", fontSize: 10, fontWeight: 700, fontStyle: "italic",
+        cursor: "help", lineHeight: 1,
+      }}
+    >
+      i
+    </span>
   );
 }
 
@@ -332,11 +342,13 @@ export default async function AnalysePage({
         </Card>
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <span style={{ fontSize: 15, fontWeight: 700 }}>Tendance de la portée, sur plusieurs mois</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>Tendance de la portée, sur plusieurs mois</span>
+              <UnverifiedNote callToTest="infaisable en un seul appel — nécessite d'archiver nos propres relevés de GET /{ig-user-id}/insights?metric=reach&period=day dans le temps" />
+            </div>
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
               Meta ne garde que 90 jours : cette vue longue n&apos;existe que grâce à notre propre historique, construit mois après mois.
             </span>
-            <UnverifiedNote callToTest="infaisable en un seul appel — nécessite d'archiver nos propres relevés de GET /{ig-user-id}/insights?metric=reach&period=day dans le temps" />
             <TrendLine
               labels={reachMonthly.map((p) => monthLabel(p.month))}
               series={[{ key: "reach", label: "Comptes touchés", color: "var(--bleu)", values: reachMonthly.map((p) => p.reach) }]}
@@ -423,9 +435,8 @@ export default async function AnalysePage({
           « Actions sur le profil » ne détaille que les boutons configurés sur le profil Instagram — un bouton absent ne
           remonte pas comme zéro, il n&apos;apparaît simplement pas. Les j&apos;aime sont cumulés depuis la publication
           alors que la portée est un compte de comptes uniques : un taux « j&apos;aime / portée » supérieur à 100 % n&apos;est
-          pas une anomalie.
+          pas une anomalie. <UnverifiedNote callToTest="GET /{media-id}/insights?metric=total_views,total_likes,total_comments — agrégat multi-surfaces, jamais rejoué en conditions réelles" />
         </p>
-        <UnverifiedNote callToTest="GET /{media-id}/insights?metric=total_views,total_likes,total_comments — agrégat multi-surfaces, jamais rejoué en conditions réelles" />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
           {(posts ?? []).map((p, i) => {
             const insights = postInsightsList[i];
@@ -485,10 +496,14 @@ export default async function AnalysePage({
         <SectionTitle
           n={4}
           title="Commentaires en direct"
-          cadence={<CadenceChip cadence="RT" />}
+          cadence={
+            <>
+              <CadenceChip cadence="RT" />
+              <UnverifiedNote callToTest="configurer le webhook `comments` (Facebook Login, URL publique requise) et publier un commentaire de test pour confirmer la charge utile" />
+            </>
+          }
           subtitle="Aperçu du flux temps réel : dès qu'un abonné commente, l'entrée apparaît ici sans recharger la page."
         />
-        <UnverifiedNote callToTest="configurer le webhook `comments` (Facebook Login, URL publique requise) et publier un commentaire de test pour confirmer la charge utile" />
         <Card variant="encre" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(250,248,243,0.85)", textWrap: "pretty" }}>
@@ -516,10 +531,14 @@ export default async function AnalysePage({
         <SectionTitle
           n={5}
           title="Top 50 des commentateurs"
-          cadence={<CadenceChip cadence="CUMUL" />}
+          cadence={
+            <>
+              <CadenceChip cadence="CUMUL" />
+              <UnverifiedNote callToTest="mettre en place la collecte continue (webhook `comments` ou sondage périodique de GET /{media-id}/comments) — l'identité du commentateur est déjà confirmée présente dans la réponse" />
+            </>
+          }
           subtitle="En stockant chaque commentaire reçu au fil du temps (§4 ci-dessus), on reconstitue qui commente le plus souvent — un classement qui s'affine mois après mois, à mesure que l'historique s'accumule."
         />
-        <UnverifiedNote callToTest="mettre en place la collecte continue (webhook `comments` ou sondage périodique de GET /{media-id}/comments) — l'identité du commentateur est déjà confirmée présente dans la réponse" />
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -566,10 +585,14 @@ export default async function AnalysePage({
         <SectionTitle
           n={6}
           title="Stories"
-          cadence={<CadenceChip cadence="STORY-END" />}
+          cadence={
+            <>
+              <CadenceChip cadence="STORY-END" />
+              <UnverifiedNote callToTest="publier une story de test puis GET /{media-id}/insights?metric=reach,views,navigation,replies,follows,profile_visits,shares,reposts,total_interactions,profile_activity — aucune n'a été rejouée en conditions réelles" />
+            </>
+          }
           subtitle="Les chiffres d'une story disparaissent 24 h après sa publication : seul le webhook, capté au bon moment, permet de les garder."
         />
-        <UnverifiedNote callToTest="publier une story de test puis GET /{media-id}/insights?metric=reach,views,navigation,replies,follows,profile_visits,shares,reposts,total_interactions,profile_activity — aucune n'a été rejouée en conditions réelles" />
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ background: "var(--pastel-jaune)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--encre)", lineHeight: 1.5 }}>
             🇫🇷 Sur un compte français, <strong>les réponses aux stories ne remontent jamais</strong> — une contrainte que
@@ -783,8 +806,8 @@ export default async function AnalysePage({
                 <span style={{ fontSize: 15, fontWeight: 700 }}>Mentions</span>
                 <CadenceChip cadence="RT" />
                 <LiveSourceTag source={mentionsResult.source} reason={mentionsResult.reason} />
+                <UnverifiedNote callToTest="configurer le webhook `mentions` (URL publique requise), puis mentionner le compte pour confirmer la charge utile — l'edge /{ig-user-id}/tags, lui, est déjà confirmé accessible" />
               </div>
-              <UnverifiedNote callToTest="configurer le webhook `mentions` (URL publique requise), puis mentionner le compte pour confirmer la charge utile — l'edge /{ig-user-id}/tags, lui, est déjà confirmé accessible" />
               {mentions.map((m, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", gap: 2, borderTop: i > 0 ? "1px solid var(--bordure-carte)" : undefined, paddingTop: i > 0 ? 10 : 0 }}>
                   <span style={{ fontSize: 12, fontWeight: 700 }}>@{m.author}</span>
