@@ -1,7 +1,12 @@
-import { Card, Chip } from "@/components/ds";
+import { Card, Chip, Button } from "@/components/ds";
+import { Input } from "@/components/ui/input";
 import { resolveBrandContext } from "@/lib/context/brand-context";
-import { fr, pct, shortDate, signedPct } from "@/lib/format";
+import { fr, signedFr, pct, shortDate, signedPct } from "@/lib/format";
 import { TrendLine } from "@/components/trend-line";
+import { ReconciliationBanner } from "@/components/reconciliation-banner";
+import { RevealDepartures, type DepartureRow } from "@/components/reveal-departures";
+import { RevealArrivals, type ArrivalRow } from "@/components/reveal-arrivals";
+import { createInstagramAccountAction } from "../actions";
 import {
   mockMediaInsights,
   mockAccountReachSeries,
@@ -23,14 +28,27 @@ import {
 import { CadenceChip } from "./cadence-chip";
 import { LiveComments } from "./live-comments";
 
-// Page Analyse — uniquement les métriques réellement récupérables dans le
-// cadre de ce projet, pour que chaque appel passe du premier coup une fois
-// branché. Toute métrique absente du catalogue vérifié n'apparaît nulle
-// part sur cette page — pas de tiret, pas de placeholder : la ligne
-// disparaît. Chaque section garde un commentaire d'en-tête donnant
-// l'endpoint, la ou les métriques, le breakdown, le metric_type, le nombre
-// d'appels et la fraîcheur réelle (jamais "chaque nuit" quand Meta autorise
-// un retard jusqu'à 48 h).
+// Page "Import / API" — fusion (2026-09-08) des anciens écrans Vue
+// d'ensemble, Audience, Croissance, Contenu et Écosystème (tous supprimés)
+// avec la page Analyse : un seul endroit pour comprendre le compte. Deux
+// piliers, dans cet ordre :
+//   1-2. Ce que l'export mensuel donne aujourd'hui — KPIs, réconciliation
+//        face aux chiffres Meta, et un exemple de suivi nominatif (qui est
+//        nouveau, revenu, ou parti) construit uniquement en comparant les
+//        deux derniers imports de follower_observations. Aucune autre
+//        donnée de l'export n'est montrée ici : les anciens écrans Audience/
+//        Contenu/Écosystème s'appuyaient sur des tables (audience_geo,
+//        content_metrics, v_ecosystem_chat_summary...) qui ne sont plus
+//        affichées nulle part dans l'app — l'import ne sert plus qu'à ce
+//        comparatif présent/absent.
+//   3-10. Ce que l'API Instagram (une fois branchée) ajoutera — uniquement
+//        les métriques réellement récupérables, pour que chaque appel passe
+//        du premier coup. Toute métrique absente du catalogue vérifié
+//        n'apparaît nulle part ici — pas de tiret, pas de placeholder : la
+//        ligne disparaît. Chaque section garde un commentaire d'en-tête
+//        donnant l'endpoint, la ou les métriques, le breakdown, le
+//        metric_type, le nombre d'appels et la fraîcheur réelle (jamais
+//        "chaque nuit" quand Meta autorise un retard jusqu'à 48 h).
 //
 // Cadre du projet : solution propriétaire mono-client pour Eden Park, un
 // seul compte Instagram suivi, voie Instagram API with Facebook Login
@@ -41,15 +59,17 @@ import { LiveComments } from "./live-comments";
 // un rôle sur la Page, stocké côté serveur. L'app Meta reste en mode
 // développement pour ce seul compte.
 //
-// Chaque section tente l'appel réel (aujourd'hui un stub qui échoue
-// systématiquement, voir withLiveFallback/notWiredYet dans analyse-mock.ts)
-// et retombe sur le mock en cas d'échec — c'est le même mécanisme qu'en
-// production le jour où un appel échouera pour de vraies raisons (jeton
-// expiré, limite de débit, panne Meta). Le badge "Simulé" à côté d'une
-// cadence signale ce repli ; aujourd'hui il apparaît partout puisque rien
-// n'est encore branché.
+// Chaque section du second pilier tente l'appel réel (aujourd'hui un stub
+// qui échoue systématiquement, voir withLiveFallback/notWiredYet dans
+// analyse-mock.ts) et retombe sur le mock en cas d'échec — c'est le même
+// mécanisme qu'en production le jour où un appel échouera pour de vraies
+// raisons (jeton expiré, limite de débit, panne Meta). Le badge "Simulé" à
+// côté d'une cadence signale ce repli ; aujourd'hui il apparaît partout
+// puisque rien n'est encore branché.
 const MEDIA_LABEL: Record<MediaType, string> = { post: "Post", reel: "Reel", story: "Story" };
 const SERIES_COLOR: Record<MediaType, string> = { post: "var(--bleu)", reel: "var(--vert-logo)", story: "#8B5CF6" };
+const DEPARTURES_SHOWN = 6;
+const ARRIVALS_SHOWN = 6;
 
 function monthLabel(month: string): string {
   return new Date(`${month}-01T00:00:00Z`).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
@@ -153,21 +173,93 @@ function TrendTile({ label, metric }: { label: string; metric: TrendMetric }) {
   );
 }
 
+function KpiCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <Card variant="claire" interactive={false}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>{label}</div>
+        <div style={{ fontSize: "clamp(26px, 2.6vw, 34px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.05, whiteSpace: "nowrap" }}>
+          {value}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{sub}</div>
+      </div>
+    </Card>
+  );
+}
+
+function AttachAccountCard({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action: (formData: FormData) => void | Promise<void>;
+}) {
+  return (
+    <Card variant="claire" interactive={false}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{description}</div>
+        <form action={action} style={{ display: "flex", gap: 8 }}>
+          <Input name="handle" required placeholder="edenpark" />
+          <Button type="submit">Rattacher</Button>
+        </form>
+      </div>
+    </Card>
+  );
+}
+
 export default async function AnalysePage({
   params,
 }: {
   params: Promise<{ org: string; brand: string }>;
 }) {
   const { org: orgSlug, brand: brandSlug } = await params;
-  const { supabase, accounts } = await resolveBrandContext(orgSlug, brandSlug);
+  const { supabase, org, brand, accounts, canViewIdentities } = await resolveBrandContext(orgSlug, brandSlug);
+  const base = `/${orgSlug}/${brandSlug}`;
+  const attachAction = createInstagramAccountAction.bind(null, org.slug, brand.slug, brand.id);
 
   if (accounts.length === 0) {
-    return <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucun compte Instagram rattaché.</p>;
+    return (
+      <main style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 480 }}>
+        <AttachAccountCard
+          title="Rattacher un compte Instagram"
+          description="Aucun compte pour le moment — l'analyse démarre après le premier rattachement."
+          action={attachAction}
+        />
+      </main>
+    );
   }
   const account = accounts[0];
 
-  const [{ data: latestInsights }, { data: posts }, { data: stories }] = await Promise.all([
-    supabase.from("audience_insights").select("followers_total, period_end").eq("account_id", account.id).order("period_end", { ascending: false }).limit(1).maybeSingle(),
+  const { data: comparability } = await supabase.from("import_comparability").select("*").eq("account_id", account.id).maybeSingle();
+
+  if (!comparability) {
+    return (
+      <main style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 480 }}>
+        <Card variant="claire" interactive={false}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 19, fontWeight: 800 }}>Aucun import traité pour @{account.handle}</div>
+            <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
+              Déposez un premier export Meta pour faire apparaître cette page.
+            </div>
+            <Button href={`${base}/imports`}>Aller à Imports</Button>
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
+  const hasComparison = !comparability.is_single_import;
+
+  const [{ data: overview }, { count: identifiedCount }, { data: reconciliation }, { data: posts }, { data: stories }] = await Promise.all([
+    supabase.from("v_overview").select("*").eq("account_id", account.id).maybeSingle(),
+    // identifiedCount : profils présents dans le dernier import
+    // (follower_observations, 2026-09-08 : remplace follower_states,
+    // supprimée avec toute la logique d'épisodes — cf. migration 0058).
+    supabase.from("follower_observations").select("*", { count: "exact", head: true }).eq("account_id", account.id).eq("import_id", comparability.latest_import_id!),
+    supabase.from("v_reconciliation").select("*").eq("import_id", comparability.latest_import_id!).maybeSingle(),
     supabase
       .from("content")
       .select("id, media_type, published_at, caption")
@@ -186,11 +278,72 @@ export default async function AnalysePage({
       .limit(6),
   ]);
 
-  const followersTotal = latestInsights?.followers_total ?? 0;
+  // Dès qu'il y a un import précédent, nos propres arrivées/départs
+  // (comparaison directe des deux exports) sont plus fiables que le
+  // rapport Meta (dont la fraîcheur n'est pas garantie) — jamais l'inverse.
+  const ownNet = hasComparison && reconciliation ? (reconciliation.observed_arrivals ?? 0) - (reconciliation.observed_departures ?? 0) : null;
+
+  const windowLabel =
+    overview?.window_start && overview?.window_end ? `${shortDate(overview.window_start)} → ${shortDate(overview.window_end)}` : "—";
+  const insightsLabel =
+    overview?.insights_period_start && overview?.insights_period_end
+      ? `${shortDate(overview.insights_period_start)} → ${shortDate(overview.insights_period_end)}`
+      : "—";
+
+  const followersTotal = overview?.followers_total ?? 0;
   const postLabels = (posts ?? []).map((p) => (p.caption ?? "").slice(0, 40));
 
-  // Chaque source tente l'appel réel (stub qui échoue systématiquement,
-  // rien n'étant branché) et retombe sur le mock — voir withLiveFallback.
+  // Suivi nominatif : uniquement calculable dès le deuxième import (§2).
+  const movementCounts = { nouveau: 0, toujours_la: 0, parti: 0, revenu: 0 } as Record<string, number>;
+  let departureRows: DepartureRow[] = [];
+  let departuresCount = 0;
+  let arrivalRows: ArrivalRow[] = [];
+  let arrivalsCount = 0;
+
+  if (hasComparison) {
+    const [{ data: movements }, { data: departures, count: dCount }, { data: arrivals, count: aCount }] = await Promise.all([
+      supabase.from("v_follower_movements").select("movement").eq("account_id", account.id),
+      supabase.from("v_recent_departures").select("*", { count: "exact" }).eq("account_id", account.id).limit(DEPARTURES_SHOWN),
+      supabase.from("v_recent_arrivals").select("*", { count: "exact" }).eq("account_id", account.id).limit(ARRIVALS_SHOWN),
+    ]);
+
+    for (const m of movements ?? []) {
+      if (!m.movement) continue;
+      movementCounts[m.movement] = (movementCounts[m.movement] ?? 0) + 1;
+    }
+
+    departuresCount = dCount ?? 0;
+    departureRows = (departures ?? [])
+      .filter((d): d is typeof d & { profile_id: number; followed_at: string; cohort_week: string } => d.profile_id != null && d.followed_at != null && d.cohort_week != null)
+      .map((d) => ({
+        profileId: d.profile_id,
+        followedAtLabel: shortDate(d.followed_at),
+        cohortLabel: shortDate(d.cohort_week),
+        departedLabel:
+          d.departure_window_start && d.departure_window_end
+            ? `entre le ${shortDate(d.departure_window_start)} et le ${shortDate(d.departure_window_end)}`
+            : "—",
+        tenureLabel: d.tenure_days != null ? `${d.tenure_days} j` : "—",
+      }));
+
+    arrivalsCount = aCount ?? 0;
+    arrivalRows = (arrivals ?? [])
+      .filter((a): a is typeof a & { profile_id: number; followed_at: string; cohort_week: string; movement: string } => a.profile_id != null && a.followed_at != null && a.cohort_week != null && a.movement != null)
+      .map((a) => ({
+        profileId: a.profile_id,
+        followedAtLabel: shortDate(a.followed_at),
+        cohortLabel: shortDate(a.cohort_week),
+        movement: a.movement === "revenu" ? "revenu" : "nouveau",
+        arrivedLabel:
+          a.arrival_window_start && a.arrival_window_end
+            ? `entre le ${shortDate(a.arrival_window_start)} et le ${shortDate(a.arrival_window_end)}`
+            : "—",
+      }));
+  }
+
+  // Chaque source du second pilier tente l'appel réel (stub qui échoue
+  // systématiquement, rien n'étant branché) et retombe sur le mock — voir
+  // withLiveFallback.
   const [
     reachDailyResult, reachTotalsResult, reachMonthlyResult, periodTotalsResult,
     demographicsResult, engagedAudienceResult, mentionsResult, competitorsResult,
@@ -228,37 +381,178 @@ export default async function AnalysePage({
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 44, maxWidth: 1120, minWidth: 0, paddingBottom: 24 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: "-0.01em" }}>Analyse</h1>
+        <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: "-0.01em" }}>Import / API</h1>
         <p style={{ margin: 0, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 780, textWrap: "pretty" }}>
-          Ce que Community Intelligence pourra remonter du compte @{account.handle}, et à quelle fréquence chaque
-          donnée se rafraîchit. Chaque métrique ci-dessous est une capacité confirmée par la documentation Graph API
-          Meta ({GRAPH_VERSION}) — si Meta ne peut pas la fournir de façon fiable, elle n&apos;apparaît pas sur cette
-          page. Le contenu réel (légendes, dates) est déjà le nôtre ; la connexion à l&apos;API n&apos;est pas encore
-          branchée, donc les chiffres affichés restent illustratifs (badge « Simulé ») en attendant l&apos;activation.
+          Deux façons de connaître @{account.handle}. En haut : la mémoire construite par les exports mensuels —
+          qui reste, qui revient, qui part, en comparant uniquement les deux derniers imports. En dessous : les
+          métriques Instagram en direct, confirmées par la documentation Graph API Meta ({GRAPH_VERSION}) — si Meta
+          ne peut pas les fournir de façon fiable, elles n&apos;apparaissent pas ici. La connexion à l&apos;API
+          n&apos;est pas encore branchée, donc ces chiffres restent illustratifs (badge « Simulé »).
         </p>
       </div>
 
-      {/* 1. En-tête compte
-          Champs de base du nœud Instagram User (username, followers_count) —
-          disponibilité certaine, aucun breakdown. Donnée réelle (import),
+      {/* 1. Aperçu du compte
+          v_overview (abonnés, croissance nette, part organique — calculés à
+          partir de audience_insights + follower_observations), v_reconciliation
+          (couverture nommée face aux chiffres Meta). Donnée réelle (import),
           pas de repli mock ici. */}
-      <Card variant="claire" interactive={false}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 19, fontWeight: 800 }}>@{account.handle}</span>
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Eden Park · prêt-à-porter, identité rugby</span>
-          </div>
-          <div style={{ display: "flex", gap: 24 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>{fr(followersTotal)}</span>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>abonnés (réel)</span>
-            </div>
-          </div>
-          <CadenceChip cadence="J" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 19, fontWeight: 800 }}>@{account.handle}</span>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Eden Park · prêt-à-porter, identité rugby</span>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            abonnés {windowLabel} · Insights {insightsLabel}
+          </span>
         </div>
-      </Card>
 
-      {/* 2. Vue d'ensemble
+        {comparability.is_single_import && (
+          <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5 }}>
+            Un seul import disponible pour @{account.handle}. Les nouveaux/partis identifiés individuellement restent
+            indisponibles tant qu&apos;un deuxième import n&apos;a pas été traité — il faut deux exports consécutifs
+            pour établir une variation.
+          </div>
+        )}
+        {!comparability.is_single_import && !comparability.comparable && (
+          <div style={{ background: "var(--pastel-jaune)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--encre)", lineHeight: 1.5 }}>
+            Les deux derniers imports se recouvrent presque entièrement ({pct((comparability.overlap_ratio ?? 0) * 100, 0)} de
+            recouvrement) : {comparability.comparability_reason}. Les chiffres ci-dessous restent affichés, à lire avec cette réserve.
+          </div>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16 }}>
+          <KpiCard
+            label="Abonnés"
+            value={fr(overview?.followers_total ?? null)}
+            sub={
+              hasComparison && reconciliation?.observed_arrivals != null
+                ? `abonnés ${windowLabel} · ${fr(identifiedCount ?? null)} identifiés individuellement (+${fr(reconciliation.observed_arrivals)} depuis le dernier import)`
+                : `abonnés ${windowLabel} · ${fr(identifiedCount ?? null)} identifiés individuellement`
+            }
+          />
+          <KpiCard
+            label="Croissance nette"
+            value={hasComparison ? signedFr(ownNet) : signedFr(overview?.followers_net ?? null)}
+            sub={
+              hasComparison
+                ? `${fr(reconciliation?.observed_arrivals ?? null)} identifiés en plus · ${fr(reconciliation?.observed_departures ?? null)} identifiés partis · depuis le dernier import`
+                : `${fr(overview?.followers_gained ?? null)} gagnés · ${fr(overview?.followers_lost ?? null)} perdus (rapport Meta) · Insights ${insightsLabel}`
+            }
+          />
+          <KpiCard
+            label="Part organique"
+            value={pct(overview?.organic_share != null ? overview.organic_share * 100 : null)}
+            sub={`${fr(overview?.organic_gained ?? null)} sur ${fr(overview?.followers_gained ?? null)} · Insights ${insightsLabel}`}
+          />
+        </div>
+
+        <ReconciliationBanner reconciliation={reconciliation ?? null} />
+      </div>
+
+      {/* 2. Suivi nominatif
+          v_follower_movements (nouveau/revenu/toujours_là/parti),
+          v_recent_departures et v_recent_arrivals (0059) : comparaison
+          directe des deux derniers imports de follower_observations, sans
+          aucune table à maintenir. C'est désormais le SEUL usage de
+          l'import dans l'app — les anciens écrans Audience/Contenu/
+          Écosystème (démographie déclarative, performance par publication,
+          discussions) sont retirés, cette comparaison présent/absent est
+          ce qui reste. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <SectionTitle
+          n={2}
+          title="Suivi nominatif"
+          subtitle="Qui est nouveau, qui est revenu, qui est parti — en comparant uniquement les deux derniers imports. Aucune date exacte : l'écart entre deux imports fixe la précision."
+        />
+        {!hasComparison ? (
+          <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "16px 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.5 }}>
+            Il faut un second import pour que cet écran affiche quelque chose.
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
+              <Card variant="claire" interactive={false}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Nouveaux</span>
+                  <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "var(--bleu)" }}>{fr(movementCounts.nouveau)}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>jamais identifiés avant</span>
+                </div>
+              </Card>
+              {movementCounts.revenu > 0 && (
+                <Card variant="claire" interactive={false}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Revenus</span>
+                    <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>{fr(movementCounts.revenu)}</span>
+                    <span style={{ fontSize: 13, color: "var(--text-muted)" }}>absents du dernier import, déjà identifiés avant</span>
+                  </div>
+                </Card>
+              )}
+              <Card variant="claire" interactive={false}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Toujours là</span>
+                  <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>{fr(movementCounts.toujours_la)}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>identifiés aux deux derniers imports</span>
+                </div>
+              </Card>
+              <Card variant="claire" interactive={false}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Partis</span>
+                  <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1, color: "#A8A196" }}>{fr(movementCounts.parti)}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>identifiés au dernier import précédent, absents de celui-ci</span>
+                </div>
+              </Card>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
+              <Card variant="claire" interactive={false}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Derniers nouveaux et revenus</h3>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        {arrivalRows.length} exemple{arrivalRows.length > 1 ? "s" : ""} sur {fr(arrivalsCount)}
+                      </span>
+                    </div>
+                  </div>
+                  {arrivalRows.length === 0 ? (
+                    <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucune arrivée mesurée sur cet import.</p>
+                  ) : canViewIdentities ? (
+                    <RevealArrivals accountId={account.id} rows={arrivalRows} />
+                  ) : (
+                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Accès aux identités non autorisé pour ce rôle.</div>
+                  )}
+                </div>
+              </Card>
+
+              <Card variant="claire" interactive={false}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Derniers départs</h3>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        {departureRows.length} exemple{departureRows.length > 1 ? "s" : ""} sur {fr(departuresCount)}
+                      </span>
+                    </div>
+                    {departuresCount > departureRows.length && (
+                      <Button href={`${base}/listes`} variant="secondaire" size="sm">
+                        Voir la liste complète ({fr(departuresCount)})
+                      </Button>
+                    )}
+                  </div>
+                  {departureRows.length === 0 ? (
+                    <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucun départ mesuré sur cet import.</p>
+                  ) : canViewIdentities ? (
+                    <RevealDepartures accountId={account.id} rows={departureRows} />
+                  ) : (
+                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Accès aux identités non autorisé pour ce rôle.</div>
+                  )}
+                </div>
+              </Card>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 3. Vue d'ensemble
           GET /{ig-user-id}/insights — 5 appels, VÉRIFIÉS le 08/09/2026 sauf
           mention contraire :
           (1) reach, metric_type=time_series, period=day, SANS breakdown —
@@ -279,7 +573,7 @@ export default async function AnalysePage({
               VÉRIFIÉ CONTRE L'API. Peut ne renvoyer aucune donnée (profil
               sans bouton de contact configuré), auquel cas la vignette et
               son détail disparaissent plutôt que d'afficher un compte à 0.
-              Ne couvre PAS le clic sur le lien en bio (voir section 3,
+              Ne couvre PAS le clic sur le lien en bio (voir section 4,
               profile_activity) : deux métriques distinctes, jamais
               additionnées.
           Le breakdown est gratuit (même appel que la métrique seule), mais
@@ -290,7 +584,7 @@ export default async function AnalysePage({
           lib/analyse-mock.ts (parseInsightsBreakdown/SimpleValue/
           MediaSimpleValue/TimeSeries). */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <SectionTitle n={2} title="Vue d'ensemble" cadence={<CadenceChip cadence="J" />} subtitle="Indicateurs du compte sur 30 jours." />
+        <SectionTitle n={3} title="Vue d'ensemble Instagram" cadence={<CadenceChip cadence="J" />} subtitle="Indicateurs du compte sur 30 jours." />
         <div style={{ background: "var(--pastel-jaune)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--encre)", lineHeight: 1.5 }}>
           Meta ne conserve ces données que <strong>90 jours</strong>, avec un retard de traitement possible jusqu&apos;à{" "}
           <strong>48 h</strong> — même relevées chaque nuit, elles ne sont jamais garanties « à jour ce matin ». C&apos;est
@@ -390,14 +684,14 @@ export default async function AnalysePage({
               <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
                 Les types de bouton affichés dépendent de ceux configurés sur le profil Instagram — un bouton absent ne
                 remonte pas comme zéro, il n&apos;apparaît simplement pas. Ne couvre pas le clic sur le lien en bio,
-                comptabilisé séparément (§3, Actions sur le profil).
+                comptabilisé séparément (§4, Actions sur le profil).
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* 3. Publications
+      {/* 4. Publications
           GET /{media-id}/insights par publication (posts et reels), toutes
           VÉRIFIÉES le 08/09/2026 sur un compte réel à 2429 abonnés : reach,
           views, likes, comments, saved, shares, reposts, total_interactions.
@@ -423,7 +717,7 @@ export default async function AnalysePage({
           reach). Conservation 2 ans. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
-          n={3}
+          n={4}
           title="Publications"
           cadence={<CadenceChip cadence="J" />}
           subtitle="Contenu réel (légende, date) — métriques en attendant le branchement de l'API. Aucun insight n'existe pour les images individuelles d'un carrousel : seul l'album entier est mesuré."
@@ -484,7 +778,7 @@ export default async function AnalysePage({
         </div>
       </div>
 
-      {/* 4. Commentaires en direct
+      {/* 5. Commentaires en direct
           Webhook `comments` (Facebook Login, demande une URL publique de
           réception) : chaque commentaire pousserait un événement avec
           from.username/from.id, texte et média — aucun sondage, donc pas de
@@ -494,7 +788,7 @@ export default async function AnalysePage({
           compte de test sans commentaire pendant la fenêtre de test. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
-          n={4}
+          n={5}
           title="Commentaires en direct"
           cadence={
             <>
@@ -517,7 +811,7 @@ export default async function AnalysePage({
         </Card>
       </div>
 
-      {/* 5. Top commentateurs
+      {/* 6. Top commentateurs
           Aucun endpoint Meta ne classe les commentateurs : reconstruit chez
           nous à partir des commentaires collectés (webhook ou lecture
           périodique de GET /{media-id}/comments). VÉRIFIÉ le 08/09/2026 :
@@ -529,7 +823,7 @@ export default async function AnalysePage({
           sondage périodique), jamais configuré ni testé dans la durée. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
-          n={5}
+          n={6}
           title="Top 50 des commentateurs"
           cadence={
             <>
@@ -537,7 +831,7 @@ export default async function AnalysePage({
               <UnverifiedNote callToTest="mettre en place la collecte continue (webhook `comments` ou sondage périodique de GET /{media-id}/comments) — l'identité du commentateur est déjà confirmée présente dans la réponse" />
             </>
           }
-          subtitle="En stockant chaque commentaire reçu au fil du temps (§4 ci-dessus), on reconstitue qui commente le plus souvent — un classement qui s'affine mois après mois, à mesure que l'historique s'accumule."
+          subtitle="En stockant chaque commentaire reçu au fil du temps (§5 ci-dessus), on reconstitue qui commente le plus souvent — un classement qui s'affine mois après mois, à mesure que l'historique s'accumule."
         />
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -563,7 +857,7 @@ export default async function AnalysePage({
         </Card>
       </div>
 
-      {/* 6. Stories
+      {/* 7. Stories
           GET /{media-id}/insights — reach, views, shares, reposts,
           total_interactions, follows, profile_visits, profile_activity
           (breakdown=action_type), navigation (tap_forward/tap_back/exits/
@@ -583,7 +877,7 @@ export default async function AnalysePage({
           réelles. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
-          n={6}
+          n={7}
           title="Stories"
           cadence={
             <>
@@ -672,7 +966,7 @@ export default async function AnalysePage({
         </div>
       </div>
 
-      {/* 7. Audience
+      {/* 8. Audience Instagram
           GET /{ig-user-id}/insights?metric=follower_demographics&
           period=lifetime&timeframe=this_month&metric_type=total_value&
           breakdown=<city|country|gender|age> — un appel par breakdown,
@@ -698,7 +992,7 @@ export default async function AnalysePage({
           UNIQUEMENT sur ce chemin d'erreur ; le chemin de succès n'a jamais
           été observé (compte de test sous le seuil). */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <SectionTitle n={7} title="Audience" cadence={<CadenceChip cadence="S" />} subtitle="Profil agrégé des abonnés — jamais attribué à une personne. Classement limité au top 45 par Meta." />
+        <SectionTitle n={8} title="Audience Instagram" cadence={<CadenceChip cadence="S" />} subtitle="Profil agrégé des abonnés — jamais attribué à une personne. Classement limité au top 45 par Meta." />
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <LiveSourceTag source={demographicsResult.source} reason={demographicsResult.reason} />
           <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
@@ -787,7 +1081,7 @@ export default async function AnalysePage({
         </div>
       </div>
 
-      {/* 8. Mentions et veille
+      {/* 9. Mentions et veille
           Mentions : edge /{ig-user-id}/tags — VÉRIFIÉ le 08/09/2026 :
           accessible avec les scopes courants, renvoie {"{"}"data":[]{"}"} sur
           le compte de test (structure confirmée, aucune mention à ce jour).
@@ -798,7 +1092,7 @@ export default async function AnalysePage({
           — VÉRIFIÉ le 08/09/2026 (exemple : lacoste, 8 873 423 abonnés) — un
           appel par concurrent, données publiques uniquement. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <SectionTitle n={8} title="Mentions et veille" subtitle="Ce qui se dit autour de la marque, et où elle se situe face à ses concurrents." />
+        <SectionTitle n={9} title="Mentions et veille" subtitle="Ce qui se dit autour de la marque, et où elle se situe face à ses concurrents." />
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -839,9 +1133,9 @@ export default async function AnalysePage({
         </div>
       </div>
 
-      {/* 9. Ce qu'on ne peut pas récupérer */}
+      {/* 10. Ce qu'on ne peut pas récupérer */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <SectionTitle n={9} title="Ce qu'on ne peut pas récupérer" subtitle="Pour que le périmètre soit clair dans les deux sens." />
+        <SectionTitle n={10} title="Ce qu'on ne peut pas récupérer" subtitle="Pour que le périmètre soit clair dans les deux sens." />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
           {[
             ["Qui a mis un « j'aime »", "Cette liste n'est fournie ni par l'API ni par l'application Instagram."],

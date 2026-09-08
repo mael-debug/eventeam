@@ -2243,6 +2243,18 @@ export type Database = {
           },
         ]
       }
+      v_recent_arrivals: {
+        Row: {
+          account_id: string | null
+          arrival_window_end: string | null
+          arrival_window_start: string | null
+          cohort_week: string | null
+          followed_at: string | null
+          movement: string | null
+          profile_id: number | null
+        }
+        Relationships: []
+      }
       v_recent_departures: {
         Row: {
           account_id: string | null

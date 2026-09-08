@@ -37,7 +37,7 @@ export default async function JournalPage({
         {error ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Accès au journal non autorisé pour ce rôle.</p>
-            <Button href={base}>Retour à la vue d&apos;ensemble</Button>
+            <Button href={`${base}/analyse`}>Retour à Import / API</Button>
           </div>
         ) : !entries || entries.length === 0 ? (
           <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucune consultation de données personnelles enregistrée pour ce compte.</p>

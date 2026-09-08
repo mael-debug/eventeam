@@ -4,15 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/ds";
 
+// Vue d'ensemble/Audience/Croissance/Contenu/Écosystème ont fusionné dans
+// Import / API (2026-09-08) — une seule page pour le compte, plutôt que
+// cinq écrans séparés.
 const NAV_ITEMS: { key: string; label: string; href: (base: string) => string }[] = [
   { key: "intro", label: "Intro", href: (b) => `${b}/intro` },
-  { key: "overview", label: "Vue d'ensemble", href: (b) => `${b}` },
-  { key: "audience", label: "Audience", href: (b) => `${b}/audience` },
-  { key: "croissance", label: "Croissance", href: (b) => `${b}/croissance` },
-  { key: "contenu", label: "Contenu", href: (b) => `${b}/contenu` },
-  { key: "ecosysteme", label: "Écosystème", href: (b) => `${b}/ecosysteme` },
+  { key: "analyse", label: "Import / API", href: (b) => `${b}/analyse` },
   { key: "ia", label: "Showroom IA", href: (b) => `${b}/ia` },
-  { key: "analyse", label: "Analyse", href: (b) => `${b}/analyse` },
   { key: "listes", label: "Listes", href: (b) => `${b}/listes` },
   { key: "catalogue", label: "Catalogue", href: (b) => `${b}/catalogue` },
   { key: "imports", label: "Imports", href: (b) => `${b}/imports` },
@@ -78,7 +76,7 @@ export function Sidebar({
       <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px" }}>
         {NAV_ITEMS.map((item) => {
           const href = item.href(base);
-          const active = item.key === "overview" ? pathname === base : pathname.startsWith(href);
+          const active = pathname.startsWith(href);
           return (
             <Link
               key={item.key}

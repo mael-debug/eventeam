@@ -190,7 +190,7 @@ export default async function IaShowroomPage({
         <SectionHeader
           n={2}
           title="Idées de contenu pour retenir une cohorte fragile"
-          subtitle="Quand les arrivées récentes se retrouvent nettement moins nombreuses au dernier import (écran Croissance), l'IA proposerait un contenu de réengagement ciblé plutôt qu'un post générique."
+          subtitle="Quand les arrivées récentes se retrouvent nettement moins nombreuses au dernier import (Import / API, section Suivi nominatif), l'IA proposerait un contenu de réengagement ciblé plutôt qu'un post générique."
         />
 
         <MockCard title="Séquence de contenu de réengagement, si l'IA détecte une cohorte à risque">
