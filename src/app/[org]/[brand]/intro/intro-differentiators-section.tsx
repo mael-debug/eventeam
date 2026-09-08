@@ -8,12 +8,12 @@ import { Card } from "@/components/ds";
 // en quelques secondes plutôt que lue.
 
 const INSTAGRAM_POINTS = ["Portée, impressions, visites de profil", "Followers gagnés ou perdus", "Performance des publications"];
-const CI_POINTS = ["Le même historique, mois après mois", "Comparable à N-1 ou à la tendance récente", "Relié entre contenu, acquisition et rétention"];
+const CI_POINTS = ["Le même historique, mois après mois", "Comparable à N-1 ou à la tendance récente", "Followers suivis nominativement : qui reste, qui part, qui revient"];
 
 const DIFFERENTIATORS: { title: string; text: string }[] = [
   { title: "Mémoire", text: "Chaque import s'ajoute aux précédents — rien n'est écrasé." },
-  { title: "Cohortes", text: "Voir combien de nouveaux abonnés restent à 30, 60, 90 jours." },
-  { title: "Croisements", text: "Contenu, acquisition et rétention lus ensemble, pas séparément." },
+  { title: "Suivi nominatif", text: "Chaque abonné classé nouveau, revenu, toujours là ou parti, d'un import à l'autre." },
+  { title: "Comparaison dans le temps", text: "Croissance, contenu et audience, chacun comparé à sa propre tendance passée — jamais qu'un instantané." },
   { title: "Anticipation", text: "Un décrochage se repère en le comparant au passé, avant qu'il ne saute aux yeux." },
 ];
 

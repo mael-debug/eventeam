@@ -1,6 +1,7 @@
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { IntroHero } from "./intro-hero";
 import { IntroDifferentiatorsSection } from "./intro-differentiators-section";
+import { IntroAnalyseSection } from "./intro-analyse-section";
 import { IntroSnapshotSection } from "./intro-snapshot-section";
 import { IntroEdenParkQuestions } from "./intro-eden-park-questions";
 
@@ -43,6 +44,10 @@ export default async function IntroPage({
 
       <Section>
         <IntroDifferentiatorsSection />
+      </Section>
+
+      <Section>
+        <IntroAnalyseSection />
       </Section>
 
       <Section>
