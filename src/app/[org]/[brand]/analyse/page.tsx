@@ -86,6 +86,19 @@ function BreakdownList({ rows }: { rows: DemographicRow[] }) {
   );
 }
 
+// Appel exécuté et rejoué contre de vraies données (08/09/2026) vs appel
+// jamais tenté sur ce compte : cette page distingue les deux plutôt que de
+// présenter une capacité documentée comme équivalente à une capacité
+// éprouvée. Ne retire rien — signale.
+function UnverifiedNote({ callToTest }: { callToTest: string }) {
+  return (
+    <div style={{ border: "1px dashed var(--bordure)", borderRadius: 12, padding: "8px 12px", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>
+      <strong style={{ fontStyle: "normal" }}>Non vérifié contre l&apos;API</strong> — jamais rejoué en conditions réelles sur ce
+      compte, à tester avant mise en prod : <code>{callToTest}</code>
+    </div>
+  );
+}
+
 function TrendTile({ label, metric }: { label: string; metric: TrendMetric }) {
   const up = metric.deltaPct > 0;
   const flat = metric.deltaPct === 0;
@@ -183,24 +196,31 @@ export default async function AnalysePage({
       </Card>
 
       {/* 2. Vue d'ensemble
-          GET /{ig-user-id}/insights — 5 appels :
-          (1) reach, metric_type=time_series, period=day, since/until=30 j,
-              SANS breakdown (Meta n'autorise jamais breakdown + time_series
-              dans le même appel) → courbe quotidienne globale.
+          GET /{ig-user-id}/insights — 5 appels, VÉRIFIÉS le 08/09/2026 sauf
+          mention contraire :
+          (1) reach, metric_type=time_series, period=day, SANS breakdown —
+              since ET until en timestamps Unix OBLIGATOIRES (sans eux,
+              l'API ne renvoie que ~2 points sur une fenêtre 24 h par
+              défaut) → courbe quotidienne globale. end_time revient à
+              07:00:00+0000, pas minuit UTC : le fuseau du compte fixe la
+              journée, ne jamais supposer minuit.
           (2) reach, metric_type=total_value, breakdown=media_product_type,
-              même fenêtre → un total par format, pas une série quotidienne.
+              même fenêtre → un total par format, pas une série quotidienne
+              (confirmé : time_series et breakdown sont exclusifs dans la
+              même réponse).
           (3) accounts_engaged/total_interactions/likes/comments/shares/
               saves, metric_type=total_value, aucun breakdown.
           (4) follows_and_unfollows, breakdown=follow_type, ≥100 abonnés.
-          (5) profile_links_taps, breakdown=contact_button_type — peut ne
-              renvoyer aucune donnée (profil sans bouton de contact
-              configuré), auquel cas la vignette et son détail disparaissent
-              plutôt que d'afficher un compte à 0.
+          (5) profile_links_taps, breakdown=contact_button_type — NON
+              VÉRIFIÉ CONTRE L'API. Peut ne renvoyer aucune donnée (profil
+              sans bouton de contact configuré), auquel cas la vignette et
+              son détail disparaissent plutôt que d'afficher un compte à 0.
           Le breakdown est gratuit (même appel que la métrique seule), mais
           chaque métrique avec breakdown doit rester isolée dans sa propre
           requête : la mélanger à une métrique qui n'en a pas renvoie un
           générique "An unknown error has occurred" sans préciser laquelle.
-          Détail par métrique : lib/analyse-mock.ts. */}
+          Parseur commun aux quatre formes de réponse observées : voir
+          lib/analyse-mock.ts (parseInsightsBreakdown/SimpleValue/TimeSeries). */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={2} title="Vue d'ensemble" cadence={<CadenceChip cadence="J" />} subtitle="Indicateurs du compte sur 30 jours." />
         <div style={{ background: "var(--pastel-jaune)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--encre)", lineHeight: 1.5 }}>
@@ -232,15 +252,17 @@ export default async function AnalysePage({
               (posts, reels, stories) — pas un point par jour, cette combinaison-là n&apos;existe pas côté Meta.
             </span>
             <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
-              {(["post", "reel", "story"] as MediaType[]).map((type) => (
-                <div key={type} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: SERIES_COLOR[type] }} />
-                    {MEDIA_LABEL[type]}
-                  </span>
-                  <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>{fr(reachTotalsByFormat[type])}</span>
-                </div>
-              ))}
+              {(["post", "reel", "story"] as MediaType[])
+                .filter((type) => reachTotalsByFormat[type] != null)
+                .map((type) => (
+                  <div key={type} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: SERIES_COLOR[type] }} />
+                      {MEDIA_LABEL[type]}
+                    </span>
+                    <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>{fr(reachTotalsByFormat[type])}</span>
+                  </div>
+                ))}
             </div>
           </div>
         </Card>
@@ -250,6 +272,7 @@ export default async function AnalysePage({
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
               Meta ne garde que 90 jours : cette vue longue n&apos;existe que grâce à notre propre historique, construit mois après mois.
             </span>
+            <UnverifiedNote callToTest="infaisable en un seul appel — nécessite d'archiver nos propres relevés de GET /{ig-user-id}/insights?metric=reach&period=day dans le temps" />
             <TrendLine
               labels={reachMonthly.map((p) => monthLabel(p.month))}
               series={[{ key: "reach", label: "Comptes touchés", color: "var(--bleu)", values: reachMonthly.map((p) => p.reach) }]}
@@ -295,19 +318,29 @@ export default async function AnalysePage({
       </div>
 
       {/* 3. Publications
-          GET /{media-id}/insights par publication (posts et reels) — reach,
-          views, shares, reposts, total_interactions sur les deux formats.
-          likes/comments/saved : posts et reels. follows/profile_visits/
-          profile_activity (breakdown=action_type, gratuit dans le même
-          appel que profile_activity seul mais à isoler de toute métrique
-          sans breakdown) : posts uniquement, inexistants sur les reels.
-          profile_activity ne renvoie que les postes non nuls (BIO_LINK_
-          CLICKED, CALL, DIRECTION, EMAIL, TEXT sont les 5 valeurs possibles,
-          jamais toutes présentes à la fois). reels_skip_rate et
-          ig_reels_avg_watch_time (ms, non documenté précisément par Meta) :
-          reels uniquement. total_views/total_likes/total_comments : agrégat
-          multi-surfaces, Facebook Login. Aucun insight sur les images d'un
-          carrousel pris individuellement. Conservation 2 ans. */}
+          GET /{media-id}/insights par publication (posts et reels). La
+          liste elle-même vient de notre propre table `content` (import ZIP),
+          pas de GET /{ig-user-id}/media — le jour où cette liste sera
+          branchée en direct, prévoir sa pagination par curseurs
+          (paging.cursors.after, paging.next), jamais par offset ; noter
+          aussi que media_type (IMAGE/VIDEO/CAROUSEL_ALBUM) et
+          media_product_type (FEED/REELS/STORY) sont deux axes différents —
+          un CAROUSEL_ALBUM est classé FEED, pas un troisième type à
+          mapper (VÉRIFIÉ le 08/09/2026).
+          VÉRIFIÉ le 08/09/2026 : reach, views (point H, sur un reel),
+          profile_activity + son breakdown=action_type (point I — ne renvoie
+          que les postes non nuls parmi BIO_LINK_CLICKED, CALL, DIRECTION,
+          EMAIL, TEXT, jamais tous à la fois ; posts uniquement, inexistant
+          sur les reels), ig_reels_avg_watch_time (confirmé en
+          millisecondes, ex. observé 4840 ms). NON VÉRIFIÉ CONTRE L'API — à
+          tester avant prod, appel : GET /{media-id}/insights?metric=likes,
+          comments,saved,shares,follows,profile_visits,reposts,
+          total_interactions,reels_skip_rate,total_views,total_likes,
+          total_comments : le reste des métriques ci-dessous (likes,
+          comments, enregistrements, partages, reposts, interactions
+          totales, visites de profil, taux de skip, vues/j'aime/commentaires
+          toutes surfaces). Aucun insight sur les images d'un carrousel pris
+          individuellement. Conservation 2 ans. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={3}
@@ -319,6 +352,7 @@ export default async function AnalysePage({
           « Actions sur le profil » ne détaille que les boutons configurés sur le profil Instagram — un bouton absent ne
           remonte pas comme zéro, il n&apos;apparaît simplement pas.
         </p>
+        <UnverifiedNote callToTest="GET /{media-id}/insights?metric=likes,comments,saved,shares,follows,profile_visits,reposts,total_interactions,reels_skip_rate — seuls reach, views, profile_activity et ig_reels_avg_watch_time ont été rejoués en conditions réelles" />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
           {(posts ?? []).map((p) => {
             const insights = mockMediaInsights(p.id, p.media_type as MediaType, followersTotal);
@@ -367,10 +401,12 @@ export default async function AnalysePage({
       </div>
 
       {/* 4. Commentaires en direct
-          Webhook `comments` (Facebook Login) : chaque commentaire pousse un
-          événement avec from.username/from.id, texte et média — aucun
-          sondage, donc pas de nombre d'appels à documenter ici. C'est la
-          seule donnée entrante nominative de tout le périmètre. */}
+          Webhook `comments` (Facebook Login) : chaque commentaire pousserait
+          un événement avec from.username/from.id, texte et média — aucun
+          sondage, donc pas de nombre d'appels à documenter ici. Ce serait la
+          seule donnée entrante nominative de tout le périmètre. NON VÉRIFIÉ
+          CONTRE L'API : webhook jamais configuré, compte de test sans
+          commentaire. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={4}
@@ -378,6 +414,7 @@ export default async function AnalysePage({
           cadence={<CadenceChip cadence="RT" />}
           subtitle="Aperçu du flux temps réel : dès qu'un abonné commente, l'entrée apparaît ici sans recharger la page."
         />
+        <UnverifiedNote callToTest="configurer le webhook `comments` (Facebook Login) et publier un commentaire de test pour confirmer la présence de from.username/from.id dans la charge utile" />
         <Card variant="encre" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(250,248,243,0.85)", textWrap: "pretty" }}>
@@ -394,9 +431,10 @@ export default async function AnalysePage({
       {/* 5. Top commentateurs
           Aucun endpoint Meta ne classe les commentateurs : reconstruit chez
           nous à partir de l'historique du webhook `comments` (section 4),
-          qui fournit déjà l'identité — le classement s'affine mois après
+          qui fournirait déjà l'identité — le classement s'affine mois après
           mois à mesure que l'historique s'accumule, il ne part jamais de
-          zéro utile. */}
+          zéro utile. NON VÉRIFIÉ CONTRE L'API : dépend entièrement du
+          webhook de la section 4, jamais configuré. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={5}
@@ -404,6 +442,7 @@ export default async function AnalysePage({
           cadence={<CadenceChip cadence="CUMUL" />}
           subtitle="En stockant chaque commentaire reçu au fil du temps (§4 ci-dessus), on reconstitue qui commente le plus souvent — un classement qui s'affine mois après mois, à mesure que l'historique s'accumule."
         />
+        <UnverifiedNote callToTest="dépend du webhook `comments` (section 4), pas d'appel indépendant à tester" />
         <Card variant="claire" interactive={false}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -437,7 +476,11 @@ export default async function AnalysePage({
           story, un seul bandeau statique l'explique une fois. <5 vues →
           erreur (#10) Not enough viewers, affichée comme un état, pas comme
           un score cassé. Disponible 24 h seulement : il faut le webhook
-          story_insights (Facebook Login) pour le capter à temps. */}
+          story_insights (Facebook Login) pour le capter à temps.
+          SECTION ENTIÈRE NON VÉRIFIÉE CONTRE L'API : le compte de test
+          n'avait aucune story — aucune métrique ci-dessous, y compris le
+          seuil des 5 vues et le webhook story_insights, n'a été rejouée en
+          conditions réelles. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={6}
@@ -445,6 +488,7 @@ export default async function AnalysePage({
           cadence={<CadenceChip cadence="STORY-END" />}
           subtitle="Les chiffres d'une story disparaissent 24 h après sa publication : seul le webhook, capté au bon moment, permet de les garder."
         />
+        <UnverifiedNote callToTest="publier une story de test puis GET /{media-id}/insights?metric=reach,views,navigation,replies,follows,profile_visits,shares,reposts,total_interactions,profile_activity — aucune n'a été rejouée en conditions réelles" />
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ background: "var(--pastel-jaune)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--encre)", lineHeight: 1.5 }}>
             🇫🇷 Sur un compte français, <strong>les réponses aux stories ne remontent jamais</strong> — une contrainte que
@@ -522,14 +566,17 @@ export default async function AnalysePage({
       </div>
 
       {/* 7. Audience
-          GET /{ig-user-id}/insights, metric_type=total_value → 5 appels :
-          (1-4) follower_demographics, breakdown=city|country|gender|age,
-          un appel par breakdown, jamais mélangés — nécessite ≥100 abonnés,
-          classement limité au top ~45 par Meta. (5)
-          engaged_audience_demographics, breakdown=city — nécessite ≥100
-          engagements sur la période ; ne supporte que les timeframes
-          this_week et this_month (last_14/30/90_days et prev_month ont été
-          retirés), donc pas comparable sur 90 jours comme le reste. */}
+          GET /{ig-user-id}/insights, metric_type=total_value → 5 appels,
+          un par breakdown, jamais mélangés — nécessite ≥100 abonnés,
+          classement limité au top ~45 par Meta. VÉRIFIÉ le 08/09/2026 pour
+          breakdown=city UNIQUEMENT : 45 résultats exactement (plafond top
+          45 atteint), timeframe=this_month fonctionne, libellé "Ville,
+          Région" concaténé en une seule chaîne (ex. "Marseille,
+          Provence-Alpes-Côte d'Azur") — traité comme opaque, jamais reparsé
+          sur la virgule. country/gender/age (follower_demographics) et
+          engaged_audience_demographics (villes engagées, seuil ≥100
+          engagements sur la période et non ≥100 abonnés, timeframes
+          this_week/this_month uniquement) : NON VÉRIFIÉS CONTRE L'API. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={7} title="Audience" cadence={<CadenceChip cadence="S" />} subtitle="Profil agrégé des abonnés — jamais attribué à une personne. Classement limité au top 45 par Meta." />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
@@ -547,6 +594,7 @@ export default async function AnalysePage({
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <span style={{ fontSize: 15, fontWeight: 700 }}>Top pays (sur 45 max)</span>
+              <UnverifiedNote callToTest="GET /{ig-user-id}/insights?metric=follower_demographics&breakdown=country&metric_type=total_value&timeframe=this_month" />
               {demographics.followerCountries.map((c) => (
                 <div key={c.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                   <span style={{ color: "var(--text-muted)" }}>{c.label}</span>
@@ -562,6 +610,7 @@ export default async function AnalysePage({
                 Comptes ayant interagi, pas seulement abonnés — nécessite ≥100 engagements sur la période. Disponible
                 « cette semaine » ou « ce mois-ci » seulement, pas sur 90 jours comme le reste de cette page.
               </span>
+              <UnverifiedNote callToTest="GET /{ig-user-id}/insights?metric=engaged_audience_demographics&breakdown=city&metric_type=total_value&timeframe=this_month" />
               {demographics.engagedCities.map((c) => (
                 <div key={c.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                   <span style={{ color: "var(--text-muted)" }}>{c.label}</span>
@@ -573,6 +622,7 @@ export default async function AnalysePage({
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <span style={{ fontSize: 15, fontWeight: 700 }}>Genre</span>
+              <UnverifiedNote callToTest="GET /{ig-user-id}/insights?metric=follower_demographics&breakdown=gender&metric_type=total_value&timeframe=this_month" />
               <MetricRow label="Femmes" value={`${demographics.genderSplit.femme} %`} />
               <MetricRow label="Hommes" value={`${demographics.genderSplit.homme} %`} />
               <MetricRow label="Autre" value={`${demographics.genderSplit.autre} %`} />
@@ -581,6 +631,7 @@ export default async function AnalysePage({
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <span style={{ fontSize: 15, fontWeight: 700 }}>Âge</span>
+              <UnverifiedNote callToTest="GET /{ig-user-id}/insights?metric=follower_demographics&breakdown=age&metric_type=total_value&timeframe=this_month" />
               {demographics.ageSplit.map((a) => (
                 <MetricRow key={a.label} label={a.label} value={`${a.value} %`} />
               ))}
@@ -591,9 +642,12 @@ export default async function AnalysePage({
 
       {/* 8. Mentions et veille
           Mentions : webhook `mentions` + edge /{ig-user-id}/tags (Facebook
-          Login) — ne capte pas les mentions en story. Veille : GET
-          /{ig-user-id}?fields=business_discovery.username(...) — un appel
-          par concurrent, données publiques uniquement. */}
+          Login) — ne capte pas les mentions en story. NON VÉRIFIÉ CONTRE
+          L'API : ni le webhook ni l'edge n'ont été testés, compte de test
+          sans mention. Veille : GET /{ig-user-id}?fields=business_
+          discovery.username(...) — VÉRIFIÉ le 08/09/2026 (exemple : lacoste,
+          8 873 423 abonnés) — un appel par concurrent, données publiques
+          uniquement. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={8} title="Mentions et veille" subtitle="Ce qui se dit autour de la marque, et où elle se situe face à ses concurrents." />
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
@@ -603,6 +657,7 @@ export default async function AnalysePage({
                 <span style={{ fontSize: 15, fontWeight: 700 }}>Mentions</span>
                 <CadenceChip cadence="RT" />
               </div>
+              <UnverifiedNote callToTest="configurer le webhook `mentions` et l'edge GET /{ig-user-id}/tags, puis mentionner le compte pour confirmer la charge utile" />
               {mentions.map((m, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", gap: 2, borderTop: i > 0 ? "1px solid var(--bordure-carte)" : undefined, paddingTop: i > 0 ? 10 : 0 }}>
                   <span style={{ fontSize: 12, fontWeight: 700 }}>@{m.author}</span>

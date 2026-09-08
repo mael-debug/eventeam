@@ -2,7 +2,12 @@
 // dérivée de l'ID du contenu ou du compte) pour rester stable d'un rendu à
 // l'autre. Ces valeurs illustrent ce que l'API Graph Meta renverrait une
 // fois branchée — jamais présentées comme mesurées. Plages calibrées sur le
-// catalogue validé : ne pas inventer de champ hors de ce catalogue.
+// catalogue validé, recalées le 08/09/2026 contre de vrais appels exécutés
+// sur un compte de test (voir chaque générateur : les zéros observés
+// viennent de ce compte inactif, seule la structure des réponses compte —
+// ce fichier génère des volumes plausibles pour un compte actif). Tout ce
+// qui n'a pas été rejoué en conditions réelles porte un commentaire
+// `NON VÉRIFIÉ CONTRE L'API` avec l'appel exact à exécuter avant prod.
 //
 // Cadre du projet (détermine tout le reste) : solution propriétaire
 // mono-client pour Eden Park, un seul compte Instagram suivi, voie
@@ -45,53 +50,137 @@ export interface DemographicRow {
   value: number;
 }
 
-// Meta ne renvoie jamais une clé de breakdown sans donnée : un bouton non
-// configuré sur le profil est absent du tableau `breakdowns`, ce n'est pas
-// un zéro ("If insights data you are requesting does not exist or is
-// currently unavailable, the API will return an empty data set instead of
-// 0 for individual metrics"). Chaque distribution ci-dessous ne renvoie
-// donc que les postes réellement non nuls, jamais la liste exhaustive des
-// valeurs possibles de l'enum.
+// ============================================================
+// Formes de réponse GET /insights — le même endpoint (compte ou média)
+// renvoie l'une de ces quatre structures selon metric_type/breakdown/period.
+// Rejoué le 08/09/2026 contre un vrai compte : le parseur ci-dessous doit
+// absorber les quatre sans jamais planter, y compris le cas où `results`
+// est totalement absent (compte sans donnée sur ce breakdown — un jeu vide,
+// jamais un zéro implicite).
+//   1. total_value:{value}                        — métrique simple (E)
+//   2. total_value:{value, breakdowns:[{dimension_keys,results}]} (I)
+//   3. total_value:{breakdowns:[{dimension_keys}]} — pas de results, parfois
+//      pas de value (D, F sur un compte sans activité sur la période)
+//   4. values:[{value, end_time}]                  — série temporelle (C)
+export interface InsightsBreakdownResult {
+  dimension_values: string[];
+  value: number;
+}
+export interface InsightsBreakdown {
+  dimension_keys: string[];
+  results?: InsightsBreakdownResult[];
+}
+export interface InsightsTotalValue {
+  value?: number;
+  breakdowns?: InsightsBreakdown[];
+}
+export interface InsightsTimeSeriesPoint {
+  value: number;
+  end_time: string;
+}
+export interface RawInsightsMetric {
+  name: string;
+  period: string;
+  total_value?: InsightsTotalValue;
+  values?: InsightsTimeSeriesPoint[];
+}
 
-// breakdown=action_type sur profile_activity (métrique média, FEED + STORY).
+// Formes 2 et 3 : n'itère que sur `results` (jamais présent → tableau vide),
+// jamais sur la liste exhaustive des valeurs possibles de l'enum Meta — un
+// type non configuré/sans donnée est absent, pas à 0. `labelFor` traduit la
+// valeur brute (souvent en minuscules, ex. "bio_link_clicked" observé en
+// conditions réelles) vers un libellé FR ; une valeur inconnue est affichée
+// telle quelle plutôt que masquée, pour ne jamais perdre silencieusement une
+// donnée réelle.
+export function parseInsightsBreakdown(metric: RawInsightsMetric, labelFor: (dimensionValue: string) => string): DemographicRow[] {
+  const results = metric.total_value?.breakdowns?.[0]?.results ?? [];
+  return results.map((r) => ({ label: labelFor(r.dimension_values[0]), value: r.value })).filter((row) => row.value > 0);
+}
+
+// Forme 1 : valeur simple sans breakdown. `undefined` (jeu vide) → null,
+// jamais 0 par défaut.
+export function parseInsightsSimpleValue(metric: RawInsightsMetric | undefined): number | null {
+  return metric?.total_value?.value ?? null;
+}
+
+// Forme 4 : série temporelle. end_time suit le fuseau du compte (observé à
+// 07:00:00+0000, jamais minuit UTC) — ne jamais supposer minuit, ne
+// conserver que la date calendaire.
+export function parseInsightsTimeSeries(metric: RawInsightsMetric | undefined): { date: string; value: number }[] {
+  return (metric?.values ?? []).map((v) => ({ date: v.end_time.slice(0, 10), value: v.value }));
+}
+
+// ============================================================
+// breakdown=action_type sur profile_activity — VÉRIFIÉ le 08/09/2026 :
+// GET /{media-id}/insights?metric=profile_activity&breakdown=action_type a
+// renvoyé total_value:{value:1, breakdowns:[{dimension_keys:["action_type"],
+// results:[{dimension_values:["bio_link_clicked"],value:1}]}]} — un seul
+// type d'action présent, valeur brute en minuscules avec underscores.
+const ACTION_TYPE_LABELS: Record<string, string> = {
+  bio_link_clicked: "Clic sur le lien en bio",
+  call: "Appel",
+  direction: "Itinéraire",
+  email: "E-mail",
+  text: "SMS",
+};
+
 // Eden Park est une marque e-commerce nationale : le lien en bio domine très
 // largement (c'est la vitrine vers la boutique en ligne), le reste ne
-// remonte que si le bouton correspondant est configuré sur le profil. TEXT
-// n'est jamais généré : aucune marque de cette taille n'utilise le bouton
-// SMS d'un profil Instagram.
-function distributeProfileActivity(r: () => number, total: number): DemographicRow[] {
-  if (total <= 0) return [];
+// remonte que si le bouton correspondant est configuré sur le profil — et
+// même alors, l'appel réel n'a montré qu'UN SEUL type d'action non nul à la
+// fois sur un compte inactif ; un compte actif en cumule plusieurs, mais
+// jamais les 5 en même temps (TEXT en particulier n'est jamais généré :
+// aucune marque de cette taille n'utilise le bouton SMS d'un profil
+// Instagram).
+function buildProfileActivityMetric(r: () => number, total: number): RawInsightsMetric {
   const hasDirection = r() < 0.7; // une adresse boutique est configurée la plupart du temps
   const hasCall = r() < 0.25; // bouton d'appel rarement configuré sur ce type de profil
+  const hasEmail = r() < 0.6; // pas systématique — l'appel réel n'a montré que le lien en bio
   const bioShare = between(r, 85, 95) / 100;
   let remaining = 1 - bioShare;
-  const emailShare = Math.min(remaining, between(r, 3, 8) / 100);
+  const emailShare = hasEmail ? Math.min(remaining, between(r, 3, 8) / 100) : 0;
   remaining -= emailShare;
   const directionShare = hasDirection ? Math.min(remaining, between(r, 2, 5) / 100) : 0;
   remaining -= directionShare;
   const callShare = hasCall ? Math.min(remaining, between(r, 0, 2) / 100) : 0;
-  const rows: DemographicRow[] = [{ label: "Clic sur le lien en bio", value: Math.round(total * bioShare) }];
-  if (emailShare > 0) rows.push({ label: "E-mail", value: Math.round(total * emailShare) });
-  if (directionShare > 0) rows.push({ label: "Itinéraire", value: Math.round(total * directionShare) });
-  if (callShare > 0) rows.push({ label: "Appel", value: Math.round(total * callShare) });
-  // La somme doit coller exactement au total déjà affiché par ailleurs
-  // (MediaInsights.profileActivity.total) : l'écart d'arrondi est absorbé
-  // par le premier poste plutôt que tiré indépendamment.
-  const sum = rows.reduce((s, row) => s + row.value, 0);
-  rows[0].value += total - sum;
-  return rows.filter((row) => row.value > 0);
+  const results: InsightsBreakdownResult[] = [{ dimension_values: ["bio_link_clicked"], value: Math.round(total * bioShare) }];
+  if (emailShare > 0) results.push({ dimension_values: ["email"], value: Math.round(total * emailShare) });
+  if (directionShare > 0) results.push({ dimension_values: ["direction"], value: Math.round(total * directionShare) });
+  if (callShare > 0) results.push({ dimension_values: ["call"], value: Math.round(total * callShare) });
+  // La somme doit coller exactement au total (form 2 : total_value.value ET
+  // breakdowns partagent le même total côté Meta) — l'écart d'arrondi est
+  // absorbé par le premier poste plutôt que tiré indépendamment.
+  const sum = results.reduce((s, res) => s + res.value, 0);
+  results[0].value += total - sum;
+  return {
+    name: "profile_activity", period: "lifetime",
+    total_value: { value: total, breakdowns: [{ dimension_keys: ["action_type"], results: results.filter((res) => res.value > 0) }] },
+  };
 }
 
-// breakdown=contact_button_type sur profile_links_taps (métrique compte).
+// ============================================================
+// breakdown=contact_button_type sur profile_links_taps — NON VÉRIFIÉ CONTRE
+// L'API (métrique compte, jamais appelée en conditions réelles) : appel à
+// exécuter avant prod → GET /{ig-user-id}/insights?metric=profile_links_taps
+// &period=day&metric_type=total_value&breakdown=contact_button_type
+// La forme de réponse et la casse des dimension_values sont supposées par
+// analogie avec profile_activity (point I), pas confirmées.
+const CONTACT_BUTTON_LABELS: Record<string, string> = {
+  book_now: "Réservation",
+  call: "Appel",
+  direction: "Itinéraire",
+  email: "E-mail",
+  instant_experience: "Expérience instantanée",
+  text: "SMS",
+  undefined: "Autre",
+};
+
 // Le lien en bio n'y est PAS compté (Meta la décrit comme les taps sur
 // l'adresse, le bouton d'appel, e-mail et SMS) : des volumes bien plus
 // faibles que profile_activity, quelques dizaines à quelques centaines par
 // mois. Un compte de marque nationale sans téléphone configuré n'a jamais
-// CALL/TEXT/BOOK_NOW/INSTANT_EXPERIENCE ; peut même n'avoir aucune donnée du
-// tout si aucun bouton de contact n'est configuré — dans ce cas la fonction
-// renvoie `null`, à distinguer d'un compte à 0.
-function distributeProfileLinksTaps(r: () => number, total: number): DemographicRow[] {
-  if (total <= 0) return [];
+// CALL/TEXT/BOOK_NOW/INSTANT_EXPERIENCE.
+function buildProfileLinksTapsMetric(r: () => number, total: number): RawInsightsMetric {
   const hasDirection = r() < 0.6;
   const hasUndefined = r() < 0.5;
   const emailShare = between(r, 40, 60) / 100;
@@ -99,32 +188,49 @@ function distributeProfileLinksTaps(r: () => number, total: number): Demographic
   const directionShare = hasDirection ? Math.min(remaining, between(r, 30, 50) / 100) : 0;
   remaining -= directionShare;
   const undefinedShare = hasUndefined ? Math.min(remaining, between(r, 5, 15) / 100) : 0;
-  const rows: DemographicRow[] = [{ label: "E-mail", value: Math.round(total * emailShare) }];
-  if (directionShare > 0) rows.push({ label: "Itinéraire", value: Math.round(total * directionShare) });
-  if (undefinedShare > 0) rows.push({ label: "Autre", value: Math.round(total * undefinedShare) });
-  const sum = rows.reduce((s, row) => s + row.value, 0);
-  rows[0].value += total - sum;
-  return rows.filter((row) => row.value > 0);
+  const results: InsightsBreakdownResult[] = [{ dimension_values: ["email"], value: Math.round(total * emailShare) }];
+  if (directionShare > 0) results.push({ dimension_values: ["direction"], value: Math.round(total * directionShare) });
+  if (undefinedShare > 0) results.push({ dimension_values: ["undefined"], value: Math.round(total * undefinedShare) });
+  const sum = results.reduce((s, res) => s + res.value, 0);
+  results[0].value += total - sum;
+  return {
+    name: "profile_links_taps", period: "day",
+    total_value: { value: total, breakdowns: [{ dimension_keys: ["contact_button_type"], results: results.filter((res) => res.value > 0) }] },
+  };
 }
 
 export type MediaType = "post" | "reel" | "story";
 
 // Disponibilité par type de média — GET /{media-id}/insights, doc Graph API
-// GRAPH_VERSION (Instagram API with Facebook Login), tableau vérifié contre
-// la documentation officielle — ne pas re-rechercher.
+// GRAPH_VERSION (Instagram API with Facebook Login). Le `period` demandé
+// est ignoré par Meta au niveau média : la réponse revient toujours en
+// period="lifetime", quel que soit ce qui a été demandé (observé le
+// 08/09/2026). VÉRIFIÉ CONTRE L'API le 08/09/2026, sur un compte actif réel :
+// reach, views (point H, reel), profile_activity + son breakdown (point I).
+// NON VÉRIFIÉ CONTRE L'API — à tester avant prod, appel : GET /{media-id}
+// /insights?metric=likes,comments,saved,shares,follows,profile_visits,
+// reposts,total_interactions,reels_skip_rate,total_views,total_likes,
+// total_comments : likes, comments, saved, shares, follows, profile_visits,
+// reposts, total_interactions, reels_skip_rate, total_views, total_likes,
+// total_comments. Le catalogue ci-dessous reste celui documenté par Meta,
+// simplement pas encore rejoué en conditions réelles pour ces champs.
 //   - FEED (post)  : comments, follows, likes, profile_activity,
 //                    profile_visits, reach, reposts, saved, shares,
 //                    total_interactions, views, total_comments, total_likes,
 //                    total_views. Aucun insight sur les images individuelles
-//                    d'un carrousel (seul l'album l'est).
-//   - REELS        : comments, ig_reels_avg_watch_time (ms, non documenté
-//                    précisément par Meta — à vérifier sur un appel réel
-//                    avant prod), ig_reels_video_view_total_time (non
-//                    modélisé ici), likes, reach, reels_skip_rate, reposts,
-//                    saved, shares, total_interactions, views,
-//                    total_comments, total_likes, total_views. PAS de
-//                    follows, PAS de profile_visits, PAS de profile_activity
-//                    — ces champs n'existent pas sur ce type de média.
+//                    d'un carrousel (seul l'album l'est) — vérifié aussi :
+//                    media_type=CAROUSEL_ALBUM correspond bien à
+//                    media_product_type=FEED, ce sont deux axes différents
+//                    (point B), pas un troisième type de média à traiter.
+//   - REELS        : comments, ig_reels_avg_watch_time (VÉRIFIÉ en
+//                    millisecondes le 08/09/2026, exemple observé : 4840 ms
+//                    — ce n'est plus une hypothèse), ig_reels_video_view_
+//                    total_time (non modélisé ici), likes, reach,
+//                    reels_skip_rate, reposts, saved, shares,
+//                    total_interactions, views, total_comments, total_likes,
+//                    total_views. PAS de follows, PAS de profile_visits, PAS
+//                    de profile_activity — ces champs n'existent pas sur ce
+//                    type de média.
 //   - STORY        : follows, navigation (tap_forward/tap_back/exits/
 //                    swipe_forward), profile_activity, profile_visits,
 //                    reach, replies, reposts, shares, total_interactions,
@@ -136,7 +242,9 @@ export type MediaType = "post" | "reel" | "story";
 //                    ligne par story. <5 vues → erreur (#10) « Not enough
 //                    viewers for the media to show insights » : c'est un
 //                    état d'affichage réel, pas un zéro. Disponible 24 h
-//                    seulement — d'où le webhook story_insights.
+//                    seulement — d'où le webhook story_insights. Section
+//                    entière NON VÉRIFIÉ CONTRE L'API : le compte de test
+//                    n'avait aucune story.
 //   - total_views / total_likes / total_comments (FEED + REELS) agrègent
 //     Instagram + surfaces Facebook — Instagram API with Facebook Login.
 export interface MediaInsights {
@@ -152,11 +260,9 @@ export interface MediaInsights {
   // (FEED + STORY, jamais REELS ; le breakdown est gratuit, même appel que
   // profile_activity seul — mais isolé de toute métrique sans breakdown,
   // sous peine d'un générique "An unknown error has occurred" côté Meta,
-  // sans indiquer laquelle des métriques mélangées pose problème).
-  // byAction ne contient que les postes non nuls : BIO_LINK_CLICKED, CALL,
-  // DIRECTION, EMAIL, TEXT sont les 5 valeurs possibles de l'enum, mais un
-  // bouton non configuré sur le profil est absent, jamais à 0 — itérer sur
-  // les clés reçues, pas sur la liste exhaustive.
+  // sans indiquer laquelle des métriques mélangées pose problème). VÉRIFIÉ
+  // le 08/09/2026 : byAction ne contient que les postes non nuls — un
+  // bouton non configuré est absent du tableau `results`, jamais à 0.
   profileActivity: { total: number; byAction: DemographicRow[] } | null;
   navigation: { tapForward: number; tapBack: number; tapExit: number; swipeForward: number } | null;
   reposts: number;
@@ -200,17 +306,20 @@ export function mockMediaInsights(contentId: string, mediaType: MediaType, follo
   const profileVisits = mediaType === "reel" ? null : between(r, 100, 900);
   const profileActivityTotal = profileVisits != null ? Math.round(profileVisits * 0.4) : null;
   const profileActivity =
-    profileActivityTotal != null ? { total: profileActivityTotal, byAction: distributeProfileActivity(r, profileActivityTotal) } : null;
+    profileActivityTotal != null && profileActivityTotal > 0
+      ? { total: profileActivityTotal, byAction: parseInsightsBreakdown(buildProfileActivityMetric(r, profileActivityTotal), (v) => ACTION_TYPE_LABELS[v] ?? v) }
+      : null;
   const navigation =
     mediaType === "story"
       ? { tapForward: between(r, 2000, 5000), tapBack: between(r, 200, 600), tapExit: between(r, 300, 900), swipeForward: between(r, 100, 500) }
       : null;
-  // reposts et total_interactions : disponibles sur les trois formats.
+  // reposts et total_interactions : disponibles sur les trois formats — NON
+  // VÉRIFIÉ CONTRE L'API (voir commentaire d'en-tête de MediaInsights).
   const reposts = between(r, 2, 40);
   const totalInteractions = shares + (likes ?? 0) + (comments ?? 0) + (saved ?? 0);
   const reelsSkipRate = mediaType === "reel" ? between(r, 18, 55) : null;
-  // ig_reels_avg_watch_time : Meta ne documente pas l'unité explicitement —
-  // généré en millisecondes ici, à confirmer sur un appel réel avant prod.
+  // ig_reels_avg_watch_time : VÉRIFIÉ en millisecondes le 08/09/2026
+  // (exemple observé : 4840 ms).
   const avgWatchTimeMs = mediaType === "reel" ? between(r, 4000, 12000) : null;
   const bump = () => 1 + between(r, 5, 15) / 100;
   const totalLikes = likes != null ? Math.round(likes * bump()) : null;
@@ -229,46 +338,75 @@ export interface AccountDailyPoint {
   reach: number;
 }
 
-// GET /{ig-user-id}/insights, metric=reach, metric_type=time_series,
-// period=day, since/until=30 j, SANS breakdown → 1 appel. Meta ne renvoie
-// jamais de breakdown avec metric_type=time_series ("If you request
-// metric_type=time_series, breakdowns will not be included in the
-// response"), donc cette courbe est globale, pas ventilée par format — voir
+// GET /{ig-user-id}/insights?metric=reach&period=day&since=<unix>&
+// until=<unix> → 1 appel. VÉRIFIÉ le 08/09/2026 : SANS since/until, l'API ne
+// renvoie que ~2 points (fenêtre 24 h par défaut) — pour 30 jours, since et
+// until en timestamps Unix sont OBLIGATOIRES, pas optionnels. end_time est
+// revenu à 07:00:00+0000 (pas minuit UTC) : les journées suivent le fuseau
+// du compte, ne jamais parser en supposant minuit — seule la date
+// calendaire (parseInsightsTimeSeries) est fiable. Meta n'autorise jamais de
+// breakdown avec metric_type=time_series ("If you request metric_type=
+// time_series, breakdowns will not be included in the response"), donc
+// cette courbe est globale, pas ventilée par format — voir
 // mockAccountReachTotalsByFormat pour la répartition par format sur la
 // période (un total, pas une série quotidienne).
 export function mockAccountReachSeries(accountId: string, followersTotal: number, days = 30): AccountDailyPoint[] {
   const r = rng(`${accountId}:reach-series`);
   const base = Math.round(followersTotal * 0.02);
-  const points: AccountDailyPoint[] = [];
-  const today = new Date("2026-09-01T00:00:00Z");
+  const values: InsightsTimeSeriesPoint[] = [];
+  const today = new Date("2026-09-01T07:00:00Z");
   let level = base;
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setUTCDate(d.getUTCDate() - i);
     level = Math.max(200, level + between(r, -Math.round(base * 0.12), Math.round(base * 0.15)));
-    points.push({ date: d.toISOString().slice(0, 10), reach: level });
+    values.push({ value: level, end_time: d.toISOString() });
   }
-  return points;
+  const raw: RawInsightsMetric = { name: "reach", period: "day", values };
+  return parseInsightsTimeSeries(raw).map((p) => ({ date: p.date, reach: p.value }));
 }
 
 export interface FormatReachTotals {
-  post: number;
-  reel: number;
-  story: number;
+  post: number | null;
+  reel: number | null;
+  story: number | null;
 }
 
-// GET /{ig-user-id}/insights, metric=reach, metric_type=total_value,
-// breakdown=media_product_type, period=day, since/until=30 j → 1 appel.
-// Un total par format sur toute la période, PAS un point par jour : Meta ne
-// mélange jamais time_series et breakdown dans la même réponse (voir
-// mockAccountReachSeries ci-dessus pour la courbe quotidienne globale).
+const MEDIA_PRODUCT_TYPE_TO_FORMAT: Record<string, MediaType> = { FEED: "post", REELS: "reel", STORY: "story" };
+
+// GET /{ig-user-id}/insights?metric=reach&period=day&metric_type=
+// total_value&breakdown=media_product_type&since=<unix>&until=<unix> → 1
+// appel. VÉRIFIÉ le 08/09/2026 : confirme que time_series et breakdown sont
+// EXCLUSIFS (l'appel ci-dessus renvoie des valeurs datées sans ventilation,
+// celui-ci une ventilation sans dates) — "portée par jour ET par format" est
+// donc infaisable en un seul appel. Sur le compte de test (inactif), la
+// réponse observée était total_value:{value:0, breakdowns:[{dimension_keys:
+// ["media_product_type"]}]} — SANS clé `results` du tout : un format sans
+// donnée sur la période est absent, pas à 0. Ce générateur reflète cette
+// même absence possible (post/reel/story valent `null`, jamais 0, quand
+// Meta ne renvoie rien pour ce format).
 export function mockAccountReachTotalsByFormat(accountId: string, followersTotal: number): FormatReachTotals {
   const r = rng(`${accountId}:reach-totals-by-format`);
-  return {
-    post: Math.round(followersTotal * (between(r, 20, 32) / 100)),
-    reel: Math.round(followersTotal * (between(r, 30, 55) / 100)),
-    story: Math.round(followersTotal * (between(r, 12, 24) / 100)),
+  const raw: RawInsightsMetric = {
+    name: "reach", period: "day",
+    total_value: {
+      breakdowns: [{
+        dimension_keys: ["media_product_type"],
+        results: [
+          { dimension_values: ["FEED"], value: Math.round(followersTotal * (between(r, 20, 32) / 100)) },
+          { dimension_values: ["REELS"], value: Math.round(followersTotal * (between(r, 30, 55) / 100)) },
+          { dimension_values: ["STORY"], value: Math.round(followersTotal * (between(r, 12, 24) / 100)) },
+        ],
+      }],
+    },
   };
+  const totals: FormatReachTotals = { post: null, reel: null, story: null };
+  const results = raw.total_value?.breakdowns?.[0]?.results ?? [];
+  for (const row of results) {
+    const format = MEDIA_PRODUCT_TYPE_TO_FORMAT[row.dimension_values[0]];
+    if (format && row.value > 0) totals[format] = row.value;
+  }
+  return totals;
 }
 
 export interface MonthlyReachPoint {
@@ -276,12 +414,13 @@ export interface MonthlyReachPoint {
   reach: number;
 }
 
-// Tendance sur plusieurs mois — Meta ne conserve les insights de compte que
-// 90 jours ; au-delà, cette vue n'existe que si nous avons nous-mêmes archivé
-// une capture périodique (ex. hebdomadaire) de `reach` au fil du temps. Sur
-// un compte tout juste connecté, les mois les plus anciens resteront vides
-// tant que cet historique ne s'est pas accumulé — ce n'est pas un appel API
-// direct, mais une agrégation de nos propres relevés stockés.
+// NON VÉRIFIÉ CONTRE L'API — infaisable en un seul appel, donc rien à tester
+// directement : les insights de compte sont limités à 90 jours (fenêtre
+// glissante), cette vue au-delà n'existe que si l'on archive nous-mêmes un
+// relevé périodique de `reach` (ex. la série quotidienne ci-dessus, capturée
+// chaque semaine et stockée). Sur un compte tout juste connecté, les mois
+// les plus anciens resteront vides tant que cet historique ne s'est pas
+// accumulé.
 export function mockAccountReachMonthly(accountId: string, followersTotal: number, months = 6): MonthlyReachPoint[] {
   const r = rng(`${accountId}:reach-monthly`);
   const base = Math.round(followersTotal * 0.55);
@@ -312,11 +451,10 @@ export interface AccountPeriodTotals {
   follows: TrendMetric;
   unfollows: TrendMetric;
   // GET /{ig-user-id}/insights?metric=profile_links_taps&period=day&
-  // metric_type=total_value&breakdown=contact_button_type (breakdown
-  // gratuit, même appel — mais à isoler de toute métrique sans breakdown
-  // dans sa propre requête, voir la note sur profile_activity). `null` si
-  // le profil ne porte aucun bouton de contact (adresse, e-mail, téléphone)
-  // : Meta ne renvoie alors aucune donnée, à ne jamais confondre avec 0.
+  // metric_type=total_value&breakdown=contact_button_type — NON VÉRIFIÉ
+  // CONTRE L'API (voir buildProfileLinksTapsMetric). `null` si le profil ne
+  // porte aucun bouton de contact (adresse, e-mail, téléphone) : Meta ne
+  // renvoie alors aucune donnée, à ne jamais confondre avec 0.
   profileLinksTaps: TrendMetric | null;
   // Ne contient que les postes non nuls parmi BOOK_NOW, CALL, DIRECTION,
   // EMAIL, INSTANT_EXPERIENCE, TEXT, UNDEFINED — vide si profileLinksTaps
@@ -324,73 +462,137 @@ export interface AccountPeriodTotals {
   profileLinksTapsByButton: DemographicRow[];
 }
 
-// Chaque métrique est générée avec son niveau du mois précédent, puis le
-// mois courant en dérive avec une variation plausible — le delta affiché
-// (§ "comparaison avec le mois d'avant") vient directement de ces deux
-// niveaux, jamais d'un pourcentage tiré indépendamment.
-function withTrend(r: () => number, previous: number): TrendMetric {
-  const growth = 1 + between(r, -20, 35) / 100;
-  const value = Math.max(0, Math.round(previous * growth));
+// Delta affiché (§ "comparaison avec le mois d'avant") : `previous` vient de
+// notre propre relevé archivé du mois d'avant, `value` du relevé courant
+// (lui-même passé par le parseur ci-dessus quand la métrique a un
+// breakdown) — jamais deux tirages aléatoires indépendants.
+function withTrendFromValue(previous: number, value: number): TrendMetric {
   const deltaPct = previous > 0 ? Math.round(((value - previous) / previous) * 1000) / 10 : 0;
   return { value, deltaPct };
 }
 
+function withTrend(r: () => number, previous: number): TrendMetric {
+  const growth = 1 + between(r, -20, 35) / 100;
+  return withTrendFromValue(previous, Math.max(0, Math.round(previous * growth)));
+}
+
+const FOLLOW_TYPE_LABELS: Record<string, string> = { follows: "Abonnements", unfollows: "Désabonnements" };
+
+// GET /{ig-user-id}/insights?metric=follows_and_unfollows&period=day&
+// metric_type=total_value&breakdown=follow_type → 1 appel. VÉRIFIÉ le
+// 08/09/2026 (structure confirmée, breakdown effectivement renvoyé) : une
+// seule réponse donne les deux valeurs "abonnements" et "désabonnements" —
+// ne pas faire deux appels ni les tirer indépendamment. Nécessite ≥100
+// abonnés. "Désabonnements" mélange les départs volontaires et les comptes
+// supprimés/désactivés, à rappeler dans l'UI.
+function buildFollowsAndUnfollowsMetric(follows: number, unfollows: number): RawInsightsMetric {
+  return {
+    name: "follows_and_unfollows", period: "day",
+    total_value: { breakdowns: [{ dimension_keys: ["follow_type"], results: [
+      { dimension_values: ["follows"], value: follows },
+      { dimension_values: ["unfollows"], value: unfollows },
+    ] } ] },
+  };
+}
+
 // GET /{ig-user-id}/insights, metric_type=total_value, period sur la fenêtre
 // affichée → 3 appels : (1) accounts_engaged, total_interactions, likes,
-// comments, shares, saves — regroupables tant qu'aucun breakdown n'est
-// demandé ; (2) follows_and_unfollows avec breakdown=follow_type (une seule
-// réponse donne les deux valeurs "abonnements" et "désabonnements" — ne pas
-// les traiter comme deux mesures indépendantes côté API, seul ce mock les
-// tire séparément) — nécessite ≥100 abonnés, et "désabonnements" mélange les
-// départs volontaires et les comptes supprimés/désactivés, à rappeler dans
-// l'UI ; (3) profile_links_taps avec breakdown=contact_button_type, à
-// isoler dans sa propre requête (mélanger une métrique sans breakdown avec
-// une qui en a un renvoie "An unknown error has occurred" sans préciser
-// laquelle). Volumes bien plus faibles que profile_activity — le lien en
-// bio n'y est pas compté — et peut ne renvoyer aucune donnée pour un compte
-// sans bouton de contact configuré : voir profileLinksTaps ci-dessous.
+// comments, shares, saves — VÉRIFIÉ le 08/09/2026 : les 6 métriques
+// regroupées dans un seul appel renvoient chacune total_value:{value},
+// tant qu'aucun breakdown n'est demandé ; (2) follows_and_unfollows, voir
+// buildFollowsAndUnfollowsMetric ci-dessus ; (3) profile_links_taps, NON
+// VÉRIFIÉ, voir buildProfileLinksTapsMetric ci-dessus. Le breakdown est
+// gratuit (même appel que la métrique seule), mais chaque métrique avec
+// breakdown doit rester isolée dans sa propre requête : la mélanger à une
+// métrique qui n'en a pas renvoie un générique "An unknown error has
+// occurred" sans préciser laquelle.
 export function mockAccountPeriodTotals(accountId: string, followersTotal: number): AccountPeriodTotals {
   const r = rng(`${accountId}:period-totals`);
   const prevLikes = Math.round(followersTotal * (between(r, 8, 14) / 100));
-  const likes = withTrend(r, prevLikes);
+  const likesRaw: RawInsightsMetric = { name: "likes", period: "day", total_value: { value: Math.round(prevLikes * (1 + between(r, -20, 35) / 100)) } };
+  const likes = withTrendFromValue(prevLikes, parseInsightsSimpleValue(likesRaw) ?? 0);
   const comments = withTrend(r, Math.round(prevLikes * 0.05));
   const shares = withTrend(r, between(r, 400, 1200));
   const saves = withTrend(r, between(r, 800, 2400));
   const totalInteractionsPrev = prevLikes + comments.value + shares.value + saves.value;
+
+  const prevFollows = between(r, 8000, 20000);
+  const prevUnfollows = between(r, 4000, 11000);
+  const followsAndUnfollowsRaw = buildFollowsAndUnfollowsMetric(
+    Math.max(0, Math.round(prevFollows * (1 + between(r, -20, 35) / 100))),
+    Math.max(0, Math.round(prevUnfollows * (1 + between(r, -20, 35) / 100))),
+  );
+  const followsAndUnfollowsParsed = parseInsightsBreakdown(followsAndUnfollowsRaw, (v) => FOLLOW_TYPE_LABELS[v] ?? v);
+  const followsValue = followsAndUnfollowsParsed.find((row) => row.label === "Abonnements")?.value ?? 0;
+  const unfollowsValue = followsAndUnfollowsParsed.find((row) => row.label === "Désabonnements")?.value ?? 0;
+
   // Une marque nationale avec boutique en ligne configure presque toujours
   // au moins l'e-mail de contact — mais pas systématiquement une adresse ou
   // un numéro affiché publiquement : dans le cas contraire, Meta ne renvoie
   // aucune donnée pour cette métrique, jamais un compte à 0.
   const hasAnyContactButton = r() < 0.8;
-  const profileLinksTaps = hasAnyContactButton ? withTrend(r, between(r, 30, 300)) : null;
+  const profileLinksTapsTotal = hasAnyContactButton ? withTrend(r, between(r, 30, 300)) : null;
+  const profileLinksTapsRaw = profileLinksTapsTotal != null ? buildProfileLinksTapsMetric(r, profileLinksTapsTotal.value) : null;
+
   return {
     accountsEngaged: withTrend(r, Math.round(followersTotal * (between(r, 3, 6) / 100))),
     totalInteractions: withTrend(r, totalInteractionsPrev),
     likes, comments, shares, saves,
-    follows: withTrend(r, between(r, 8000, 20000)),
-    unfollows: withTrend(r, between(r, 4000, 11000)),
-    profileLinksTaps,
-    profileLinksTapsByButton: profileLinksTaps != null ? distributeProfileLinksTaps(r, profileLinksTaps.value) : [],
+    follows: withTrendFromValue(prevFollows, followsValue),
+    unfollows: withTrendFromValue(prevUnfollows, unfollowsValue),
+    profileLinksTaps: profileLinksTapsTotal,
+    profileLinksTapsByButton: profileLinksTapsRaw ? parseInsightsBreakdown(profileLinksTapsRaw, (v) => CONTACT_BUTTON_LABELS[v] ?? v) : [],
   };
 }
 
-const CITIES = ["Paris", "Lyon", "Marseille", "Bordeaux", "Toulouse", "Lille", "Nantes", "Nice"];
+// "Ville, Région" concaténées en une seule chaîne — VÉRIFIÉ le 08/09/2026,
+// format observé tel quel : "Marseille, Provence-Alpes-Côte d'Azur". Traité
+// comme une chaîne opaque (ni reparsée, ni retronquée) : couper sur la
+// virgule casserait un nom de ville qui en contient une.
+const FRENCH_CITY_REGIONS: [string, string][] = [
+  ["Paris", "Ile-de-France"],
+  ["Lyon", "Auvergne-Rhone-Alpes"],
+  ["Marseille", "Provence-Alpes-Côte d'Azur"],
+  ["Bordeaux", "Nouvelle-Aquitaine"],
+  ["Toulouse", "Occitanie"],
+  ["Lille", "Hauts-de-France"],
+  ["Nantes", "Pays de la Loire"],
+  ["Nice", "Provence-Alpes-Côte d'Azur"],
+];
 const COUNTRIES = ["France", "Belgique", "Suisse", "Algérie", "Royaume-Uni", "Maroc", "Canada", "États-Unis"];
 
-// GET /{ig-user-id}/insights, metric_type=total_value, un appel par
-// breakdown (jamais mélangés dans le même appel) → 5 appels : (1-4)
-// follower_demographics, breakdown=city|country|gender|age — nécessite
-// ≥100 abonnés, classement limité au top ~45 par Meta ; (5)
-// engaged_audience_demographics, breakdown=city — nécessite ≥100
-// engagements sur la période, et ne supporte plus que les timeframes
-// this_week et this_month (last_14/30/90_days et prev_month ont été
-// retirés) : "villes engagées" ne peut donc pas se comparer sur 90 jours
-// comme le reste de cette page.
+function buildCityDemographicsMetric(r: () => number, total: number, topShare: number): RawInsightsMetric {
+  const weights = FRENCH_CITY_REGIONS.map(() => 0.3 + r());
+  const sum = weights.reduce((s, w) => s + w, 0);
+  const results = FRENCH_CITY_REGIONS.map(([city, region], i) => ({
+    dimension_values: [`${city}, ${region}`],
+    value: Math.round((total * topShare * weights[i]) / sum),
+  }));
+  return { name: "follower_demographics", period: "lifetime", total_value: { breakdowns: [{ dimension_keys: ["city"], results }] } };
+}
+
+// GET /{ig-user-id}/insights?metric=follower_demographics&period=lifetime&
+// timeframe=this_month&metric_type=total_value&breakdown=<city|country|
+// gender|age> — un appel par breakdown, jamais mélangés. VÉRIFIÉ le
+// 08/09/2026 pour breakdown=city UNIQUEMENT : 45 résultats exactement
+// (plafond top 45 atteint), timeframe=this_month fonctionne, libellé
+// "Ville, Région" (région en anglais/GeoNames, pas systématiquement
+// traduite). country/gender/age : NON VÉRIFIÉS CONTRE L'API — mêmes appels
+// que ci-dessus avec breakdown=country|gender|age à tester avant prod ;
+// conservés ici avec un format simple (nom seul), à corriger si l'appel
+// réel montre une structure enrichie comme pour city.
 export function mockAudienceDemographics(accountId: string, followersTotal: number) {
   const r = rng(`${accountId}:demographics`);
+  // NON VÉRIFIÉ CONTRE L'API — GET /{ig-user-id}/insights?metric=
+  // engaged_audience_demographics&period=lifetime&timeframe=this_month&
+  // metric_type=total_value&breakdown=city. Seuil différent de
+  // follower_demographics : ≥100 engagements sur la période, pas ≥100
+  // abonnés ; timeframe limité à this_week/this_month (last_14/30/90_days
+  // et prev_month ont été retirés) — pas comparable sur 90 jours comme le
+  // reste de cette page.
   const engaged = Math.round(followersTotal * 0.08);
 
-  function distribute(labels: string[], total: number, topShare: number): DemographicRow[] {
+  function distributeSimple(labels: string[], total: number, topShare: number): DemographicRow[] {
     const weights = labels.map(() => 0.3 + r());
     const sum = weights.reduce((s, w) => s + w, 0);
     return labels
@@ -398,10 +600,13 @@ export function mockAudienceDemographics(accountId: string, followersTotal: numb
       .sort((a, b) => b.value - a.value);
   }
 
+  const followerCitiesRaw = buildCityDemographicsMetric(r, followersTotal, 0.35);
+  const engagedCitiesRaw = buildCityDemographicsMetric(r, engaged, 0.4);
+
   return {
-    followerCities: distribute(CITIES, followersTotal, 0.35),
-    followerCountries: distribute(COUNTRIES, followersTotal, 0.7),
-    engagedCities: distribute(CITIES, engaged, 0.4),
+    followerCities: parseInsightsBreakdown(followerCitiesRaw, (v) => v).sort((a, b) => b.value - a.value),
+    followerCountries: distributeSimple(COUNTRIES, followersTotal, 0.7),
+    engagedCities: parseInsightsBreakdown(engagedCitiesRaw, (v) => v).sort((a, b) => b.value - a.value),
     genderSplit: { femme: between(r, 48, 58), homme: between(r, 40, 50), autre: between(r, 1, 3) },
     ageSplit: [
       { label: "18-24", value: between(r, 8, 14) },
@@ -420,8 +625,9 @@ export interface MentionItem {
   date: string;
 }
 
-// Webhook `mentions` (commentaire ou légende) + edge /{ig-user-id}/tags —
-// Facebook Login. Les mentions en story ne sont pas captées par ce webhook.
+// NON VÉRIFIÉ CONTRE L'API — webhook `mentions` et edge /{ig-user-id}/tags
+// jamais testés (compte de test sans mention). Structure de webhook
+// standard Meta reprise par hypothèse, pas confirmée en conditions réelles.
 export function mockMentions(accountId: string): MentionItem[] {
   const r = rng(`${accountId}:mentions`);
   const pool: MentionItem[] = [
@@ -441,10 +647,13 @@ export interface CompetitorProfile {
   mediaCount: number;
 }
 
-// GET /{ig-user-id}?fields=business_discovery.username({username}){...} —
-// un appel par concurrent suivi, données publiques uniquement (followers_
-// count, media_count) : aucun insight sur un compte qui n'est pas le nôtre.
-// Pas de webhook ; cadence hebdomadaire choisie par nous, pas imposée par Meta.
+// GET /{ig-user-id}?fields=business_discovery.username({username}){
+// followers_count,media_count} — VÉRIFIÉ le 08/09/2026 sur "lacoste"
+// ({"business_discovery":{"followers_count":8873423,"media_count":4104,
+// "id":"..."}}) : fonctionne avec le token courant, aucune démarche
+// supplémentaire. Un appel par concurrent suivi, données publiques
+// uniquement : aucun insight sur un compte qui n'est pas le nôtre. Pas de
+// webhook ; cadence hebdomadaire choisie par nous, pas imposée par Meta.
 export function mockCompetitors(accountId: string): CompetitorProfile[] {
   const r = rng(`${accountId}:competitors`);
   return [
@@ -470,12 +679,14 @@ const HANDLE_PREFIXES = [
 ];
 const HANDLE_SUFFIXES = ["", ".paris", "92", "_rugby", ".fr", "75", "_official", ".eden", "13", "_style"];
 
-// Aucun endpoint Meta ne fournit un classement de commentateurs : reconstruit
-// par nous à partir de l'historique du webhook `comments`, qui transmet
+// NON VÉRIFIÉ CONTRE L'API — dépend du webhook `comments`, jamais configuré
+// (compte de test sans commentaire). GET /{media-id}/comments jamais appelé
+// non plus. Aucun endpoint Meta ne fournirait de toute façon un classement :
+// reconstruit par nous à partir de l'historique du webhook, qui transmettrait
 // from.username et from.id pour chaque commentaire (Facebook Login) — donc
-// nominatif dès le premier commentaire stocké, pas seulement "à terme". Ce
-// qui suit illustre la forme que prendra ce classement une fois l'historique
-// accumulé ; count=50 correspond à l'affichage produit, pas à une limite API.
+// nominatif dès le premier commentaire stocké, une fois le webhook
+// effectivement configuré et testé. count=50 correspond à l'affichage
+// produit, pas à une limite API.
 export function mockTopCommenters(accountId: string, count = 50): TopCommenter[] {
   const r = rng(`${accountId}:top-commenters`);
   const used = new Set<string>();
@@ -506,6 +717,8 @@ export interface LiveCommentSeed {
   text: string;
 }
 
+// NON VÉRIFIÉ CONTRE L'API — voir mockTopCommenters : même webhook
+// `comments`, jamais configuré ni testé.
 export const LIVE_COMMENT_POOL: LiveCommentSeed[] = [
   { author: "sophie.eden", text: "J'adore ce polo, il sort quand en boutique ? 😍" },
   { author: "marc_rugbyfan", text: "Toujours la même qualité, bravo !" },
