@@ -1,8 +1,17 @@
-// Référentiel du catalogue (écran Catalogue) — une dizaine de sujets que
-// Community Intelligence sait couvrir aujourd'hui, en langage simple.
+// Référentiel du catalogue (écran Catalogue) — dix sujets, calqués sur ce
+// qui est documenté sur Import / API (src/app/[org]/[brand]/analyse/
+// page.tsx) : le client choisit ses priorités parmi des capacités réelles,
+// pas des concepts abandonnés (cohortes de survie, ecosystem chat...).
 // Contenu produit intrinsèque (identique pour tous les clients), donc
 // défini en code plutôt qu'en base — seul l'arbitrage du client
 // (manual_entries, entity_type='feature_catalog') vient de la base.
+//
+// `slug` est saisi à la main, indépendant du titre : un slug dérivé du
+// titre (ancien comportement) se recalcule dès qu'on reformule un intitulé,
+// ce qui orpheline silencieusement l'avis déjà donné par le client en base
+// (constaté : la ligne "vue-d-ensemble--..." d'un ancien intitulé n'est
+// plus rattachée à rien). Le slug ne doit plus jamais changer une fois
+// publié, même si le titre est retouché ensuite.
 
 export interface CatalogueSubject {
   slug: string;
@@ -11,65 +20,70 @@ export interface CatalogueSubject {
   note?: string;
 }
 
-const RAW: { t: string; d: string; n?: string }[] = [
+export const CATALOGUE: CatalogueSubject[] = [
   {
-    t: "Suivre la croissance de la communauté",
-    d: "Le nombre d'abonnés, son évolution dans le temps, et une alerte dès que quelque chose sort de l'ordinaire.",
+    // Slug conservé tel quel (ancien intitulé "Suivre la croissance de la
+    // communauté") : un avis client réel est déjà enregistré dessus.
+    slug: "suivre-la-croissance-de-la-communaute",
+    title: "Suivre la croissance des abonnés",
+    description: "Le nombre d'abonnés, son évolution et la part de croissance organique, mois après mois.",
+    note: "Déjà actif.",
   },
   {
-    t: "Savoir qui compose l'audience",
-    d: "Pays, villes, âge, genre, jours où elle est la plus active — en chiffres globaux, jamais personne par personne.",
+    slug: "voir-qui-arrive-et-qui-part",
+    title: "Voir qui arrive et qui part, nommément",
+    description: "Qui est nouveau, qui est revenu, qui a quitté la communauté — en comparant les deux derniers imports.",
+    note: "Déjà actif.",
   },
   {
-    t: "Voir qui arrive et qui part",
-    d: "Combien de personnes rejoignent ou quittent la communauté chaque mois, et les moments où ça s'accélère.",
+    slug: "retrouver-qui-est-parti",
+    title: "Retrouver qui est parti, avec ancienneté",
+    description: "La liste des personnes qui ont quitté, avec la durée de leur abonnement, exportable en un clic.",
+    note: "Déjà actif.",
   },
   {
-    t: "Savoir si les nouveaux abonnés restent",
-    d: "Suivre dans le temps si les personnes recrutées un mois donné sont toujours là 30, 60 ou 90 jours plus tard.",
+    slug: "suivre-la-portee-et-l-engagement",
+    title: "Suivre la portée et l'engagement du compte",
+    description: "Comptes touchés, interactions, j'aime, commentaires, enregistrements — jour par jour et par format.",
+    note: "Nécessite le branchement de l'API Instagram (déjà documenté).",
   },
   {
-    t: "Comparer les publications entre elles",
-    d: "Portée, interactions et abonnés gagnés par publication, pour voir ce qui fonctionne le mieux.",
+    slug: "comparer-les-publications",
+    title: "Comparer les publications entre elles",
+    description: "Portée, interactions et abonnements générés, publication par publication, pour voir ce qui fonctionne le mieux.",
+    note: "Nécessite le branchement de l'API Instagram (déjà documenté).",
   },
   {
-    t: "Suivre les échanges avec la communauté",
-    d: "La part des messages et commentaires qui obtiennent une réponse, en global.",
+    slug: "suivre-les-commentaires-en-direct",
+    title: "Suivre les commentaires en direct",
+    description: "Chaque commentaire reçu apparaît en temps réel, sans recharger la page.",
+    note: "Nécessite le branchement de l'API Instagram (webhook, déjà documenté).",
   },
   {
-    t: "Retrouver qui est parti",
-    d: "La liste des personnes qui ont quitté la communauté, avec leur ancienneté, exportable en un clic.",
+    slug: "classer-les-meilleurs-commentateurs",
+    title: "Classer les meilleurs commentateurs",
+    description: "Qui commente le plus souvent — un classement qui s'affine à mesure que l'historique s'accumule.",
+    note: "Nécessite le branchement de l'API Instagram (déjà documenté).",
   },
   {
-    t: "Suivre la mise à jour des données",
-    d: "Voir quand les données ont été actualisées, et être alerté si le rythme ralentit.",
+    slug: "suivre-la-performance-des-stories",
+    title: "Suivre la performance des stories",
+    description: "Portée, vues et navigation de chaque story, tant qu'elle reste disponible (24 h).",
+    note: "Nécessite le branchement de l'API Instagram (déjà documenté).",
   },
   {
-    t: "Gérer les accès de l'équipe",
-    d: "Décider qui, dans l'équipe, peut voir quoi et modifier les réglages.",
+    slug: "connaitre-le-profil-de-l-audience",
+    title: "Connaître le profil de l'audience",
+    description: "Pays, villes, âge, genre des abonnés — en chiffres globaux, jamais personne par personne.",
+    note: "Nécessite le branchement de l'API Instagram (déjà documenté).",
   },
   {
-    t: "Mesurer l'effet des campagnes payantes",
-    d: "Le coût réel par abonné qui reste dans le temps, pas seulement par abonné recruté.",
-    n: "Nécessite un accès supplémentaire au Gestionnaire de publicités.",
+    slug: "suivre-les-mentions-et-la-concurrence",
+    title: "Suivre les mentions et la concurrence",
+    description: "Être alerté quand la marque est mentionnée, et se comparer aux comptes concurrents publics.",
+    note: "Nécessite le branchement de l'API Instagram (déjà documenté).",
   },
 ];
-
-function slugify(title: string): string {
-  return title
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-export const CATALOGUE: CatalogueSubject[] = RAW.map((it) => ({
-  slug: slugify(it.t),
-  title: it.t,
-  description: it.d,
-  note: it.n,
-}));
 
 export const CATALOGUE_TOTAL = CATALOGUE.length;
 
