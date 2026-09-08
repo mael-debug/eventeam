@@ -203,12 +203,12 @@ export default async function BrandOverviewPage({
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16 }}>
         <KpiCard
-          label="Abonnés identifiés"
-          value={fr(identifiedCount ?? null)}
+          label="Abonnés"
+          value={fr(overview?.followers_total ?? null)}
           sub={
             hasComparison && reconciliation?.observed_arrivals != null
-              ? `+${fr(reconciliation.observed_arrivals)} depuis le dernier import · ${windowLabel}`
-              : `abonnés ${windowLabel} · ${fr(overview?.followers_total ?? null)} au compteur Meta`
+              ? `abonnés ${windowLabel} · ${fr(identifiedCount ?? null)} identifiés individuellement (+${fr(reconciliation.observed_arrivals)} depuis le dernier import)`
+              : `abonnés ${windowLabel} · ${fr(identifiedCount ?? null)} identifiés individuellement`
           }
         />
         <KpiCard
