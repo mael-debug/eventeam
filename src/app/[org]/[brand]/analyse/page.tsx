@@ -214,7 +214,7 @@ function SourcesRadialDiagram() {
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3, padding: 12,
           }}
         >
-          <span style={{ fontSize: 15, fontWeight: 800, color: "var(--surface-creme)", lineHeight: 1.25 }}>Community Intelligence</span>
+          <span style={{ fontSize: 15, fontWeight: 800, color: "var(--surface-creme)", lineHeight: 1.25 }}>L&apos;outil</span>
           <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(250,248,243,0.75)" }}>Le socle central</span>
         </div>
 
