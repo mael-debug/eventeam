@@ -753,10 +753,24 @@ export type EngagedAudienceResult =
 // quel, jamais remplacé par un message maison. La forme de réponse en cas
 // de SUCCÈS (compte au-dessus du seuil) n'a JAMAIS été observée — supposée
 // alignée sur follower_demographics par analogie, NON VÉRIFIÉE.
+//
+// SEUIL — NON VÉRIFIÉ NON PLUS, et c'est la seule métrique de la page dans
+// ce cas : le message Meta dit "plus de 100 personnes dans CHAQUE CRITÈRE
+// DE RÉPARTITION", ce qui se lit comme un seuil PAR VILLE, pas sur le total
+// engagé. On teste donc ici si une ville au moins dépasse 100, plutôt que
+// le total — mais cette lecture n'a jamais été rejouée contre l'API (compte
+// de test sous le seuil global, donc a fortiori sous n'importe quel seuil
+// par ville). Un compte à fort engagement mais dispersé sur tout le
+// territoire (plausible pour Eden Park, marque nationale) peut dépasser
+// 100 au total sans qu'aucune ville n'atteigne ce chiffre seule — d'où
+// l'intérêt de ne pas se fier au total.
 export function mockEngagedAudienceDemographics(accountId: string, followersTotal: number): EngagedAudienceResult {
   const r = rng(`${accountId}:engaged-demographics`);
   const engaged = Math.round(followersTotal * 0.08);
-  if (engaged < 100) {
+  const raw = buildCityDemographicsMetric(r, engaged, 0.4);
+  const rows = parseInsightsBreakdown(raw, (v) => v).sort((a, b) => b.value - a.value);
+  const anyCityAboveThreshold = rows.some((row) => row.value >= 100);
+  if (!anyCityAboveThreshold) {
     return {
       ok: false,
       code: 3006,
@@ -765,8 +779,7 @@ export function mockEngagedAudienceDemographics(accountId: string, followersTota
         "Vous pourrez en savoir plus sur votre audience une fois que cet indicateur aura plus de 100 personnes dans chaque critère de répartition.",
     };
   }
-  const raw = buildCityDemographicsMetric(r, engaged, 0.4);
-  return { ok: true, rows: parseInsightsBreakdown(raw, (v) => v).sort((a, b) => b.value - a.value) };
+  return { ok: true, rows };
 }
 
 // GET /{ig-user-id}/insights?metric=follower_demographics&period=lifetime&

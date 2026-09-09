@@ -6,12 +6,13 @@ import { Logo } from "@/components/ds";
 
 // Vue d'ensemble/Audience/Croissance/Contenu/Écosystème ont fusionné dans
 // Import / API (2026-09-08) — une seule page pour le compte, plutôt que
-// cinq écrans séparés.
+// cinq écrans séparés. Listes (2026-09-09) est retirée à son tour : sa
+// seule fonction (export des départs identifiés) a été absorbée par
+// l'exemple illustratif de la section "Suivi nominatif" d'Import / API.
 const NAV_ITEMS: { key: string; label: string; href: (base: string) => string }[] = [
   { key: "intro", label: "Intro", href: (b) => `${b}/intro` },
   { key: "analyse", label: "Import / API", href: (b) => `${b}/analyse` },
   { key: "ia", label: "Showroom IA", href: (b) => `${b}/ia` },
-  { key: "listes", label: "Listes", href: (b) => `${b}/listes` },
   { key: "catalogue", label: "Catalogue", href: (b) => `${b}/catalogue` },
   { key: "imports", label: "Imports", href: (b) => `${b}/imports` },
   { key: "journal", label: "Journal", href: (b) => `${b}/journal` },

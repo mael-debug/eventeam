@@ -430,6 +430,14 @@ export default async function AnalysePage({
   const genderMeasured = genderReported + demographics.genderSplit.unspecified;
   const unspecifiedPct = genderMeasured > 0 ? (demographics.genderSplit.unspecified / genderMeasured) * 100 : 0;
 
+  // Deux populations distinctes (follower_demographics vs
+  // engaged_audience_demographics) : une ville qui apparaît côté audience
+  // touchée sans apparaître côté abonnés est un signal d'expansion, pas un
+  // sous-ensemble des abonnés — voir le commentaire d'en-tête de la
+  // section "8. Audience Instagram".
+  const followerCityLabels = new Set(demographics.followerCities.map((c) => c.label));
+  const newEngagedCities = engagedAudience.ok ? engagedAudience.rows.filter((c) => !followerCityLabels.has(c.label)) : [];
+
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 44, maxWidth: 1120, minWidth: 0, paddingBottom: 24 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1018,15 +1026,29 @@ export default async function AnalysePage({
           pas le genre à l'inscription. age : SEPT tranches, 13-17 à 65+.
           Le total mesuré est inférieur au nombre d'abonnés (observé : 2164
           sur 2429) — seuls les abonnés pour qui Meta a la donnée entrent
-          dans le calcul, jamais présenté comme exhaustif.
+          dans le calcul, jamais présenté comme exhaustif. Cartes "Villes —
+          abonnés" et "Pays — abonnés" (ex-"Top villes"/"Top pays",
+          renommées le 09/09/2026 pour ne pas laisser croire à un
+          sous-ensemble de la carte engagée ci-dessous).
           5e appel séparé : engaged_audience_demographics, breakdown=city —
           À ISOLER (une erreur ici ferait tomber tout le reste si groupée).
-          Comportement DIFFÉRENT : sous le seuil (≥100 engagements par
-          critère), Meta renvoie une vraie erreur (code 3006 "Not enough
-          users"), pas un jeu vide — capturée et affichée telle quelle
-          (error_user_msg, déjà en français). VÉRIFIÉ le 08/09/2026
-          UNIQUEMENT sur ce chemin d'erreur ; le chemin de succès n'a jamais
-          été observé (compte de test sous le seuil). */}
+          Population DIFFÉRENTE de follower_demographics : comptes ayant
+          interagi sur la période, abonnés ou non — jamais un sous-ensemble
+          des abonnés, carte "Villes — audience touchée" (ex-"Villes
+          engagées") volontairement placée à côté de "Villes — abonnés"
+          (plus séparée par la carte Pays) pour rendre la comparaison
+          visuelle possible ; les villes qui n'apparaissent pas côté
+          abonnés y sont signalées (pastille), signal d'expansion précoce.
+          Comportement DIFFÉRENT au niveau de l'erreur : sous le seuil
+          (≥100 engagements par critère), Meta renvoie une vraie erreur
+          (code 3006 "Not enough users"), pas un jeu vide — capturée et
+          affichée telle quelle (error_user_msg, déjà en français), précédée
+          d'une ligne de contexte pour ne pas la lire comme un bug. VÉRIFIÉ
+          le 08/09/2026 UNIQUEMENT sur ce chemin d'erreur ; le chemin de
+          succès n'a jamais été observé (compte de test sous le seuil) — et
+          l'interprétation du seuil elle-même (par ville, pas au total) est
+          elle aussi non vérifiée, voir mockEngagedAudienceDemographics
+          dans analyse-mock.ts. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={8} title="Audience Instagram" cadence={<CadenceChip cadence="S" />} subtitle="Profil agrégé des abonnés — jamais attribué à une personne. Classement limité au top 45 par Meta." />
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -1035,50 +1057,82 @@ export default async function AnalysePage({
             Basé sur {fr(demographics.measuredTotal)} abonnés mesurés sur {fr(followersTotal)}.
           </span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+          Deux populations distinctes : vos abonnés d&apos;un côté, les comptes qui interagissent de l&apos;autre — même
+          s&apos;ils ne vous suivent pas.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <span style={{ fontSize: 15, fontWeight: 700 }}>Top villes (sur 45 max)</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>Villes — abonnés</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Où vivent les personnes qui vous suivent déjà.</span>
+              </div>
               {demographics.followerCities.map((c) => (
                 <div key={c.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                   <span style={{ color: "var(--text-muted)" }}>{c.label}</span>
                   <span style={{ fontWeight: 700 }}>{fr(c.value)}</span>
                 </div>
               ))}
+              <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>Meta plafonne ce classement à 45 entrées.</span>
             </div>
           </Card>
           <Card variant="claire" interactive={false}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <span style={{ fontSize: 15, fontWeight: 700 }}>Top pays (sur 45 max)</span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700 }}>Villes — audience touchée</span>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Où votre contenu génère de l&apos;interaction, abonnés ou non.</span>
+                </div>
+                <LiveSourceTag source={engagedAudienceResult.source} reason={engagedAudienceResult.reason} />
+              </div>
+              {engagedAudience.ok ? (
+                <>
+                  {engagedAudience.rows.map((c) => {
+                    const isNew = !followerCityLabels.has(c.label);
+                    return (
+                      <div key={c.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 13 }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", minWidth: 0 }}>
+                          {isNew && (
+                            <span
+                              aria-hidden
+                              title="Ville absente des abonnés"
+                              style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--vert-logo)", flex: "0 0 auto" }}
+                            />
+                          )}
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
+                        </span>
+                        <span style={{ fontWeight: 700, flex: "0 0 auto" }}>{fr(c.value)}</span>
+                      </div>
+                    );
+                  })}
+                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>Meta plafonne ce classement à 45 entrées.</span>
+                  {newEngagedCities.length > 0 && (
+                    <span style={{ fontSize: 11, color: "var(--vert-logo)", fontWeight: 600 }}>
+                      Signalées : villes où vous engagez sans y être encore suivi.
+                    </span>
+                  )}
+                </>
+              ) : (
+                <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 12, padding: "10px 12px", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <span>Cette mesure demande un volume d&apos;interactions plus élevé que le nombre d&apos;abonnés.</span>
+                  <span>{engagedAudience.errorUserMsg}</span>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+          <Card variant="claire" interactive={false}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>Pays — abonnés</span>
               {demographics.followerCountries.map((c) => (
                 <div key={c.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                   <span style={{ color: "var(--text-muted)" }}>{c.label}</span>
                   <span style={{ fontWeight: 700 }}>{fr(c.value)}</span>
                 </div>
               ))}
-            </div>
-          </Card>
-          <Card variant="claire" interactive={false}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 15, fontWeight: 700 }}>Villes engagées (sur 45 max)</span>
-                <LiveSourceTag source={engagedAudienceResult.source} reason={engagedAudienceResult.reason} />
-              </div>
-              <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>
-                Comptes ayant interagi, pas seulement abonnés.
-              </span>
-              {engagedAudience.ok ? (
-                engagedAudience.rows.map((c) => (
-                  <div key={c.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                    <span style={{ color: "var(--text-muted)" }}>{c.label}</span>
-                    <span style={{ fontWeight: 700 }}>{fr(c.value)}</span>
-                  </div>
-                ))
-              ) : (
-                <div style={{ background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 12, padding: "10px 12px", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                  {engagedAudience.errorUserMsg}
-                </div>
-              )}
+              <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>Meta plafonne ce classement à 45 entrées.</span>
             </div>
           </Card>
           <Card variant="claire" interactive={false}>
