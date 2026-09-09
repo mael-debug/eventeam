@@ -855,11 +855,193 @@ export function mockCompetitors(accountId: string): CompetitorProfile[] {
   ];
 }
 
+// Personas — section "Personas" d'Import/API, entièrement simulée
+// aujourd'hui : ni la classification par LLM des publications (①), ni
+// celle des commentaires (②/③), ne sont branchées. Dépendances réelles,
+// une fois branchées :
+//   ① Résonance — disponible dès le branchement de l'API : GET /media
+//     (caption, media_product_type) + GET /{media-id}/insights (reach,
+//     total_interactions). Un LLM classe chaque publication dans un seul
+//     persona à partir de sa légende ; taux d'engagement par publication
+//     = total_interactions ÷ reach ; MOYENNE par persona (jamais la
+//     somme, sinon le volume de publication d'un persona pilote son
+//     score) ; les quatre moyennes sont normalisées pour totaliser 100 %.
+//   ②/③ Poids dans la conversation / Signature — nécessitent un
+//     HISTORIQUE de commentaires accumulé par nos soins : GET
+//     /{media-id}/comments (username, text, timestamp) ne renvoie que les
+//     commentaires actuels, aucun rétroactif, et rien ne relie un
+//     commentateur à un profil au premier appel. Compter 4 à 8 semaines
+//     avant que ces deux indicateurs aient de la matière. Regrouper par
+//     username, classer chaque commentaire (texte + persona de la
+//     publication commentée), attribuer à chaque commentateur son
+//     persona DOMINANT — compter les personnes, pas les commentaires.
+//   ④ Trajectoire — résonance sur 30 jours vs 90 jours précédents ;
+//     impossible avant 3 mois d'historique accumulé (les insights Meta
+//     eux-mêmes ne remontent que 90 jours en arrière) — afficher
+//     "Historique insuffisant" plutôt qu'un faux zéro en dessous de ce
+//     seuil, jamais masqué silencieusement.
+// "Part d'audience" ne doit JAMAIS être écrit ni suggéré nulle part ici :
+// un persona est un archétype éditorial, pas un segment de population —
+// on ne compte jamais d'individus qui "appartiendraient" à un persona.
+
+export type PersonaKey = "casual-premium" | "rugby-lifestyle" | "urban-lifestyle" | "sport-outdoor";
+
+export interface PersonaDefinition {
+  key: PersonaKey;
+  name: string;
+  description: string;
+  tags: string[];
+}
+
+export const PERSONA_DEFINITIONS: PersonaDefinition[] = [
+  { key: "casual-premium", name: "Casual Premium", description: "Mode masculine élégante et décontractée.", tags: ["Mode", "Gastronomie", "Voyage", "Golf"] },
+  { key: "rugby-lifestyle", name: "Rugby Lifestyle", description: "Segment fortement connecté à l'ADN rugby et sport chic.", tags: ["Rugby", "Sport", "Lifestyle", "Événements"] },
+  { key: "urban-lifestyle", name: "Urban Lifestyle", description: "Audience plus contemporaine orientée mode, voyage et expériences.", tags: ["Mode", "Travel", "Restaurants", "Sneakers"] },
+  { key: "sport-outdoor", name: "Sport & Outdoor", description: "Audience davantage orientée sport et activités extérieures.", tags: ["Running", "Outdoor", "Fitness"] },
+];
+
+// Palette dédiée aux personas, tokens uniquement — réutilisée à l'identique
+// pour les cartes de la section Personas et pour les badges de la colonne
+// Persona du tableau des commentateurs, c'est ce lien visuel qui rend les
+// deux sections cohérentes.
+export const PERSONA_COLORS: Record<PersonaKey, { text: string; bg: string; border: string }> = {
+  "casual-premium": { text: "var(--bleu)", bg: "var(--bleu-bg)", border: "var(--bleu)" },
+  "rugby-lifestyle": { text: "var(--vert-logo)", bg: "var(--vert-pastel)", border: "var(--vert-logo)" },
+  "urban-lifestyle": { text: "var(--encre-froide)", bg: "var(--pastel-violet)", border: "var(--pastel-violet)" },
+  "sport-outdoor": { text: "var(--encre)", bg: "var(--pastel-jaune)", border: "var(--pastel-jaune)" },
+};
+
+const PERSONA_SIGNATURES: Record<PersonaKey, { formatHighlight: string; timeWindow: string; vocabulary: string }> = {
+  "casual-premium": {
+    formatHighlight: "Post carrousel lookbook, +35 % vs moyenne du compte",
+    timeWindow: "Commente surtout en fin de journée, 18h-20h",
+    vocabulary: "Parle de « coupe », « matière », « intemporel »",
+  },
+  "rugby-lifestyle": {
+    formatHighlight: "Reel coulisses de match, +52 % vs moyenne du compte",
+    timeWindow: "Commente surtout en soirée, 19h-22h",
+    vocabulary: "Parle de « match », « club », « les gars »",
+  },
+  "urban-lifestyle": {
+    formatHighlight: "Story sondage produit, meilleur taux de réponse du compte",
+    timeWindow: "Commente plutôt en journée, 12h-14h",
+    vocabulary: "Parle de « look », « citytrip », « adresse »",
+  },
+  "sport-outdoor": {
+    formatHighlight: "Reel entraînement en extérieur, +28 % vs moyenne du compte",
+    timeWindow: "Commente tôt le matin, 6h-8h",
+    vocabulary: "Parle de « sortie », « chrono », « performance »",
+  },
+};
+
+export interface PersonaTrajectory {
+  sufficientHistory: boolean;
+  deltaPts: number | null;
+  emergent: boolean;
+}
+
+export interface PersonaMetrics {
+  key: PersonaKey;
+  resonancePct: number;
+  conversationPct: number;
+  conversationDenominator: number;
+  signature: { formatHighlight: string; timeWindow: string; vocabulary: string };
+  trajectory: PersonaTrajectory;
+}
+
+export interface PersonasOverview {
+  personas: (PersonaDefinition & { metrics: PersonaMetrics })[];
+  publicationsClassified: number;
+  distinctCommentersAnalyzed: number;
+  periodMonths: number;
+  summarySentence: string;
+}
+
+function normalizeToHundred(weights: number[]): number[] {
+  const sum = weights.reduce((s, w) => s + w, 0);
+  const rounded = weights.map((w) => Math.round((w / sum) * 100));
+  const diff = 100 - rounded.reduce((s, v) => s + v, 0);
+  if (diff !== 0) {
+    const maxIdx = rounded.indexOf(Math.max(...rounded));
+    rounded[maxIdx] += diff;
+  }
+  return rounded;
+}
+
+function buildPersonasSummarySentence(metrics: { name: string; resonancePct: number; trajectory: PersonaTrajectory }[]): string {
+  const byResonance = [...metrics].sort((a, b) => b.resonancePct - a.resonancePct);
+  const leader = byResonance[0];
+  const emergent = metrics.find((m) => m.trajectory.sufficientHistory && m.trajectory.emergent && m.name !== leader.name);
+  if (emergent) {
+    return `${leader.name} reste le persona qui capte le plus d'engagement, mais ${emergent.name} progresse le plus vite sur les trois derniers mois.`;
+  }
+  return `${leader.name} reste le persona qui capte le plus d'engagement, dans un équilibre stable sur les trois derniers mois.`;
+}
+
+// GET /media (caption, media_product_type) + GET /{media-id}/insights
+// (reach, total_interactions) pour ①, GET /{media-id}/comments pour ②/③
+// — voir le commentaire d'en-tête au-dessus pour le détail des
+// dépendances et ce qui est vérifié vs simulé. Classification par LLM non
+// branchée : les quatre personas et leurs quatre indicateurs sont
+// entièrement simulés ici.
+export function mockPersonasOverview(accountId: string, followersTotal: number): PersonasOverview {
+  const r = rng(`${accountId}:personas`);
+
+  const resonanceWeights = PERSONA_DEFINITIONS.map(() => between(r, 40, 100));
+  const resonancePcts = normalizeToHundred(resonanceWeights);
+
+  const conversationWeights = PERSONA_DEFINITIONS.map(() => between(r, 40, 100));
+  const conversationPcts = normalizeToHundred(conversationWeights);
+
+  const distinctCommentersAnalyzed = Math.max(60, Math.round(followersTotal * (between(r, 8, 18) / 1000)));
+
+  const personas = PERSONA_DEFINITIONS.map((def, i) => {
+    const sufficientHistory = r() > 0.2;
+    const deltaPts = sufficientHistory ? between(r, -6, 12) : null;
+    const trajectory: PersonaTrajectory = {
+      sufficientHistory,
+      deltaPts,
+      emergent: sufficientHistory && (deltaPts ?? 0) > 5,
+    };
+    const metrics: PersonaMetrics = {
+      key: def.key,
+      resonancePct: resonancePcts[i],
+      conversationPct: conversationPcts[i],
+      conversationDenominator: distinctCommentersAnalyzed,
+      signature: PERSONA_SIGNATURES[def.key],
+      trajectory,
+    };
+    return { ...def, metrics };
+  });
+
+  return {
+    personas,
+    publicationsClassified: Math.max(40, Math.round(between(r, 140, 220))),
+    distinctCommentersAnalyzed,
+    periodMonths: 3,
+    summarySentence: buildPersonasSummarySentence(personas.map((p) => ({ name: p.name, resonancePct: p.metrics.resonancePct, trajectory: p.metrics.trajectory }))),
+  };
+}
+
+// Persona dominant d'un commentateur (②) : classement par persona DOMINANT
+// des commentaires qu'il a laissés, jamais un compte par commentaire. Sous
+// 3 commentaires, aucune dominante fiable — pas de persona attribué.
+// Simulé ici (voir le commentaire d'en-tête plus haut pour la vraie
+// méthode et ses dépendances) : chaque commentateur reçoit un persona
+// stable, dérivé de son identité, sans lien avec les pourcentages agrégés
+// de mockPersonasOverview ci-dessus (deux échantillons différents).
+function mockCommenterPersona(accountId: string, username: string, commentCount: number): PersonaKey | null {
+  if (commentCount < 3) return null;
+  const r = rng(`${accountId}:commenter-persona:${username}`);
+  return PERSONA_DEFINITIONS[Math.floor(r() * PERSONA_DEFINITIONS.length)].key;
+}
+
 export interface TopCommenter {
   username: string;
   verified: boolean;
   commentCount: number;
   lastCommentDate: string;
+  personaKey: PersonaKey | null;
 }
 
 const HANDLE_PREFIXES = [
@@ -900,6 +1082,7 @@ export function mockTopCommenters(accountId: string, count = 50): TopCommenter[]
       verified: r() < 0.04,
       commentCount,
       lastCommentDate: `2026-08-${String(between(r, 1, 28)).padStart(2, "0")}`,
+      personaKey: mockCommenterPersona(accountId, handle, commentCount),
     });
   }
   return rows.sort((a, b) => b.commentCount - a.commentCount);

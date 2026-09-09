@@ -16,15 +16,21 @@ import {
   mockCompetitors,
   mockTopCommenters,
   mockFollowerMovementsExample,
+  mockPersonasOverview,
+  PERSONA_COLORS,
   withLiveFallback,
   notWiredYet,
   GRAPH_VERSION,
   type MediaType,
   type TrendMetric,
   type DemographicRow,
+  type PersonaDefinition,
+  type PersonaMetrics,
 } from "@/lib/analyse-mock";
 import { CadenceChip } from "./cadence-chip";
 import { LiveComments } from "./live-comments";
+import { PersonaBadge } from "./persona-badge";
+import { TopCommentersTable } from "./top-commenters-table";
 
 // Page "Import / API" — fusion (2026-09-08) des anciens écrans Vue
 // d'ensemble, Audience, Croissance, Contenu et Écosystème (tous supprimés)
@@ -279,6 +285,78 @@ function KpiCard({ label, value, sub }: { label: string; value: string; sub: str
   );
 }
 
+// Carte d'un persona — un archétype éditorial, jamais un segment de
+// population : aucun chiffre ici ne prétend décrire "la" population des
+// abonnés (voir le commentaire d'en-tête de la section Personas). Chaque
+// pourcentage affiché porte son unité juste en dessous, en petit et
+// atténué — jamais un chiffre nu.
+function PersonaCard({ persona }: { persona: PersonaDefinition & { metrics: PersonaMetrics } }) {
+  const { metrics } = persona;
+  const colors = PERSONA_COLORS[persona.key];
+  const trend = metrics.trajectory.deltaPts ?? 0;
+  return (
+    <Card variant="claire" interactive={false}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 16, fontWeight: 800 }}>{persona.name}</span>
+          {metrics.trajectory.emergent && (
+            <span
+              style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: "0.02em", color: colors.text, background: colors.bg,
+                border: `1px solid ${colors.border}`, borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap",
+              }}
+            >
+              Persona émergent
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", color: colors.text }}>{pct(metrics.resonancePct, 0)}</span>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>de l&apos;engagement généré</span>
+        </div>
+
+        <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>{persona.description}</p>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {persona.tags.map((tag) => (
+            <Chip key={tag} style={{ fontSize: 11, padding: "3px 9px" }}>
+              {tag}
+            </Chip>
+          ))}
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--bordure-carte)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}>
+              <span style={{ color: "var(--text-muted)" }}>Poids dans la conversation</span>
+              <span style={{ fontWeight: 700 }}>{pct(metrics.conversationPct, 0)}</span>
+            </div>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>sur {fr(metrics.conversationDenominator)} commentateurs distincts</span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{metrics.signature.formatHighlight}</span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{metrics.signature.timeWindow}</span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>{metrics.signature.vocabulary}</span>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13 }}>
+            <span style={{ color: "var(--text-muted)" }}>Trajectoire</span>
+            {metrics.trajectory.sufficientHistory ? (
+              <span style={{ fontWeight: 700, color: trend > 0 ? "var(--vert-logo)" : "var(--text-muted)" }}>
+                {trend > 0 ? "↗" : trend < 0 ? "↘" : "→"} {signedFr(metrics.trajectory.deltaPts)} pts sur 3 mois
+              </span>
+            ) : (
+              <span style={{ fontSize: 12, fontStyle: "italic", color: "var(--text-muted)" }}>Historique insuffisant</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function AttachAccountCard({
   title,
   description,
@@ -399,7 +477,7 @@ export default async function AnalysePage({
   const [
     reachDailyResult, reachTotalsResult, reachMonthlyResult, periodTotalsResult,
     demographicsResult, engagedAudienceResult, mentionsResult, competitorsResult,
-    topCommentersResult, postInsightsResult, storyInsightsResult,
+    topCommentersResult, postInsightsResult, storyInsightsResult, personasResult,
   ] = await Promise.all([
     withLiveFallback(() => notWiredYet("GET /{ig-user-id}/insights?metric=reach&metric_type=time_series&since&until"), () => mockAccountReachSeries(account.id, followersTotal)),
     withLiveFallback(() => notWiredYet("GET /{ig-user-id}/insights?metric=reach&metric_type=total_value&breakdown=media_product_type"), () => mockAccountReachTotalsByFormat(account.id, followersTotal)),
@@ -412,6 +490,7 @@ export default async function AnalysePage({
     withLiveFallback(() => notWiredYet("webhook comments (accumulation nominative)"), () => mockTopCommenters(account.id)),
     withLiveFallback(() => notWiredYet("GET /{media-id}/insights (par publication)"), () => (posts ?? []).map((p) => mockMediaInsights(p.id, p.media_type as MediaType, followersTotal))),
     withLiveFallback(() => notWiredYet("GET /{media-id}/insights (par story)"), () => (stories ?? []).map((s) => mockMediaInsights(s.id, "story", followersTotal))),
+    withLiveFallback(() => notWiredYet("GET /media (caption) + GET /{media-id}/insights (reach, total_interactions) + GET /{media-id}/comments — classification LLM non branchée"), () => mockPersonasOverview(account.id, followersTotal)),
   ]);
 
   const reachDaily = reachDailyResult.data;
@@ -425,6 +504,7 @@ export default async function AnalysePage({
   const topCommenters = topCommentersResult.data;
   const postInsightsList = postInsightsResult.data;
   const storyInsightsList = storyInsightsResult.data;
+  const personas = personasResult.data;
 
   const genderReported = demographics.genderSplit.female + demographics.genderSplit.male;
   const genderMeasured = genderReported + demographics.genderSplit.unspecified;
@@ -877,7 +957,13 @@ export default async function AnalysePage({
           classement nominatif est donc techniquement possible dès le
           premier commentaire lu, pas seulement "à terme". NON VÉRIFIÉ CONTRE
           L'API : notre propre mécanisme de collecte en continu (webhook ou
-          sondage périodique), jamais configuré ni testé dans la durée. */}
+          sondage périodique), jamais configuré ni testé dans la durée.
+          Colonne Persona (09/09/2026) : persona DOMINANT du commentateur —
+          voir la méthode ② dans le commentaire d'en-tête de la section
+          Personas plus bas. Simulé ici comme le reste (classification par
+          LLM non branchée) ; sous 3 commentaires, aucun persona n'est
+          attribué (tiret), une seule intervention ne permet aucune
+          dominante fiable. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle
           n={6}
@@ -898,18 +984,7 @@ export default async function AnalysePage({
               </span>
               <LiveSourceTag source={topCommentersResult.source} reason={topCommentersResult.reason} />
             </div>
-            <div style={{ maxHeight: 480, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "2px 16px", alignContent: "start" }}>
-              {topCommenters.map((c, i) => (
-                <div key={c.username} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid var(--bordure-carte)" }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", width: 22, flex: "0 0 22px" }}>{i + 1}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--bleu)", flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    @{c.username}
-                    {c.verified && <span aria-label="Compte vérifié" title="Compte vérifié" style={{ marginLeft: 4, color: "var(--vert-logo)" }}>✓</span>}
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 800, flex: "0 0 auto" }}>{fr(c.commentCount)}</span>
-                </div>
-              ))}
-            </div>
+            <TopCommentersTable rows={topCommenters} />
           </div>
         </Card>
       </div>
@@ -1219,7 +1294,69 @@ export default async function AnalysePage({
         </div>
       </div>
 
-      {/* 10. Aller plus loin
+      {/* 10. Personas
+          Entièrement simulée aujourd'hui : la classification par LLM des
+          publications (①) et des commentaires (②/③) n'est PAS branchée.
+          Dépendances réelles, une fois branchée :
+            ① Résonance — disponible dès le branchement de l'API : GET
+              /media (caption, media_product_type) + GET /{media-id}/
+              insights (reach, total_interactions). Un LLM classe chaque
+              publication dans UN SEUL persona à partir de sa légende ;
+              taux d'engagement par publication = total_interactions ÷
+              reach ; MOYENNE par persona (jamais la somme — sinon le
+              volume de publication d'un persona pilote son score, ex. 12
+              posts rugby contre 3 casual donneraient mécaniquement
+              l'avantage au rugby) ; les quatre moyennes sont normalisées
+              pour totaliser 100 %.
+            ②/③ Poids dans la conversation / Signature — nécessitent un
+              HISTORIQUE de commentaires accumulé par nos soins : GET
+              /{media-id}/comments (username, text, timestamp) ne renvoie
+              que les commentaires actuels, aucun rétroactif, et rien ne
+              relie un commentateur à un profil au premier appel. Compter
+              4 à 8 semaines avant que ces deux indicateurs aient de la
+              matière. Regrouper par username, classer chaque commentaire
+              (texte + persona de la publication commentée), attribuer à
+              chaque commentateur son persona DOMINANT — compter les
+              personnes, jamais les commentaires.
+            ④ Trajectoire — résonance 30 jours vs 90 jours précédents ;
+              impossible avant 3 mois d'historique (les insights Meta eux-
+              mêmes ne remontent que 90 jours en arrière) — "Historique
+              insuffisant" plutôt qu'un faux zéro sous ce seuil.
+          "Part d'audience" ne doit JAMAIS être écrit ni suggéré : un
+          persona est un archétype éditorial, pas un segment de
+          population — on ne compte jamais d'individus qui
+          "appartiendraient" à un persona. Voir aussi le commentaire
+          d'en-tête de mockPersonasOverview dans analyse-mock.ts. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <SectionTitle
+          n={10}
+          title="Personas"
+          subtitle="Quatre archétypes, mesurés sur ce qui fait réagir et sur la façon dont on parle de vous."
+        />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <LiveSourceTag source={personasResult.source} reason={personasResult.reason} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14 }}>
+          <KpiCard label="Personas suivis" value={fr(4)} sub="archétypes éditoriaux, pas des segments" />
+          <KpiCard label="Publications classées" value={fr(personas.publicationsClassified)} sub="par légende, sur la période couverte" />
+          <KpiCard label="Commentateurs distincts analysés" value={fr(personas.distinctCommentersAnalyzed)} sub="tous personas confondus" />
+          <KpiCard label="Période couverte" value={`${personas.periodMonths} mois`} sub="fenêtre glissante 30 j vs 90 j précédents" />
+        </div>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>{personas.summarySentence}</p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+          {personas.personas.map((p) => (
+            <PersonaCard key={p.key} persona={p} />
+          ))}
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", maxWidth: 760 }}>
+          La portée dépend aussi de l&apos;algorithme, du format et de l&apos;heure de publication. La résonance mesure ce
+          qui fait réagir, pas la composition de l&apos;audience.
+        </p>
+      </div>
+
+      {/* 11. Aller plus loin
           Composition purement illustrative (aucune intégration réelle,
           aucun logo cliquable) : le seul satellite "connecté" est
           Instagram, parce que c'est la seule source déjà branchée sur ce
@@ -1227,7 +1364,7 @@ export default async function AnalysePage({
           rien ici ne dit quand ni si ils seront construits. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         <SectionTitle
-          n={10}
+          n={11}
           title="Aller plus loin"
           subtitle="Instagram est la brique qu'on construit en premier — le socle. D'autres sources peuvent s'y greffer ensuite, pour raconter une histoire qu'aucune ne raconte seule."
         />
@@ -1257,7 +1394,7 @@ export default async function AnalysePage({
 
       {/* 11. Ce qu'on ne peut pas récupérer */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <SectionTitle n={11} title="Ce qu'on ne peut pas récupérer" subtitle="Pour que le périmètre soit clair dans les deux sens." />
+        <SectionTitle n={12} title="Ce qu'on ne peut pas récupérer" subtitle="Pour que le périmètre soit clair dans les deux sens." />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
           {[
             ["Qui a mis un « j'aime »", "Cette liste n'est fournie ni par l'API ni par l'application Instagram."],
