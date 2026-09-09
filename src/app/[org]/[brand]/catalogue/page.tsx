@@ -8,7 +8,14 @@ export default async function CataloguePage({
   params: Promise<{ org: string; brand: string }>;
 }) {
   const { org: orgSlug, brand: brandSlug } = await params;
-  const { supabase, accounts, canWriteView } = await resolveBrandContext(orgSlug, brandSlug);
+  const { supabase, accounts, canWriteView, role } = await resolveBrandContext(orgSlug, brandSlug);
+  // Le catalogue est la seule action d'écriture pensée pour le CLIENT
+  // (canWriteView reste réservé à l'agence partout ailleurs — import,
+  // rattachement de compte, cadence...). Un brand_viewer réel doit
+  // toujours pouvoir noter, même si viewRole est forcé à "marque" pour ce
+  // rôle (cf. lib/view-role.ts) : sans ce cas explicite, aucun client
+  // n'a jamais pu noter le catalogue qui existe précisément pour lui.
+  const canRateCatalogue = canWriteView || role === "brand_viewer";
 
   if (accounts.length === 0) {
     return <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Aucun compte Instagram rattaché.</p>;
@@ -31,6 +38,6 @@ export default async function CataloguePage({
   }
 
   return (
-    <CatalogueBoard accountId={account.id} initialRatings={initialRatings} initialNotes={initialNotes} readOnly={!canWriteView} />
+    <CatalogueBoard accountId={account.id} initialRatings={initialRatings} initialNotes={initialNotes} readOnly={!canRateCatalogue} />
   );
 }
