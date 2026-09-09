@@ -20,6 +20,7 @@ export function Header({
   viewRole,
   canToggleView,
   toggleViewRoleAction,
+  signOutAction,
 }: {
   orgSlug: string;
   brands: { slug: string; name: string }[];
@@ -31,6 +32,7 @@ export function Header({
   viewRole?: "agence" | "marque";
   canToggleView?: boolean;
   toggleViewRoleAction?: (formData: FormData) => void | Promise<void>;
+  signOutAction?: () => void | Promise<void>;
 }) {
   const router = useRouter();
 
@@ -131,6 +133,27 @@ export function Header({
           >
             {ROLE_LABEL[role] ?? role}
           </span>
+        )}
+        {signOutAction && (
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              title="Se déconnecter"
+              style={{
+                cursor: "pointer",
+                border: "1px solid var(--bordure)",
+                background: "transparent",
+                borderRadius: 999,
+                padding: "7px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text-muted)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Déconnexion
+            </button>
+          </form>
         )}
         <div
           style={{

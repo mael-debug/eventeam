@@ -2,6 +2,7 @@ import { resolveBrandContext } from "@/lib/context/brand-context";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Header } from "@/components/shell/header";
 import { toggleViewRoleAction } from "./actions";
+import { signOutAction } from "../actions";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
@@ -74,6 +75,7 @@ export default async function BrandLayout({
           viewRole={viewRole}
           canToggleView={canToggleView}
           toggleViewRoleAction={toggleViewRoleAction.bind(null, org.slug, brand.slug)}
+          signOutAction={signOutAction}
         />
         <main style={{ flex: 1, overflowY: "auto", padding: "32px" }}>{children}</main>
       </div>
