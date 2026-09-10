@@ -113,40 +113,26 @@ function PersonaCommerceCard({ persona, commerce }: { persona: PersonaDefinition
   );
 }
 
-function FunnelStage({
-  label,
-  value,
-  note,
-  unavailable,
-  unavailableDetail,
-}: {
-  label: string;
-  value?: string;
-  note?: string;
-  unavailable?: boolean;
-  unavailableDetail?: string;
-}) {
+// sourceTag : présent uniquement sur l'étage "Sessions site" — un chiffre y
+// est bien affiché (comme les trois autres étages), mais reste rattaché à
+// une intégration distincte de Shopify (Google Analytics 4), pas encore
+// branchée : le badge le rappelle en discret plutôt que de masquer le
+// chiffre ou de l'isoler visuellement du reste de l'entonnoir.
+function FunnelStage({ label, value, note, sourceTag }: { label: string; value: string; note?: string; sourceTag?: string }) {
   return (
     <div
       style={{
         flex: "1 1 210px", minWidth: 190, display: "flex", flexDirection: "column", gap: 6, padding: "16px 18px", borderRadius: 14,
-        background: unavailable ? "var(--panneau)" : "var(--carte-claire)",
-        border: unavailable ? "1.5px dashed var(--bordure)" : "1px solid var(--bordure-carte)",
+        background: "var(--carte-claire)", border: "1px solid var(--bordure-carte)",
       }}
     >
       <span style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>{label}</span>
-      {unavailable ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--text-muted)" }}>
-            Google Analytics 4 · intégration séparée, non branchée
-          </span>
-          {unavailableDetail && <span style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>{unavailableDetail}</span>}
-        </div>
-      ) : (
-        <>
-          <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>{value}</span>
-          {note && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{note}</span>}
-        </>
+      <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>{value}</span>
+      {note && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{note}</span>}
+      {sourceTag && (
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+          {sourceTag}
+        </span>
       )}
     </div>
   );
@@ -438,12 +424,14 @@ export default async function ShopifyPage({
       {/* 5. Entonnoir de conversion
           Étages 1-2 : Instagram, GET /{ig-user-id}/insights (reach) et
           GET /{media-id}/insights breakdown=action_type→bio_link_clicked
-          (profil_activity). Étage 3 (sessions site) : NÉCESSITE GA4, non
-          disponible aujourd'hui — affiché, pas masqué. Étage 4 : Shopify,
-          orders, scope read_orders. */}
+          (profil_activity). Étage 3 (sessions site) : NÉCESSITE GA4 — Google
+          Analytics Data API (GA4), propriété distincte de l'intégration
+          Shopify, non branchée ; le chiffre affiché est simulé comme le
+          reste de la page, pas masqué au motif qu'il vient d'une source
+          différente. Étage 4 : Shopify, orders, scope read_orders. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <SectionTitle n={5} title="Entonnoir de conversion" subtitle="De la portée Instagram à la commande Shopify." />
-        <LiveSourceTag reason="Étages 1-2 : Instagram (reach, profile_activity). Étage 3 : nécessite GA4, non branché. Étage 4 : Shopify (orders), non branché." />
+        <LiveSourceTag reason="Étages 1-2 : Instagram (reach, profile_activity). Étage 3 : Google Analytics 4 (intégration séparée de Shopify), non branché. Étage 4 : Shopify (orders), non branché." />
         <div style={{ overflowX: "auto", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "stretch", gap: 4, minWidth: 860 }}>
             <FunnelStage label="Portée" value={fr(data.funnel.reach)} note="comptes touchés · 30 jours" />
@@ -456,14 +444,15 @@ export default async function ShopifyPage({
             <FunnelArrow />
             <FunnelStage
               label="Sessions site"
-              unavailable
-              unavailableDetail="Nombre de visites sur le site issues du clic sur le lien en bio, avant la commande."
+              value={fr(data.funnel.sessions)}
+              note={data.funnel.bioLinkClicks > 0 ? `${pct((data.funnel.sessions / data.funnel.bioLinkClicks) * 100, 1)} des clics lien en bio` : undefined}
+              sourceTag="Google Analytics 4 · intégration séparée, non branchée"
             />
             <FunnelArrow />
             <FunnelStage
               label="Commandes"
               value={fr(data.funnel.orders)}
-              note={data.funnel.bioLinkClicks > 0 ? `${pct((data.funnel.orders / data.funnel.bioLinkClicks) * 100, 1)} des clics lien en bio` : undefined}
+              note={data.funnel.sessions > 0 ? `${pct((data.funnel.orders / data.funnel.sessions) * 100, 1)} des sessions site` : undefined}
             />
           </div>
         </div>

@@ -181,7 +181,7 @@ export interface ShopifyOverview {
   posts: ShopifyPostRow[];
   topPostsLineItems: { postId: string; items: ShopifyLineItem[] }[];
   personaCommerce: ShopifyPersonaCommerce[];
-  funnel: { reach: number; bioLinkClicks: number; orders: number };
+  funnel: { reach: number; bioLinkClicks: number; sessions: number; orders: number };
   ruptureAlerts: RuptureAlert[];
   promoCodes: ShopifyPromoCode[];
   returns: ShopifyReturnRow[];
@@ -303,9 +303,20 @@ export function mockShopifyOverview(accountId: string, followersTotal: number, r
   }
 
   // --- Section 5 : entonnoir de conversion ---------------------------------
+  // sessions : NÉCESSITE GA4 (intégration séparée de Shopify, pas branchée) —
+  // simulé comme le reste de la page, à la même exigence que les autres
+  // étages. La quasi-totalité des clics ouvre une session (un clic qui
+  // n'aboutit jamais à un chargement de page est rare — traqueur de lien
+  // bloqué, navigateur qui coupe la requête), d'où un taux élevé (82-96 %) ;
+  // borne basse à `orders` pour qu'une commande ne dépasse jamais le nombre
+  // de sessions qui l'a produite.
+  const funnelReach = posts.reduce((s, p) => s + p.reach, 0);
+  const funnelBioLinkClicks = posts.reduce((s, p) => s + (p.bioLinkClicks ?? 0), 0);
+  const funnelSessions = Math.max(orders30d, Math.round(funnelBioLinkClicks * (between(r, 82, 96) / 100)));
   const funnel = {
-    reach: posts.reduce((s, p) => s + p.reach, 0),
-    bioLinkClicks: posts.reduce((s, p) => s + (p.bioLinkClicks ?? 0), 0),
+    reach: funnelReach,
+    bioLinkClicks: funnelBioLinkClicks,
+    sessions: funnelSessions,
     orders: orders30d,
   };
 
