@@ -160,7 +160,6 @@ function ChronoIndexChart({ posts }: { posts: ShopifyPostRow[] }) {
         { key: "reach", label: "Portée (indice)", color: "var(--bleu)", values: posts.map((p) => Math.round((p.reach / maxReach) * 100)) },
         { key: "revenue", label: "CA (indice)", color: "var(--vert-logo)", values: posts.map((p) => Math.round((p.revenue / maxRevenue) * 100)) },
       ]}
-      valueFormatter={(n) => `${n}/100`}
     />
   );
 }
@@ -471,13 +470,7 @@ export default async function ShopifyPage({
               </p>
             ) : (
               <>
-                <ScatterChart
-                  points={conversionPoints}
-                  xLabel="Clics lien en bio"
-                  yLabel="Commandes"
-                  xFormatter={(n) => fr(n)}
-                  yFormatter={(n) => fr(n)}
-                />
+                <ScatterChart points={conversionPoints} xLabel="Clics lien en bio" yLabel="Commandes" />
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                   {PERSONA_DEFINITIONS.map((persona) => (
                     <span key={persona.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
