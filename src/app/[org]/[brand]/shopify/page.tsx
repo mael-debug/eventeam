@@ -113,7 +113,19 @@ function PersonaCommerceCard({ persona, commerce }: { persona: PersonaDefinition
   );
 }
 
-function FunnelStage({ label, value, note, unavailable }: { label: string; value?: string; note?: string; unavailable?: boolean }) {
+function FunnelStage({
+  label,
+  value,
+  note,
+  unavailable,
+  unavailableDetail,
+}: {
+  label: string;
+  value?: string;
+  note?: string;
+  unavailable?: boolean;
+  unavailableDetail?: string;
+}) {
   return (
     <div
       style={{
@@ -124,9 +136,12 @@ function FunnelStage({ label, value, note, unavailable }: { label: string; value
     >
       <span style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>{label}</span>
       {unavailable ? (
-        <span style={{ fontSize: 13, fontStyle: "italic", color: "var(--text-muted)", lineHeight: 1.4 }}>
-          Indisponible aujourd&apos;hui — nécessite Google Analytics 4
-        </span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+            Google Analytics 4 · intégration séparée, non branchée
+          </span>
+          {unavailableDetail && <span style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>{unavailableDetail}</span>}
+        </div>
       ) : (
         <>
           <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>{value}</span>
@@ -439,7 +454,11 @@ export default async function ShopifyPage({
               note={data.funnel.reach > 0 ? `${pct((data.funnel.bioLinkClicks / data.funnel.reach) * 100, 1)} de la portée` : undefined}
             />
             <FunnelArrow />
-            <FunnelStage label="Sessions site" unavailable />
+            <FunnelStage
+              label="Sessions site"
+              unavailable
+              unavailableDetail="Nombre de visites sur le site issues du clic sur le lien en bio, avant la commande."
+            />
             <FunnelArrow />
             <FunnelStage
               label="Commandes"
