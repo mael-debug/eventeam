@@ -12,6 +12,7 @@ import { Logo } from "@/components/ds";
 const NAV_ITEMS: { key: string; label: string; href: (base: string) => string }[] = [
   { key: "intro", label: "Intro", href: (b) => `${b}/intro` },
   { key: "analyse", label: "Import / API", href: (b) => `${b}/analyse` },
+  { key: "shopify", label: "Shopify", href: (b) => `${b}/shopify` },
   { key: "ia", label: "Showroom IA", href: (b) => `${b}/ia` },
   { key: "catalogue", label: "Catalogue", href: (b) => `${b}/catalogue` },
   { key: "imports", label: "Imports", href: (b) => `${b}/imports` },

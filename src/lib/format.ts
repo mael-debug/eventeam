@@ -24,6 +24,14 @@ export function signedPct(n: number | null | undefined, decimals = 1): string {
   return n > 0 ? `+${s}` : n < 0 ? `-${s}` : s;
 }
 
+// "3 400 €" — espace insécable avant le symbole, séparateur de milliers
+// par espace, jamais de centimes (toLocaleString gère nativement les deux
+// espaces via la locale fr-FR, aucune décimale ajoutée à la main).
+export function eur(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "—";
+  return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+}
+
 export function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
