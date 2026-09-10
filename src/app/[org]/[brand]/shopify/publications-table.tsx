@@ -2,14 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { fr, eur, shortDate } from "@/lib/format";
-import type { ShopifyPostRow } from "@/lib/shopify-mock";
+import { postDisplayName, type ShopifyPostRow } from "@/lib/shopify-mock";
 import { PersonaBadge } from "../analyse/persona-badge";
 
 // Même mécanique de tri que top-commenters-table.tsx (Import/API) — pas de
 // nouveau composant de tri générique tant qu'un seul autre écran en a
 // besoin. PersonaBadge est importé tel quel depuis analyse/ (pas dupliqué) :
 // c'est ce partage de code qui garantit les mêmes couleurs de persona des
-// deux côtés.
+// deux côtés. Colonne "Publication" : la vraie légende importée
+// (postDisplayName), jamais un libellé générique — c'est la publication
+// réelle qui a généré la vente, le client doit pouvoir la reconnaître.
 type SortKey = "publishedAt" | "reach" | "bioLinkClicks" | "orders" | "revenue" | "aov";
 type SortDir = "asc" | "desc";
 
@@ -85,7 +87,7 @@ export function PublicationsTable({ rows }: { rows: ShopifyPostRow[] }) {
       <table style={{ width: "100%", minWidth: 760, fontSize: 13, borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ textAlign: "left", color: "var(--text-muted)" }}>
-            <th style={{ padding: "0 10px 10px 0", fontWeight: 600, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>Format</th>
+            <th style={{ padding: "0 10px 10px 0", fontWeight: 600, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>Publication</th>
             <SortHeader label="Date" sortKey="publishedAt" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
             <th style={{ padding: "0 10px 10px 0", fontWeight: 600, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>Persona</th>
             <SortHeader label="Portée" sortKey="reach" activeKey={sortKey} dir={sortDir} align="right" onSort={handleSort} />
@@ -98,16 +100,21 @@ export function PublicationsTable({ rows }: { rows: ShopifyPostRow[] }) {
         <tbody>
           {sorted.map((p) => (
             <tr key={p.id} style={{ borderTop: "1px solid var(--bordure-carte)" }}>
-              <td style={{ padding: "9px 10px 9px 0" }}>
-                <span
-                  style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 8,
-                    background: "var(--panneau)", border: "1px solid var(--bordure)", fontSize: 10, fontWeight: 700, color: "var(--text-muted)",
-                  }}
-                  title={FORMAT_LABEL[p.mediaType]}
-                >
-                  {FORMAT_LABEL[p.mediaType].slice(0, 2).toUpperCase()}
-                </span>
+              <td style={{ padding: "9px 10px 9px 0", maxWidth: 260 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <span
+                    style={{
+                      flex: "0 0 auto", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 7,
+                      background: "var(--panneau)", border: "1px solid var(--bordure)", fontSize: 9.5, fontWeight: 700, color: "var(--text-muted)",
+                    }}
+                    title={FORMAT_LABEL[p.mediaType]}
+                  >
+                    {FORMAT_LABEL[p.mediaType].slice(0, 2).toUpperCase()}
+                  </span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={postDisplayName(p.caption, 200)}>
+                    {postDisplayName(p.caption)}
+                  </span>
+                </div>
               </td>
               <td style={{ padding: "9px 10px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{shortDate(p.publishedAt)}</td>
               <td style={{ padding: "9px 10px" }}>

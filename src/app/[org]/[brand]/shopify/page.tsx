@@ -1,7 +1,10 @@
 import { Card, Button } from "@/components/ds";
 import { resolveBrandContext } from "@/lib/context/brand-context";
 import { fr, eur, pct, shortDate } from "@/lib/format";
-import { mockShopifyOverview, type ShopifyPost, type ShopifyPersonaCommerce } from "@/lib/shopify-mock";
+import { TrendLine } from "@/components/trend-line";
+import { BarChart, type BarDatum } from "@/components/bar-chart";
+import { ScatterChart, type ScatterPoint } from "@/components/scatter-chart";
+import { mockShopifyOverview, postDisplayName, type ShopifyPost, type ShopifyPostRow, type ShopifyPersonaCommerce } from "@/lib/shopify-mock";
 import { PERSONA_DEFINITIONS, PERSONA_COLORS, type MediaType, type PersonaDefinition } from "@/lib/analyse-mock";
 import { PersonaBadge } from "../analyse/persona-badge";
 import { PublicationsTable } from "./publications-table";
@@ -142,6 +145,26 @@ function FunnelArrow() {
   );
 }
 
+// Deux mesures d'échelle différente (comptes touchés, milliers ; CA, euros) :
+// jamais un double axe — chaque série est indexée sur son propre maximum
+// (0-100) avant d'être posée sur le même graphe, seule façon correcte de les
+// comparer visuellement sans faire mentir l'une des deux échelles.
+function ChronoIndexChart({ posts }: { posts: ShopifyPostRow[] }) {
+  if (posts.length === 0) return null;
+  const maxReach = Math.max(...posts.map((p) => p.reach), 1);
+  const maxRevenue = Math.max(...posts.map((p) => p.revenue), 1);
+  return (
+    <TrendLine
+      labels={posts.map((p) => shortDate(p.publishedAt))}
+      series={[
+        { key: "reach", label: "Portée (indice)", color: "var(--bleu)", values: posts.map((p) => Math.round((p.reach / maxReach) * 100)) },
+        { key: "revenue", label: "CA (indice)", color: "var(--vert-logo)", values: posts.map((p) => Math.round((p.revenue / maxRevenue) * 100)) },
+      ]}
+      valueFormatter={(n) => `${n}/100`}
+    />
+  );
+}
+
 export default async function ShopifyPage({
   params,
 }: {
@@ -204,31 +227,40 @@ export default async function ShopifyPage({
   }
 
   const data = mockShopifyOverview(account.id, followersTotal, rawPosts);
+  const chronoPosts = [...data.posts].sort((a, b) => a.publishedAt.localeCompare(b.publishedAt));
+
+  const personaRevenueBars: BarDatum[] = PERSONA_DEFINITIONS.map((persona) => ({
+    key: persona.key,
+    label: persona.name,
+    value: data.personaCommerce.find((c) => c.key === persona.key)?.revenue ?? 0,
+    color: PERSONA_COLORS[persona.key].text,
+  }));
+  const personaAovBars: BarDatum[] = PERSONA_DEFINITIONS.map((persona) => ({
+    key: persona.key,
+    label: persona.name,
+    value: data.personaCommerce.find((c) => c.key === persona.key)?.aov ?? 0,
+    color: PERSONA_COLORS[persona.key].text,
+  }));
+
+  // Analyse croisée conversion : chaque publication comme un point clics
+  // en bio → commandes, coloré par persona. Un point en bas à droite (beaucoup
+  // de clics, peu de commandes) signale une fuite après le clic, hors du
+  // périmètre Instagram — à distinguer d'un point en haut à gauche (peu de
+  // clics, mais qui convertissent bien).
+  const conversionPoints: ScatterPoint[] = data.posts
+    .filter((p) => p.bioLinkClicks != null)
+    .map((p) => ({
+      key: p.id,
+      label: postDisplayName(p.caption),
+      x: p.bioLinkClicks ?? 0,
+      y: p.orders,
+      color: PERSONA_COLORS[p.personaKey].text,
+    }));
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 44, maxWidth: 1120, minWidth: 0, paddingBottom: 24 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: "-0.01em" }}>Shopify</h1>
-        <p style={{ margin: 0, fontSize: 15, color: "var(--text-muted)" }}>
-          Ce que l&apos;outil affichera une fois la boutique @{account.handle} branchée — aucune donnée réelle ci-dessous.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--panneau)", border: "1px solid var(--bordure)", borderRadius: 18, padding: "18px 22px", maxWidth: 720 }}>
-          <span style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, lineHeight: 1.5 }}>
-            <span aria-hidden style={{ color: "var(--text-muted)", fontWeight: 800 }}>—</span>
-            Shopify n&apos;est pas encore branché : toutes les données de cette page sont simulées, à titre de projection.
-          </span>
-          <div style={{ background: "var(--pastel-jaune)", borderRadius: 14, padding: "12px 16px", fontSize: 14, color: "var(--encre)", lineHeight: 1.5, fontWeight: 600 }}>
-            À faire dès maintenant, avant le branchement : mettre en place le marquage UTM sur chaque lien en bio
-            (utm_source=instagram, utm_medium, utm_campaign, utm_content). Sans ce marquage en place au moment du
-            branchement, les ventes passées ne pourront jamais être rattachées à une publication a posteriori.
-          </div>
-          <span style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, lineHeight: 1.5 }}>
-            <span aria-hidden style={{ color: "var(--text-muted)", fontWeight: 800 }}>—</span>
-            Les scopes prévus (read_orders, read_products, read_inventory, read_discounts, read_returns) ne touchent
-            aucune donnée client protégée (nom, e-mail, adresse, téléphone).
-          </span>
-        </div>
       </div>
 
       {/* 1. Vue d'ensemble
@@ -266,6 +298,24 @@ export default async function ShopifyPage({
         />
         <LiveSourceTag reason="Shopify non branché — orders filtrées sur customAttributes.utm_content (NÉCESSITE UTM), croisées avec /media et /{media-id}/insights" />
         <PublicationsTable rows={data.posts} />
+
+        {/* Analyse croisée : portée et CA n'évoluent pas ensemble — chaque
+            mesure indexée sur son propre maximum (100 = publication la plus
+            forte sur cette mesure) plutôt que sur un même axe brut, pour ne
+            jamais superposer deux échelles différentes (comptes touchés vs
+            euros) sur un seul graphe. */}
+        <Card variant="claire" interactive={false}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>Portée vs CA, publication par publication</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Indice sur 100 — 100 = la publication la plus forte sur cette mesure. La publication la plus vue n&apos;est
+                pas la plus rentable.
+              </span>
+            </div>
+            <ChronoIndexChart posts={chronoPosts} />
+          </div>
+        </Card>
       </div>
 
       {/* 3. Produits vendus par contenu
@@ -286,9 +336,12 @@ export default async function ShopifyPage({
               <Card key={postId} variant="claire" interactive={false}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 15, fontWeight: 700 }}>
-                      {MEDIA_LABEL[post.mediaType]} du {shortDate(post.publishedAt)}
-                    </span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700 }}>{postDisplayName(post.caption)}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        {MEDIA_LABEL[post.mediaType]} · {shortDate(post.publishedAt)}
+                      </span>
+                    </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <PersonaBadge personaKey={post.personaKey} />
                       <span style={{ fontSize: 15, fontWeight: 800 }}>{eur(post.revenue)}</span>
@@ -345,6 +398,27 @@ export default async function ShopifyPage({
             return <PersonaCommerceCard key={persona.key} persona={persona} commerce={commerce} />;
           })}
         </div>
+
+        {/* Deux graphes séparés, jamais un seul à double axe : le CA total et
+            le panier moyen sont tous deux en euros mais d'ordre de grandeur
+            très différent (milliers vs dizaines) — les superposer sur le même
+            axe écraserait le second. Ordre des personas fixe (celui de
+            PERSONA_DEFINITIONS), jamais trié par valeur : la couleur et la
+            position portent l'identité du persona, pas son rang. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+          <Card variant="claire" interactive={false}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>CA par persona</span>
+              <BarChart data={personaRevenueBars} valueFormatter={(n) => eur(n)} />
+            </div>
+          </Card>
+          <Card variant="claire" interactive={false}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>Panier moyen par persona</span>
+              <BarChart data={personaAovBars} valueFormatter={(n) => eur(n)} />
+            </div>
+          </Card>
+        </div>
       </div>
 
       {/* 5. Entonnoir de conversion
@@ -375,6 +449,47 @@ export default async function ShopifyPage({
             />
           </div>
         </div>
+
+        {/* Analyse croisée : la même conversion clics → commandes, éclatée
+            publication par publication (les stories n'ont pas de clic lien en
+            bio mesurable, cf. Import/API — exclues du nuage plutôt
+            qu'affichées à 0). Un point en bas à droite convertit mal après le
+            clic ; un point en haut à gauche convertit très bien avec peu de
+            trafic. */}
+        <Card variant="claire" interactive={false}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>Efficacité de conversion par publication</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Clics sur le lien en bio (portée du trafic) contre commandes obtenues (efficacité réelle), une publication
+                par point.
+              </span>
+            </div>
+            {conversionPoints.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+                Aucune publication avec clics lien en bio mesurables sur la période.
+              </p>
+            ) : (
+              <>
+                <ScatterChart
+                  points={conversionPoints}
+                  xLabel="Clics lien en bio"
+                  yLabel="Commandes"
+                  xFormatter={(n) => fr(n)}
+                  yFormatter={(n) => fr(n)}
+                />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                  {PERSONA_DEFINITIONS.map((persona) => (
+                    <span key={persona.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 999, background: PERSONA_COLORS[persona.key].text }} />
+                      {persona.name}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </Card>
       </div>
 
       {/* 6. Alerte rupture
@@ -431,8 +546,8 @@ export default async function ShopifyPage({
                   return (
                     <tr key={code.code} style={{ borderTop: "1px solid var(--bordure-carte)" }}>
                       <td style={{ padding: "9px 10px 9px 0", fontWeight: 700, fontFamily: "monospace", fontSize: 12 }}>{code.code}</td>
-                      <td style={{ padding: "9px 10px", color: "var(--text-muted)" }}>
-                        {post ? `${MEDIA_LABEL[post.mediaType]} du ${shortDate(post.publishedAt)}` : "—"}
+                      <td style={{ padding: "9px 10px", color: "var(--text-muted)", maxWidth: 220 }} title={post ? postDisplayName(post.caption, 200) : undefined}>
+                        {post ? `${postDisplayName(post.caption, 34)} · ${shortDate(post.publishedAt)}` : "—"}
                       </td>
                       <td style={{ padding: "9px 10px", textAlign: "right" }}>{fr(code.uses)}</td>
                       <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700 }}>{eur(code.revenue)}</td>
@@ -473,8 +588,8 @@ export default async function ShopifyPage({
                   return (
                     <tr key={row.product} style={{ borderTop: "1px solid var(--bordure-carte)" }}>
                       <td style={{ padding: "9px 10px 9px 0" }}>{row.product}</td>
-                      <td style={{ padding: "9px 10px", color: "var(--text-muted)" }}>
-                        {post ? `${MEDIA_LABEL[post.mediaType]} du ${shortDate(post.publishedAt)}` : "—"}
+                      <td style={{ padding: "9px 10px", color: "var(--text-muted)", maxWidth: 220 }} title={post ? postDisplayName(post.caption, 200) : undefined}>
+                        {post ? `${postDisplayName(post.caption, 34)} · ${shortDate(post.publishedAt)}` : "—"}
                       </td>
                       <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, color: row.rate >= 0.15 ? "var(--encre)" : "var(--text-muted)" }}>
                         {pct(row.rate * 100, 0)}

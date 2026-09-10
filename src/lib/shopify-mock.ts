@@ -70,6 +70,17 @@ export interface ShopifyPost {
   caption: string;
 }
 
+// Nom affiché d'une publication — la vraie légende importée (content.
+// caption), jamais un libellé générique de type "Reel du 12/03" : ne garde
+// que la première ligne (les légendes multi-lignes commencent presque
+// toujours par l'accroche, le reste est hashtags/mentions) et tronque à
+// une longueur de tableau raisonnable.
+export function postDisplayName(caption: string, maxLen = 64): string {
+  const firstLine = caption.split("\n")[0]?.trim() ?? "";
+  if (firstLine.length === 0) return "(légende vide)";
+  return firstLine.length > maxLen ? `${firstLine.slice(0, maxLen - 1).trimEnd()}…` : firstLine;
+}
+
 // Persona dominant d'une publication — indépendant de mockCommenterPersona
 // (analyse-mock.ts, qui classe des COMMENTATEURS) : ici on classe la
 // publication elle-même, par sa légende (④ dans le commentaire de section
